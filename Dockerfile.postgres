@@ -1,0 +1,4 @@
+FROM pgvector/pgvector:0.8.2-pg17
+
+# Keep initialization independent of host bind-mount execution permissions.
+COPY --chmod=755 scripts/bootstrap-db.sh /docker-entrypoint-initdb.d/001-bootstrap.sh

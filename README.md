@@ -56,7 +56,7 @@ Bootstrap ролей выполняется только при создании
 
 ## Локальная разработка
 
-Node 26.13.0 (`.nvmrc`), Go 1.27.4 (`backend/go.mod`), Python 3.12, uv 0.13.4 и npm.
+Node 26.13.0 (`.nvmrc`), Go 1.27.3 (`backend/go.mod`), Python 3.12, uv 0.13.4 и npm.
 Frontend: точные версии в `package.json`, транзитивные — `package-lock.json`.
 Python: `pyproject.toml` + `uv.lock`. PostgreSQL 17 + pgvector 0.8.2.
 Подробности и каталоги: [development](docs/operations/development.md).

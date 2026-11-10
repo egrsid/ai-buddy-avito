@@ -1,6 +1,7 @@
 # Стартовый backlog
 
-Статусы: READY — можно брать после назначения человека; TODO — ждёт зависимости;
+Статусы: READY — можно брать после назначения человека;
+IN_PROGRESS — выполнена часть работ, приёмка не завершена; TODO — ждёт зависимости;
 EXTERNAL — нужен ресурс/решение вне репозитория. Наличие спецификации не означает DONE.
 Каркас запуска и документы созданы; продуктовые задачи ниже не реализованы.
 
@@ -8,7 +9,7 @@ EXTERNAL — нужен ресурс/решение вне репозитори�
 |---|---|---|---|---|
 | TL-01 | TL | READY | — | Назначить имена/handles в working-agreements; дать доступы репозитория/PR/CI; опубликовать общую базу документов |
 | TL-02 | TL | EXTERNAL | — | Приложить ссылку на оригинальные требования/интервью; сверить coverage и комплект сдачи |
-| INF-01 | Infra | READY | Docker у исполнителя | На чистом окружении make up, migrate, seed, smoke; проверить DB role isolation и записать результат |
+| INF-01 | Infra | IN_PROGRESS | Docker у исполнителя | На чистом окружении make up, migrate, seed, smoke; проверить DB role isolation и записать результат |
 | INF-02 | TL/Infra | READY | TL-01 | Включить CI и protection main с обязательными jobs, без прямого push |
 | BE-01 | Backend | READY | Согласованные v1 contracts | Реализовать demo-login/me/logout, сессии/CSRF, негативные проверки второй пары |
 | BE-02 | Backend | TODO | BE-01 | Реализовать S2 API/DB, version conflict; сохранение статуса после рестарта |
@@ -27,6 +28,25 @@ EXTERNAL — нужен ресурс/решение вне репозитори�
 | QA-02 | QA | TODO | S1–S4 API/UI | E2E всего пути, отрицательные доступы, повтор confirm, upstream failures; coverage каждого компонента >80% |
 | DEMO-01 | TL/Infra | EXTERNAL | Площадка и учётные данные | Выбрать место demo; при публичном доступе отключить demo-login и добавить защищённый вход/HTTPS |
 | DEMO-02 | TL/QA | TODO | QA-02, AI-03, TL-02 | Проверяемые PDF-презентация, видео и репетиция на чистом окружении |
+
+## Текущая проверка INF-01 · 2026-11-10
+
+- Устранена причина падения Compose job на загрузке backend image:
+  `golang:1.27.4-alpine` возвращал HTTP 404. Dockerfile и go.mod согласованы на 1.27.3.
+- В Docker Hub подтверждена доступность всех базовых образов проекта для linux/amd64
+  и linux/arm64. Образ Node 26.13.0-alpine доступен, менять его не требуется.
+- `make check`: 18 тестов прошли; frontend build и bootstrap checks AI/mock прошли.
+- Backend component check (vet/build) и CGO-disabled сборки для linux/amd64 и
+  linux/arm64 прошли на доступном локальном Go 1.27.4.
+  Последующий лог запуска владельца подтвердил сборку backend в Docker на Go 1.27.3
+  и сборку остальных образов.
+- Успешный Compose up, повторные migrate/seed, verify-db и smoke ещё не подтверждены:
+  запуск владельца остановился на postgres с exit 126: bind-mounted `001-bootstrap.sh`
+  получил `bad interpreter: Permission denied`. Остальные сервисы не стартовали.
+- Добавлен `Dockerfile.postgres` с COPY --chmod=755 bootstrap-скрипта вместо bind mount.
+  Новый образ и запуск после этого изменения не проверены: по просьбе владельца
+  агент не запускает контейнеры и не удаляет частично инициализированный volume.
+  INF-01 не закрыта; повторные migrate/seed, verify-db и smoke остаются обязательными.
 
 ## Контрольные точки
 

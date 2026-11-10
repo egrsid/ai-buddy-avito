@@ -6,7 +6,7 @@
 |---|---|
 | Node | 26.13.0, .nvmrc и Dockerfile frontend |
 | npm | С выбранным Node; установка только npm ci |
-| Go | 1.27.4, go.mod toolchain; stdlib net/http |
+| Go | 1.27.3, go.mod toolchain и Dockerfile backend; stdlib net/http |
 | Python | 3.12 (локально 3.12.10), .python-version |
 | uv | 0.13.4, Dockerfile/CI; uv sync --frozen |
 | PostgreSQL / pgvector | 17 / 0.8.2, Compose image tag |
@@ -15,6 +15,11 @@
 
 Образы закреплены version tags, не digest. Обновления — отдельным PR с новым lock и
 проверками; latest не использовать. Go pgx/v5 и pool заранее закреплены в go.mod/go.sum; соединение с БД добавляет BE-01/02.
+
+Go закреплён на 1.27.3: образ `golang:1.27.4-alpine` отсутствовал в Docker Hub при
+проверке 2026-11-10 и останавливал CI до сборки кода. Для всех текущих базовых образов
+подтверждены manifest-платформы linux/amd64 (CI) и linux/arm64 (Apple silicon).
+Это проверка доступности образов, не результат полного запуска Compose.
 
 Первичные источники: [Go](https://go.dev/dl/), [Node](https://nodejs.org/en/download),
 [Vite](https://vite.dev/guide/), [pgvector](https://github.com/pgvector/pgvector),
@@ -50,9 +55,18 @@ Health wiring пока не читает эти переменные; это к�
 ## Миграции и запуск
 
 Новый volume: bootstrap schemas/roles/extension → migrate → seed → AI/mock → Go → frontend.
+Postgres-образ собирается через `Dockerfile.postgres`: bootstrap-скрипт копируется внутрь
+с правами 755. Bind mount для него не используется, чтобы исполнение не зависело от
+прав файловой системы хоста (на macOS наблюдался `bad interpreter: Permission denied`).
 Миграции выполняет one-shot контейнер под admin ролью; runtime не получает DDL.
 Повторный seed не стирает прогресс и не создаёт embeddings. Проверка чистой БД и второго
 migrate/seed обязательна в CI. Локальный reset требует явного CONFIRM.
+
+После ошибки bootstrap кластер PostgreSQL может остаться в volume без ролей и схем:
+повторный запуск не выполняет init-скрипты на уже инициализированном кластере.
+Только для одноразовой локальной demo-БД допустим `make reset CONFIRM=delete-local-data`
+с последующим `make up`: reset удаляет ВСЕ данные проекта. При наличии нужных данных
+сначала требуется резервная копия и отдельное восстановление, а не reset.
 
 Для host-run DB tooling экспортировать POSTGRES_DB/POSTGRES_USER/POSTGRES_PASSWORD и
 PGHOST/PGPORT, затем `uv run --frozen python -m scripts.migrate` и
