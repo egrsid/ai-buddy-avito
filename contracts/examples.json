@@ -1,0 +1,107 @@
+[
+  {
+    "schema": "DemoLogin",
+    "payload": {
+      "account_id": "intern-a"
+    }
+  },
+  {
+    "schema": "Task",
+    "payload": {
+      "id": "20000000-0000-4000-8000-000000000002",
+      "title": "Настроить рабочее окружение",
+      "description": "Синтетическая задача",
+      "status": "todo",
+      "position": 1,
+      "source_ids": [
+        "40000000-0000-4000-8000-000000000002"
+      ],
+      "version": 1,
+      "updated_at": "2026-11-10T17:00:00Z"
+    }
+  },
+  {
+    "schema": "RunRequest",
+    "payload": {
+      "content": "Что значит MR и CI?"
+    }
+  },
+  {
+    "schema": "RunRequest",
+    "payload": {
+      "retry_of": "30000000-0000-4000-8000-000000000001"
+    }
+  },
+  {
+    "schema": "GenerateRequest",
+    "payload": {
+      "run_id": "30000000-0000-4000-8000-000000000001",
+      "user": {
+        "id": "10000000-0000-4000-8000-000000000003",
+        "team": "Учебная команда А"
+      },
+      "conversation_id": "50000000-0000-4000-8000-000000000001",
+      "task": null,
+      "messages": [
+        {
+          "role": "user",
+          "content": "Что такое MR?"
+        }
+      ],
+      "allowed_tools": [
+        "escalate_to_buddy"
+      ],
+      "knowledge_scope": "demo_public",
+      "action_results": []
+    }
+  },
+  {
+    "schema": "Action",
+    "payload": {
+      "id": "60000000-0000-4000-8000-000000000001",
+      "conversation_id": "50000000-0000-4000-8000-000000000001",
+      "task_id": "20000000-0000-4000-8000-000000000003",
+      "type": "create_access_request",
+      "parameters": {
+        "resource": "sandbox/backend",
+        "access_level": "write",
+        "reason": "Учебная задача"
+      },
+      "status": "pending_confirmation",
+      "preview": {
+        "resource": "sandbox/backend",
+        "access_level": "write",
+        "reason": "Учебная задача"
+      },
+      "expires_at": "2026-11-10T17:10:00Z",
+      "created_at": "2026-11-10T17:00:00Z",
+      "result": null,
+      "error_code": null
+    }
+  },
+  {
+    "schema": "Error",
+    "payload": {
+      "error": {
+        "code": "VERSION_CONFLICT",
+        "message": "Обновите задачу",
+        "request_id": "90000000-0000-4000-8000-000000000001"
+      }
+    }
+  },
+  {
+    "schema": "SSEDelta",
+    "payload": {
+      "run_id": "30000000-0000-4000-8000-000000000001",
+      "text": "В учебной команде MR означает merge request."
+    }
+  },
+  {
+    "schema": "SSEFailure",
+    "payload": {
+      "run_id": "30000000-0000-4000-8000-000000000001",
+      "code": "LLM_TIMEOUT",
+      "message": "Время ожидания истекло"
+    }
+  }
+]

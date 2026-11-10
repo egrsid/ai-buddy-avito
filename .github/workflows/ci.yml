@@ -1,0 +1,78 @@
+name: checks
+on: [push, pull_request]
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: astral-sh/setup-uv@v6
+        with: {version: '0.13.4'}
+      - run: make check
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: astral-sh/setup-uv@v6
+        with: {version: '0.13.4'}
+      - run: uv sync --frozen
+      - run: uv run --frozen python -m scripts.check_components ai
+      - run: uv run --frozen python -m scripts.check_components mock
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: python-coverage
+          path: |
+            ai-service/coverage/
+            mock-services/coverage/
+          if-no-files-found: ignore
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: npm ci
+        working-directory: frontend
+      - run: python -m scripts.check_components frontend
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: frontend-coverage, path: frontend/coverage/, if-no-files-found: ignore}
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: {go-version-file: backend/go.mod, cache: false}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m scripts.check_components backend
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: go-coverage, path: backend/coverage.coverprofile, if-no-files-found: ignore}
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - run: docker compose config --quiet
+      - run: make up
+      - run: |
+          make migrate seed
+          make migrate seed
+          make verify-db smoke
+      - if: failure()
+        run: docker compose logs --no-color
+      - if: always()
+        run: docker compose down --volumes

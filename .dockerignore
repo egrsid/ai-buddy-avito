@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+**/.env
+**/.env.*
+.venv
+.cache
+**/node_modules
+**/dist
+**/__pycache__
+**/.pytest_cache
+**/coverage
+**/*.coverprofile
+backend/api
