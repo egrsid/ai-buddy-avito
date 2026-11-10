@@ -7,7 +7,9 @@ x-python: &python
 
 services:
   postgres:
-    image: pgvector/pgvector:0.8.2-pg17
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-buddy}
       POSTGRES_USER: ${POSTGRES_USER:-buddy_admin}
@@ -17,7 +19,6 @@ services:
       MOCK_DB_PASSWORD: ${MOCK_DB_PASSWORD:?set MOCK_DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./scripts/bootstrap-db.sh:/docker-entrypoint-initdb.d/001-bootstrap.sh:ro
     healthcheck:
       test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
       interval: 3s

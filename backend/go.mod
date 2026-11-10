@@ -2,7 +2,7 @@ module ai-buddy/backend
 
 go 1.27.0
 
-toolchain go1.27.4
+toolchain go1.27.3
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
