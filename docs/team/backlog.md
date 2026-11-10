@@ -15,7 +15,7 @@ EXTERNAL — нужен ресурс/решение вне репозитори�
 | BE-02 | Backend | TODO | BE-01 | Реализовать S2 API/DB, version conflict; сохранение статуса после рестарта |
 | FE-01 | Frontend | READY | v1 DTO + reference | Layout/навигация/Task UI на contracts fixtures; все loading/error/empty states |
 | FE-02 | Frontend | TODO | BE-01, BE-02, FE-01 | Реальный S2 через Go, переключение аккаунта через server login |
-| QA-01 | QA | READY | v1 contracts | Подготовить E2E S2 и тесты RBAC, стартовать до integration checkpoint M1 |
+| QA-01 | QA | IN_PROGRESS | v1 contracts | Подготовить E2E S2 и тесты RBAC, стартовать до integration checkpoint M1; план проверки подготовлен, реализация E2E ждёт BE-01/02 и FE-02 |
 | AI-01 | AI | EXTERNAL | Доступ и бюджет от TL | Spike live LLM+embeddings: provider/model, tool calling, streaming, стоимость, ключ доступен; новую размерность закрепить миграцией |
 | AI-02 | AI | READY | v1 contract | Реализовать mock generate/knowledge, cancel/error fixtures, schema validation; без сетевых вызовов CI |
 | AI-03 | AI | TODO | AI-01 | Реальный ingest/RAG и live adapter, evals >=20, отчёт top-5/safety/cost |
