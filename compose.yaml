@@ -1,0 +1,124 @@
+name: ai-buddy
+
+x-python: &python
+  build:
+    context: .
+    dockerfile: Dockerfile.python
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.2-pg17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-buddy}
+      POSTGRES_USER: ${POSTGRES_USER:-buddy_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?copy .env.example to .env}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set APP_DB_PASSWORD}
+      AI_DB_PASSWORD: ${AI_DB_PASSWORD:?set AI_DB_PASSWORD}
+      MOCK_DB_PASSWORD: ${MOCK_DB_PASSWORD:?set MOCK_DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/bootstrap-db.sh:/docker-entrypoint-initdb.d/001-bootstrap.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    <<: *python
+    environment: &admin-env
+      POSTGRES_DB: ${POSTGRES_DB:-buddy}
+      POSTGRES_USER: ${POSTGRES_USER:-buddy_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      PGHOST: postgres
+    command: [python, -m, scripts.migrate]
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  seed:
+    <<: *python
+    environment: *admin-env
+    command: [python, -m, scripts.seed]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+
+  ai-service:
+    <<: *python
+    environment:
+      PGHOST: postgres
+      PGDATABASE: ${POSTGRES_DB:-buddy}
+      PGUSER: ai_service
+      PGPASSWORD: ${AI_DB_PASSWORD:?set AI_DB_PASSWORD}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?set INTERNAL_API_TOKEN}
+      LLM_MODE: ${LLM_MODE:-mock}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-}
+    depends_on:
+      seed: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mock-services:
+    <<: *python
+    command: [uvicorn, corporate.main:app, --app-dir, mock-services, --host, 0.0.0.0, --port, '8001']
+    environment:
+      PGHOST: postgres
+      PGDATABASE: ${POSTGRES_DB:-buddy}
+      PGUSER: mock_service
+      PGPASSWORD: ${MOCK_DB_PASSWORD:?set MOCK_DB_PASSWORD}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?set INTERNAL_API_TOKEN}
+    depends_on:
+      seed: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/healthz')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:5173}
+      PGHOST: postgres
+      PGDATABASE: ${POSTGRES_DB:-buddy}
+      PGUSER: app_service
+      PGPASSWORD: ${APP_DB_PASSWORD:?set APP_DB_PASSWORD}
+      AI_BASE_URL: http://ai-service:8000
+      MOCK_BASE_URL: http://mock-services:8001
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?set INTERNAL_API_TOKEN}
+    ports: ['127.0.0.1:8080:8080']
+    depends_on:
+      ai-service: {condition: service_healthy}
+      mock-services: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, 'http://127.0.0.1:8080/healthz']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    environment:
+      API_PROXY_TARGET: http://backend:8080
+    ports: ['127.0.0.1:5173:5173']
+    depends_on:
+      backend: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:5173').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
