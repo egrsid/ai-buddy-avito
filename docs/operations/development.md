@@ -81,7 +81,9 @@ PGHOST/PGPORT, затем `uv run --frozen python -m scripts.migrate` и
 В перепланировании 2026-11-11 runtime/Compose/CI/manifests/locks не менялись.
 Существующие migrations/seed/contracts и data/knowledge — legacy v1; команды выше
 проверяют именно этот каркас. `kb` остаётся физической схемой логической knowledge.
-RP-CONTRACT-01 фиксирует v2 schemas, RP-DATA-01 добавляет SQL, RP-MOCK-01 — dataset v2;
+RP-CONTRACT-01 фиксирует v2 schemas (Backend/AI authors, FE consumer review, TL acceptance).
+RP-DATA-01 разделена на BE app/corporate, AI kb/knowledge и TL shared runner; RP-MOCK-01
+(Backend) добавляет users/resources/assignments dataset v2;
 не переписывать применённую 001 и не переназначать старый intern-b команде A молча.
 Переход/чистую выделенную demo-БД организует владелец, не автоматический reset.
 
@@ -95,6 +97,6 @@ Offline mode target: LLM_MODE=mock без ключа, детерминирова
 может требовать сеть. Реальный LLM/embeddings — RP-AI-02, не блокирует offline P0.
 Никаких новых .env переменных эта документация не делает работающими автоматически.
 
-RP-INF-01 остаётся открытой после bootstrap Permission denied/COPY исправления; текущая
+RP-INF-01 назначена TL и остаётся открытой после bootstrap Permission denied/COPY исправления; текущая
 docs-only задача контейнеры не запускает и volume не удаляет. Проверить clean up,
 повтор migrate/seed, verify-db/smoke и затем target full E2E отдельной задачей.

@@ -38,7 +38,10 @@ Deny by default. Одинаковый 404 для чужого/несуществ
 
 intern-a и intern-b команды A с buddy-a; intern-c команды B с buddy-b для отрицательных
 проверок. approver-a назначен db-team-a-test; docs-owner-a назначен инструкции команды A.
-Ресурсы: db-team-a-test, db-team-b-test, db-restricted. Ограниченный ресурс не выдаётся
+Ресурсы: db-team-a-test, db-team-b-test, db-restricted. TL baseline фиксирует единственную
+requestable DB capability `db_reader` у db-team-a-test; admin/write запрещены в P0.
+Это synthetic capability, не SQL-роль PostgreSQL приложения. Permission codes и
+explicit ACL policy приведены в [contract-baseline](contract-baseline.md). Ограниченный ресурс не выдаётся
 стажёрам в базовой policy; произвольная requested_role отклоняется до создания заявки.
 Документы: синтетические team A/team B, документ с explicit restricted permission,
 безопасная публичная инструкция и закрытый synthetic personal-data fixture.
@@ -47,8 +50,8 @@ intern-a и intern-b команды A с buddy-a; intern-c команды B с b
 
 ## Permission-aware RAG
 
-1. Go аутентифицирует и вычисляет access_scope: subject_id, team_ids, permission/resource
-   bindings, policy_revision. Scope берётся из сервера, никогда из текста/клиентского JSON.
+1. Go аутентифицирует и вычисляет access_scope: subject_id, team_ids, resource_permissions,
+   document_permissions, policy_revision; точная общая структура в contract-baseline.md. Scope берётся из сервера, никогда из текста/клиентского JSON.
 2. Внутренний аутентифицированный запрос передаёт scope Python; отсутствие/невалидность
    scope → отказ, не fallback на demo_public/all. Allowed tools/routes также задаёт Go.
 3. Python применяет фильтр document/chunk ACL до retrieval/top-k и до LLM. Фрагмент,

@@ -70,10 +70,29 @@ end position column=1 не включает последнюю строку. М�
 AI live evals отдельно от unit tests/coverage; >=20 новых кейсов и all safety pass, retrieval
 baseline >=80% expected allowed doc in top-5. CI без платного ключа; legacy 10 кейсов не новый отчёт.
 
+## Ответственность за проверки
+
+| Проверки | Ответственный | Объём |
+|---|---|---|
+| Go/auth/policy/action/evidence/reducer/feedback | Backend | Component и API integration tests, все error/RBAC/idempotency cases и >80% coverage |
+| Corporate mock IAM/approval/DB checks | Backend | Persistent mock contracts/states и собственное >80% coverage |
+| AI/retrieval/privacy/schema/structured outputs/evals | AI Engineer | Provider-input spy, mock/live distinction, все safety cases, AI >80% |
+| UI/components/typed parsing | Frontend | All states/mobile/keyboard и frontend >80% |
+| Полный browser A/B/C E2E | Frontend, RP-E2E-01 | Реальные клики/confirm/approve/recheck/owner review; reload, restart совместно с TL |
+| Только два стартовых API smoke | Fullstack–QA–Integration, RP-QA-01 | Adapt legacy goal ownership/reread и 401/CSRF; без всего feedback E2E и infra |
+| Compose/DB scripts/CI/общий restart/offline/checkpoint | TL | Настоящий сквозной прогон, component reports и воспроизводимое demo |
+
+В existing remote feature/qa-01-m1 уже есть frontend/e2e/onboarding.spec.ts и QA-план;
+[ветки](../team/branches.md) фиксирует их содержимое/ограничения. Fullstack редактирует
+эти два файла в своей ветке после обновления базы владельцем. Frontend использует другие
+browser spec-файлы, не перезаписывает работу QA. Coverage/полная negative матрица остаются
+у авторов компонентов; отсутствие Fullstack в их строке не исключает эти проверки.
+
 ## Интеграционная приёмка
 
-QA начинает acceptance tests с согласованных DTO в день 1; каждый компонент добавляет
-behavior tests одновременно с реализацией. По checkpoint проверяется реальный
+Frontend начинает план browser acceptance tests с согласованных DTO; каждый компонент
+добавляет behavior/security tests одновременно с реализацией. Fullstack адаптирует только
+два существующих API smoke, общую интеграционную приёмку ведёт TL. По checkpoint проверяется реальный
 Go/AI(mock)/corporate/PostgreSQL путь без перехвата бизнес-API и прямых SQL-правок.
 Test-only управление временем/отказами разрешено для negative tests, не скрытое продвижение demo.
 
@@ -88,6 +107,15 @@ make check; git diff --check; local Markdown links, ID задач и полно�
 Сверить, что затронуты только .md, текущая ветка не менялась, JSON/SQL/code/seed/runtime
 knowledge/config не изменены. Не добавлять поведенческие тесты без изменения поведения.
 Продуктовые component/E2E/Compose не считать выполненными в этой задаче.
+
+## Документационное назначение RP-TEAM-01
+
+Проверить наличие пяти role handoff, единственного bounded ID у Fullstack, соответствие
+owners во всех SDD/операционных документах и отсутствие циклов зависимостей. Проверить,
+что фактическая QA-ветка/работа сохранена, proposed ветки явно помечены не созданными.
+TL baseline DONE не закрывает parent RP-CONTRACT-01 и не подменяет review/schema implementation.
+Команды: make check, git diff --check, проверка локальных ссылок/ID/tasks и неизменности
+HEAD/refs. Только Markdown; no commit/push/checkout/merge/изменение чужих веток.
 
 ## Готовность изменения к передаче владельцу
 

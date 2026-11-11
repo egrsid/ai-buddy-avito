@@ -1,7 +1,7 @@
 # Controlled DB Access Request — specification
 
 Версия 2.0 · P0 · статус: спроектировано, не реализовано.
-Владельцы: Backend + AI + Frontend + Fullstack/QA. Backlog: RP-ACCESS-01, RP-MOCK-02, RP-FE-02.
+Владельцы: Backend + AI + Frontend. Backlog: RP-ACCESS-01, RP-MOCK-02, RP-FE-02.
 
 ## Проблема и сценарий
 
@@ -41,7 +41,7 @@ Action pending_confirmation/executing/succeeded/failed/unknown/cancelled/expired
 
 ## Зависимости и границы
 
-RP-AUTH-01, RP-JOURNEY-01, RP-MOCK-01, RP-AI-01, RP-CHAT-01.
+RP-AUTH-01, RP-JOURNEY-01, RP-MOCK-01, RP-AI-CORE-01, RP-CHAT-01.
 [Design](design.md), [tasks](tasks.md), [backlog](../../team/backlog.md).
 P1/P2 не добавлять к обязательной реализации без решения TL; общий scope в [Product Spec](../../product/specification.md).
 

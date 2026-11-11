@@ -1,7 +1,7 @@
 # Authorization & Privacy — specification
 
 Версия 2.0 · P0 · статус: спроектировано, не реализовано.
-Владельцы: Backend + AI + Fullstack/QA. Backlog: RP-AUTH-01, RP-AI-01, RP-QA-01.
+Владельцы: Backend + AI. Backlog: RP-AUTH-01, RP-AI-CORE-01, RP-QA-01.
 
 ## Проблема и сценарий
 

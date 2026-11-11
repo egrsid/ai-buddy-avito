@@ -1,8 +1,8 @@
 # Proof of Readiness — tasks
 
 Все продуктовые задачи не завершены; владельцы, P0/день, зависимости и разрешённые
-директории централизованы в [backlog](../../team/backlog.md). Перед началом назначить
-реального исполнителя/reviewer, не выдумывать имя. [Spec](spec.md), [design](design.md).
+директории централизованы в [backlog](../../team/backlog.md). Исполнители/reviewers
+назначены по ролям в [handoff](../../team/assignments/README.md); имена не выдумывать. [Spec](spec.md), [design](design.md).
 
 Предусловия фичи: RP-JOURNEY-01, RP-ACCESS-01, RP-MOCK-02.
 

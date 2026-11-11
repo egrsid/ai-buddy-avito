@@ -1,10 +1,10 @@
 # Controlled DB Access Request — tasks
 
 Все продуктовые задачи не завершены; владельцы, P0/день, зависимости и разрешённые
-директории централизованы в [backlog](../../team/backlog.md). Перед началом назначить
-реального исполнителя/reviewer, не выдумывать имя. [Spec](spec.md), [design](design.md).
+директории централизованы в [backlog](../../team/backlog.md). Исполнители/reviewers
+назначены по ролям в [handoff](../../team/assignments/README.md); имена не выдумывать. [Spec](spec.md), [design](design.md).
 
-Предусловия фичи: RP-AUTH-01, RP-JOURNEY-01, RP-MOCK-01, RP-AI-01, RP-CHAT-01.
+Предусловия фичи: RP-AUTH-01, RP-JOURNEY-01, RP-MOCK-01, RP-AI-CORE-01, RP-CHAT-01.
 
 | ID backlog | Работа в рамках фичи | Наблюдаемый результат / done |
 |---|---|---|

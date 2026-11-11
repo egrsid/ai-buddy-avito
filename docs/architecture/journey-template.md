@@ -25,7 +25,7 @@ Dependency: {step_id, condition:"verified"}. Method — enum серверног�
 Все три обязательных шага verified означают завершение Goal.
 
 required_permissions — права на допустимое выполнение/проверку шага, например
-`resource.request`/`db.check`; проверяемое наличие DB grant — отдельное условие метода
+`access.request`/`db.check`; проверяемое наличие DB grant — отдельное условие метода
 `iam_permission_present`. Отсутствие grant не должно запрещать законную заявку на него.
 Отсутствие права на сам ресурс запрещает выбор маршрута, названия скрываются.
 

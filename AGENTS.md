@@ -8,9 +8,14 @@ Do not push to any remote, including feature branches and forks. Do not open or 
 
 Use only the branch/worktree already assigned by the owner. Do not create or switch branches
 in the shared working tree. For RP-DOC-01 the only allowed branch is the current
-`feature/team-start-foundation`; do not visit other branches. Only project documentation
+`feature/team-start-foundation`; do not check out other branches. Only project documentation
 may change in this task: no application code, JSON contracts/fixtures, SQL, seed data,
 runtime knowledge inputs, manifests, lockfiles, configuration or CI changes.
+
+For the current RP-TEAM-01 assignment, the user also prohibits local commits: no commit/push/PR
+while preparing role handoffs and the TL contract baseline. Read-only inspection of other
+branches through git show/compare or GitHub APIs is explicitly authorized; do not change
+their contents or refs. Proposed BE/AI/FE branches are not created by this task.
 
 ## Product direction
 
@@ -33,7 +38,8 @@ evidence/contextual AI. The reference is visual, not an exact functional specifi
 
 1. Read `README.md` and `docs/product/specification.md` for actual status and target scope.
 2. Read `ARCHITECTURE.md`, `docs/architecture/decisions.md` and `docs/team/working-agreements.md`.
-3. Find the assigned task in `docs/team/backlog.md`; check dependencies, owner and allowed
+3. Read your handoff in `docs/team/assignments/` and the actual/proposed branch inventory
+   in `docs/team/branches.md`. Find your task in `docs/team/backlog.md`; check dependencies, owner and allowed
    directories. Read its `spec.md`, `design.md`, `tasks.md` via `docs/features/README.md`.
    Legacy `onboarding` and `chat` are superseded pointers, not additional requirements.
 4. Inspect `git status` and existing code in your assigned area before editing.
@@ -42,7 +48,9 @@ evidence/contextual AI. The reference is visual, not an exact functional specifi
 Read additional references when relevant:
 - API/chat/actions: `docs/architecture/api-contracts.md`, `event-contracts.md`, `contracts/README.md`,
   `docs/architecture/security.md`, `state-machines.md`. Executable v1 contracts are legacy;
-  target v2 requires TL/consumer review and synchronous schemas/examples/tests before implementation.
+  target v2 requires actual schemas/examples/tests and consumer acceptance before implementation.
+  Read `docs/architecture/contract-baseline.md` (TL design ready) and
+  `docs/team/contract-handoff.md` (BE/AI/FE work and final review pending).
 - Journeys/evidence: `docs/architecture/journey-template.md`, `state-machines.md`, `event-contracts.md`.
 - Database: `docs/architecture/data-model.md` and component migrations; new SQL migrations only.
 - AI/RAG: `docs/architecture/ai-design.md`, `security.md`, `data/knowledge/` including evals;
@@ -53,6 +61,10 @@ Read additional references when relevant:
 ## Development contract
 
 - Work only on the assigned task/directories; preserve owner and other agents' changes.
+- Developer ownership: Backend builds Go plus the separate corporate mock; AI owns AI/kb;
+  Frontend owns UI and browser E2E; TL owns common tooling/infra/integration. Fullstack has
+  only RP-QA-01 (the two existing API tests and their plan), not mocks/infra/all testing.
+  Respect the file exceptions and reviewers in working-agreements.md.
 - React calls only Go. Go owns all app state/transitions/actions and trusted event processing.
   Python owns AI/knowledge and structured proposals, never app writes or corporate mutations.
   Corporate mock remains a separate owner/process; test DB resource is not application PostgreSQL.

@@ -1,14 +1,16 @@
 # Contextual AI Assistance — tasks
 
 Все продуктовые задачи не завершены; владельцы, P0/день, зависимости и разрешённые
-директории централизованы в [backlog](../../team/backlog.md). Перед началом назначить
-реального исполнителя/reviewer, не выдумывать имя. [Spec](spec.md), [design](design.md).
+директории централизованы в [backlog](../../team/backlog.md). Исполнители/reviewers
+назначены по ролям в [handoff](../../team/assignments/README.md); имена не выдумывать. [Spec](spec.md), [design](design.md).
 
-Предусловия фичи: RP-CONTRACT-01, RP-AUTH-01, RP-JOURNEY-01; live только RP-AI-02.
+Предусловия интеграции: RP-CONTRACT-01, RP-AUTH-01, RP-JOURNEY-01. AI CORE делается
+по contract fixtures после RP-DATA-AI-01; Go chat зависит только от CORE. Live — RP-AI-02.
 
 | ID backlog | Работа в рамках фичи | Наблюдаемый результат / done |
 |---|---|---|
-| RP-AI-01 | Offline structured operations, secure retrieval, >=20 evals | Fallback закрывает весь P0, all safety pass, forbidden input отсутствует |
+| RP-AI-CORE-01 | Offline generate/retrieval/route/access draft | Ранний Go chat/access можно интегрировать; ACL/schema safety проходит |
+| RP-AI-DIAG-01 | Classification/handoff/candidate draft, полный набор >=20 evals | Fallback закрывает диагностику, all safety pass |
 | RP-CHAT-01 | Go history/run/SSE и validation | Disconnect/cancel/retry/invalid output корректны и persistent |
 | RP-FE-02 | Контекстный чат и action previews | Ожидание/partial/error/source drawer работают через Go |
 | RP-AI-02 | Live provider/embeddings spike | Отдельный отчёт качества/cost, не блокирует offline P0 |

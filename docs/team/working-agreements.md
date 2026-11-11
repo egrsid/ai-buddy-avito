@@ -1,61 +1,81 @@
-# Работа команды — перепланирование v2
+# Работа пяти участников
 
-2026-11-11 · пять участников разработки. Имена/handles в репозитории отсутствуют;
-TL назначает реальных людей, не заменяя их вымышленными именами. Прикладные роли
-intern/buddy/approver/documentation_owner — synthetic пользователи, не состав команды.
+2026-11-11 · назначения по прямому поручению пользователя. TL — владелец проекта;
+Backend, AI Engineer, Frontend, Fullstack–QA–Integration — остальные четыре участника.
+Личные имена/GitHub handles не предоставлены и не придуманы; ответственность по ролям
+действует сразу, внешние права не создаются документацией.
 
-| Участник / роль | Имя / handle | Ответственность и директории | Review |
+| Участник | Основная работа | Review | Рабочая база |
 |---|---|---|---|
-| 1. Tech Lead | Назначает владелец | Scope, архитектура, API/events, access policy, checkpoints, docs/ и contracts/ | Consumer owners для API/данных |
-| 2. Backend / Go | Назначает TL | backend/, app migrations; journey, evidence, actions, blockers/friction/candidates, бизнес-валидация | TL + FE/AI потребитель |
-| 3. AI Engineer / Python | Назначает TL | ai-service/, kb migrations, data/knowledge/; provider/fallback, secure RAG, schemas/prompts, drafts/summaries/evals | Backend для interface, TL для security |
-| 4. Frontend | Назначает TL | frontend/; goal/step, evidence, confirm, errors, buddy/approval/candidate UI | Backend для DTO, QA для UX |
-| 5. Fullstack / QA / Integration | Назначает TL | mock-services/, corporate migrations, data/seed/, scripts/, Compose/CI, E2E/demo | Backend + AI для data/ACL, TL для infra |
+| TL | Архитектура/API policy, contract gate, общие scripts/infra/CI, интеграция и demo | BE/AI/FE для своих контрактов; TL окончательно сводит | feature/team-start-foundation, существует |
+| Backend | Go app + corporate mock, app/corporate migrations/seed, public/corporate/journey/events schemas и свои tests | AI на Go↔AI, FE на public DTO, TL на границы | feature/backend-mvp-v2, только план |
+| AI Engineer | AI schemas/service, kb migrations/knowledge ACL fixtures, provider/fallback/RAG/drafts/summaries/evals, свои tests | Backend и TL по границам | feature/ai-mvp-v2, только план |
+| Frontend | UI/typed DTO consumption, component tests и полный browser E2E | Backend по DTO, TL по общему demo | feature/frontend-mvp-v2, только план |
+| Fullstack–QA–Integration | **Только RP-QA-01:** адаптировать два существующих API-теста и QA-план | Backend проверяет API semantics; TL принимает отчёт | feature/qa-01-m1, существует на GitHub |
 
-QA/Infra не добавлены как шестой и седьмой человек: это обязанности пятого участника
-с помощью владельцев компонентов. Конкретное распределение адаптирует TL явно.
-TL не проектирует за AI Engineer внутренние adapters/prompting/retrieval. Изменение
-shared contracts/владения требует TL и consumer review до кода, а не разрешения LLM.
+[Handoff для каждого](assignments/README.md), [полный backlog](backlog.md),
+[read-only inventory веток](branches.md). Для Fullstack не подразумевается помощь всем
+остальным: дополнительные задачи только новым явным решением TL. Слово Integration
+в названии роли не делает его владельцем всех инфраструктурных проблем.
 
-## Источники и переход
+## Владение файлами и исключения
 
-Основание смены scope: [brief](../../CODEX_PROJECT_REPLAN.md). Рабочая единая модель:
-[Product Spec](../product/specification.md), [Architecture](../../ARCHITECTURE.md),
-[ADR](../architecture/decisions.md), target [API](../architecture/api-contracts.md)/
-[events](../architecture/event-contracts.md), [SDD](../features/README.md), [backlog](backlog.md).
-При расхождении исправить затронутые стороны до реализации, не выбирать удобный документ.
-[Audit](replan-audit.md) фиксирует допущения, открытые TL-решения и legacy gap.
+| Зона | Единственный автор | Согласование |
+|---|---|---|
+| backend/, backend/migrations/ | Backend | TL/потребитель |
+| mock-services/, mock-services/migrations/, data/seed/ и journey JSON | Backend | TL + AI для ссылок на knowledge |
+| ai-service/, ai-service/migrations/, data/knowledge/ | AI Engineer | Backend по IDs/ACL boundary |
+| contracts/v2/common/public/journey/events/corporate schemas и их fixtures | Backend | AI/FE/TL по contract-handoff |
+| contracts/v2/ai.schema.json и AI fixtures/tests | AI Engineer | Backend/TL |
+| frontend/ | Frontend | Кроме зарезервированного API test ниже |
+| frontend/e2e/onboarding.spec.ts и docs/testing/qa-01-m1.md (пока в QA-ветке) | Fullstack–QA–Integration | Backend + TL; Frontend не переписывает эти файлы |
+| frontend/e2e/ остальные browser scenarios | Frontend | TL, без дублирования QA smoke |
+| scripts/, compose.yaml, Dockerfiles, Makefile, .github/, root tooling | TL | Component owners; исключение scripts/check_repo.py только contract validation в RP-CONTRACT-BE-01 |
+| tests/test_contracts_v2_backend.py, tests/contract_v2_support.py | Backend | TL; helper общий |
+| tests/test_contracts_v2_ai.py | AI Engineer | Backend; common helper не дублировать |
+| docs/team/, общий scope/architecture/testing policy | TL | Участники передают факт/замечания; не переписывают общий backlog параллельно |
+| SDD своей области | Владелец реализации | TL при смене scope/API/ownership |
 
-Executable v1 contracts/DDL/seed остаются legacy, не источником нового scope.
-RP-CONTRACT-01 согласует v2 schema/examples/потребителей, RP-DATA-01 добавляет миграции;
-fixtures разрешены только по согласованному новому DTO и явно помечаются как fixtures.
-Изменённые permissions/chunks/sources проверяются с обеих сторон до LLM.
+Все запланированные новые пути явно не являются уже созданными файлами.
+Runtime owners app/kb/corporate не меняются: Go app, Python AI kb, отдельный mock corporate.
+Передача разработки mock Backend касается людей/каталогов, не переноса corporate SQL в Go app.
+TL не выбирает внутренние AI решения за AI Engineer. Каждый пишет tests собственного кода
+и отвечает за >80% coverage; Fullstack не отвечает за чужой denominator.
 
-## Постановка, локальная работа и приёмка
+## Контракты и зависимости
 
-Задача: ID, P0/P1/P2, роль/назначенный человек, зависимости, директории, наблюдаемый
-результат/DoD, SDD и команды проверки. Ownership не означает готовность. DONE только
-после реального результата; healthchecks/fixtures не продуктовая интеграция.
-В текущем поручении RP-DOC-01 разрешены только Markdown-документы, текущая ветка
-feature/team-start-foundation; код/JSON/SQL/seed/конфигурация не меняются.
+TL-пакет [contract-baseline](../architecture/contract-baseline.md) готов. RP-CONTRACT-01
+разбит на TL design, BE schemas, AI schemas, FE consumption и final TL review в
+[handoff](contract-handoff.md). Не помечать parent DONE после одних документов.
+Исполняемые v1 contracts/DDL/seed остаются legacy; RP-DATA-01 также разделена по владельцам.
+RP-AI-CORE-01 нужен для раннего access flow, RP-AI-DIAG-01 — для buddy/reverse; не блокировать
+день 3 ожиданием всей AI-фичи дня 5.
 
-Агенты не создают, не переключают и не посещают другие ветки, не публикуют/не открывают
-PR. Владелец назначает рабочую ветку/папку; публикация, PR/review/merge и Git hosting
-настройки принадлежат владельцу/уполномоченному maintainer. Не добавлять Codex co-author.
-Сохранять чужие изменения. Не коммитить .env/ключи/зависимости/build artifacts/реальные данные.
+## Работа с ветками
 
-Проверки [testing](../testing/strategy.md): make check, component checks, >80% line coverage
-каждого компонента с первой бизнес-фичи; нельзя расширять health wiring бизнес-логикой
-или исключать её ради порога. Новые SQL-файлы вместо изменения применённых миграций.
-UI следует reference/tokens; screenshots/responsiveness после реальной FE-реализации.
+Текущее поручение выполняется только в feature/team-start-foundation, без commit/push,
+создания/переключения веток и изменений чужих refs. Чтение других веток через git show/
+compare/API разрешено пользователем. Три ветки BE/AI/FE пока только предложены; владелец
+подготавливает их и отдельные рабочие папки от опубликованной актуальной foundation.
+Существующую QA-ветку сохраняют и обновляют её базу без утраты работы автора; legacy backlog
+не заменяет новый. Подробности/разница к main — в branches.md.
 
-## Синхронизация
+Публикацию, PR, merge и hosting permissions выполняет владелец. Агентам запрещены push/PR,
+Codex co-author, веточные операции в shared checkout. Не менять чужие каталоги, не
+коммитить .env/ключи/зависимости/artifacts/реальные данные. Назначение роли не даёт права
+редактировать чужую ветку. В этой задаче меняется только документация и TL baseline.
 
-В начале дня: результат/следующая задача/блокер в трекере, канал/время определяет TL.
-Перед checkpoint — E2E через реальные компоненты на чистой synthetic БД и negative ACL.
-Изменение контракта синхронно отражается в docs/schema/examples/consumer tests. Никаких
-скрытых SQL-правок для демо. Внешний provider не блокирует offline P0.
+## Передача результата и приёмка
 
-Недельные checkpoints в backlog, пятиминутное demo — [demo](../product/demo.md).
-Оригиналы кейса/созвонов/исследования не приложены; TL сверяет требования и лицензии,
-доступы/ключи/пройденные проверки не выдумываются. Документация не меняет hosting permissions.
+Участник получает один role handoff с очередью задач/зависимостей/DoD. Перед стартом AGENTS
+и Before starting обязательны; проверяется существующий код и актуальность рабочей базы.
+Результат: изменённые файлы, команды/выходы tests/coverage, API примеры, remaining blockers.
+TL вносит фактический статус в общий backlog, не обещание результата.
+
+Компонентные проверки — у автора. Frontend ведёт browser E2E, Fullstack только два API
+smoke, TL сводит общую интеграцию с реальным restart/offline/clean DB и demo.
+Нельзя выдавать reread за restart, health/fixtures за готовую фичу и неполученный review за approval.
+Ошибки исправляет владелец кода; QA не становится общей очередью разработки.
+
+Ежедневно результат/следующая задача/блокер в согласованном TL канале (канал не придуман).
+Оригиналы кейса/бюджет/ключи/площадка остаются внешними решениями; offline P0 независим от live.

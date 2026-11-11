@@ -3,7 +3,8 @@
 Версия 2.0 · 2026-11-11 · целевая архитектура Engineering Onboarding & Feedback Loop.
 [Product Spec](docs/product/specification.md), [основание](CODEX_PROJECT_REPLAN.md).
 Продуктовая реализация ещё не начата: executable contracts/DDL/seed остались legacy v1.
-Переход выполняется отдельными задачами после TL review; эта редакция меняет документацию.
+Переход выполняется отдельными задачами: [TL baseline](docs/architecture/contract-baseline.md)
+подготовлен, исполняемые schemas и consumer/final review ещё требуются. Эта редакция меняет документацию.
 
 ## 1. Сохранённый стек
 
@@ -99,4 +100,6 @@ Line coverage строго >80% для каждого прикладного к�
 остаётся BOOTSTRAP, не покрытым MVP. [Testing](docs/testing/strategy.md) связывает
 приёмку с P0. Публикация и PR — только владелец репозитория. Агент работает локально
 в назначенной текущей ветке, не создаёт/не переключает ветки. [Backlog](docs/team/backlog.md)
-задаёт недельную интеграцию, [audit](docs/team/replan-audit.md) — решения TL и границы перехода.
+задаёт недельную интеграцию. [Назначения](docs/team/assignments/README.md) и
+[contract handoff](docs/team/contract-handoff.md) фиксируют актуальные роли/следующие действия;
+[audit](docs/team/replan-audit.md) сохраняет исторический отчёт перепланирования.

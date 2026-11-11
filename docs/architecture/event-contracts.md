@@ -57,5 +57,5 @@ blocker_type, attempt_id, outcome, instruction_id/version, intern_id и врем
 один P0 journey соответствует одной команде. Версии/расширение группировки: ADR-019.
 
 Сырые логи, credentials, SQL, персональные данные, чаты и закрытый content запрещены в payload.
-Схемы events и invalid/duplicate/out-of-order fixtures добавит RP-CONTRACT-01;
+Схемы events и invalid/duplicate/out-of-order fixtures пишет Backend в RP-CONTRACT-BE-01;
 текущее contracts/v1.schema.json их пока не содержит.

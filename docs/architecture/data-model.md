@@ -5,7 +5,9 @@
 [kb](../../ai-service/migrations/001_initial.sql),
 [corporate](../../mock-services/migrations/001_initial.sql) — legacy v1.
 Они содержат tasks, две роли и demo_public; перечисленные ниже расширения ещё отсутствуют.
-RP-DATA-01 добавляет новые миграции, не переписывает применённые 001 и не подменяет статус готовности.
+RP-DATA-01 добавляет новые миграции: RP-DATA-BE-01 — app/corporate (Backend),
+RP-DATA-AI-01 — kb/knowledge fixtures (AI), RP-DATA-TL-01 — общий runner/seed tooling (TL).
+Применённые 001 не переписываются; описание DDL не означает готовность.
 
 ## Владельцы
 
@@ -72,7 +74,7 @@ Seed идемпотентен по ID, не стирает progress/answers/deci
 явного reindex. Reset удаляет volume только по отдельному явному запросу владельца.
 
 Текущий dataset v1: intern-a команды A, intern-b команды B, buddy-a/buddy-b, 8 задач,
-3 demo_public документа. Он не обеспечивает новый demo. RP-MOCK-01 готовит dataset v2:
+3 demo_public документа. Он не обеспечивает новый demo. Backend RP-MOCK-01 готовит users/resources/assignments dataset v2, AI RP-DATA-AI-01 — knowledge fixtures:
 intern-a и intern-b команды A, intern-c команды B, buddy-a/buddy-b, approver-a, docs-owner-a;
 назначения и переназначение intern-b выполняются явно миграцией/seed без тихой перезаписи
 существующего профиля. Новое демо — на отдельной чистой локальной БД по инструкции владельца.

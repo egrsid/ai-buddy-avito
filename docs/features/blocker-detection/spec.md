@@ -1,7 +1,7 @@
 # Causal Blockers & Friction Events — specification
 
 Версия 2.0 · P0 · статус: спроектировано, не реализовано.
-Владельцы: Backend + AI + Frontend. Backlog: RP-BLOCKER-01, RP-AI-01, RP-FE-02.
+Владельцы: Backend + AI + Frontend. Backlog: RP-BLOCKER-01, RP-AI-DIAG-01, RP-FE-02.
 
 ## Проблема и сценарий
 

@@ -1,5 +1,11 @@
 # Отчёт о документационном перепланировании
 
+Этот отчёт фиксирует завершённый RP-DOC-01 (база e6c1a0e). После него пользователь
+назначил пять ролей и поручил TL-пакет: актуальные назначения/статусы находятся в
+[handoff](assignments/README.md), [backlog](backlog.md) и [contract handoff](contract-handoff.md).
+Число файлов/задач, untracked-состояние brief и pending назначения ниже — исторический
+снимок того этапа, не статус текущего RP-TEAM-01.
+
 2026-11-11 · RP-DOC-01 · основание: [CODEX_PROJECT_REPLAN.md](../../CODEX_PROJECT_REPLAN.md).
 Изменяется документация текущей ветки feature/team-start-foundation. Код/JSON/SQL/seed/
 runtime knowledge/config/CI не меняются, ветки не создаются и не переключаются,

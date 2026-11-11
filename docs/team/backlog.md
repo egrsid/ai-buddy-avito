@@ -1,70 +1,106 @@
-# Backlog — Engineering Onboarding & Feedback Loop
+# Backlog — назначения пяти участников
 
-Версия 2.0 · 2026-11-11. Дни относительны старту согласованной недели, не вымышленные
-календарные обещания. Пять ролей/директорий в [working agreements](working-agreements.md).
-Ни одна продуктовая фича ещё не реализована. [SDD index](../features/README.md).
-RP-DOC-01 DONE означает завершение документационной работы и проверок; TL/consumer
-review и исполняемые v2 schemas остаются в RP-CONTRACT-01, не заявлены выполненными.
-READY — можно после назначения человека; TODO — ждёт зависимостей; IN_PROGRESS — частично;
-EXTERNAL — внешний ресурс; DONE — фактическая приёмка. Спецификация не означает DONE.
+Редакция распределения · 2026-11-11. Пользователь — TL; остальные исполнители назначены
+по указанным им ролям без вымышленных имён/handles. [Пакеты участникам](assignments/README.md),
+[ветки и существующая QA-работа](branches.md), [границы каталогов](working-agreements.md).
+Ветки/commits/push этой задачей не создаются. Периоды — ориентиры недели, не оценки в часах.
 
-## P0: обязательный недельный путь
+Статусы: READY — задача имеет входные решения и может стартовать после предоставления
+рабочей базы владельцем; TODO — зависит от поставки; IN_PROGRESS — частичный результат;
+EXTERNAL — внешний ресурс; DONE — фактическая приёмка. Review не считается полученным
+отсутствием ответа. No code implementation выполнено этим распределением.
 
-| ID / день | Владелец; зона | Статус | Зависимости | Результат / критерий done | Спецификация |
-|---|---|---|---|---|---|
-| RP-DOC-01 / 1 | TL/docs; Markdown | DONE | Новый brief | Подготовлен единый набор vision/spec/ADR/8 SDD/API/events/backlog/demo; ссылки и make check проходят, код не изменён | [audit](replan-audit.md) |
-| RP-TL-01 / 1 | TL; docs/team | READY | — | Назначены 5 людей/reviewers; подтверждены policy/допущения и общий target contract | [agreements](working-agreements.md) |
-| RP-CONTRACT-01 / 1–2 | TL + BE/AI/FE; contracts/, docs/, contract tests | READY | RP-DOC-01 | TL/consumer review, executable v2 schemas/examples для API/AI/template/events, invalid fixtures и validators согласованы синхронно; v1 явно legacy | [API](../architecture/api-contracts.md) |
-| RP-INF-01 / 2,6 | Fullstack/QA; Compose/scripts/CI | IN_PROGRESS | Docker; target data проверки после RP-DATA-01 | Чистый up, migrate/seed дважды, DB role isolation, smoke; после интеграции весь offline demo, зафиксированы реальные результаты | [development](../operations/development.md) |
-| RP-DATA-01 / 2 | Backend + AI + Fullstack; migrations/scripts | TODO | RP-CONTRACT-01 | Новые app/kb/corporate migrations, роли/ACL/evidence/candidates, old checksum сохранён, повтор и ограничения проверены | [data](../architecture/data-model.md) |
-| RP-AUTH-01 / 2 | Backend; backend/ | TODO | RP-CONTRACT-01, RP-DATA-01 | Cookie/Origin/CSRF, role/team/resource/document/ownership policies, отрицательные проверки; ни одного self-approval | [auth](../features/authorization-and-privacy/spec.md) |
-| RP-MOCK-01 / 2 | Fullstack/QA + AI; mock-services/, data/ | TODO | RP-CONTRACT-01, RP-DATA-01 | Synthetic IAM/resources/ACL, a+b команда A, c команда B, approver/docs-owner, DB instructions/restricted/PII fixtures; seed не стирает прогресс | [auth](../features/authorization-and-privacy/spec.md) |
-| RP-JOURNEY-01 / 2 | Backend; backend/, template data | TODO | RP-AUTH-01, RP-MOCK-01 | Один утверждённый JSON DAG, goal/steps/dependencies/version, разрешённый ресурс и следующий шаг; no PATCH done | [journey](../features/onboarding-journey/spec.md) |
-| RP-AI-01 / 2–5 | AI; ai-service/, data/knowledge/ | TODO | RP-CONTRACT-01, RP-MOCK-01 | Offline provider всех structured операций, pre-LLM ACL, safe citations, >=20 evals; нет сетевых вызовов CI | [AI](../features/contextual-ai-assistance/spec.md) |
-| RP-CHAT-01 / 3 | Backend; backend/ | TODO | RP-AUTH-01, RP-JOURNEY-01, RP-AI-01 | History/run/SSE, schema validation, cancel/retry/partial persistence; Python не исполняет tools | [AI](../features/contextual-ai-assistance/spec.md) |
-| RP-MOCK-02 / 3 | Fullstack/QA; mock-services/ | TODO | RP-MOCK-01, RP-AUTH-01 | Persistent submitted request, scoped manual approval/reject и IAM grant; same-key replay, никакого auto-approve | [access](../features/access-request/spec.md) |
-| RP-ACCESS-01 / 3 | Backend; backend/ | TODO | RP-CHAT-01, RP-MOCK-02 | AI draft валидируется, exact confirm отправки, idempotent create/reconcile и отдельное approval; grant recheck | [access](../features/access-request/spec.md) |
-| RP-MOCK-03 / 4 | Fullstack/QA; mock-services/ | TODO | RP-MOCK-02 | Safe DB check: SSL failure/passed/denied/unavailable; нет SQL/DSN, correlated results | [verify](../features/readiness-verification/spec.md) |
-| RP-VERIFY-01 / 4 | Backend; backend/ | TODO | RP-JOURNEY-01, RP-ACCESS-01, RP-MOCK-03 | Trusted evidence, state reducer, duplicate/stale/revoke tests; verified только после IAM+connection evidence | [verify](../features/readiness-verification/spec.md) |
-| RP-BLOCKER-01 / 4 | Backend + AI; backend/, ai-service/ | TODO | RP-VERIFY-01 | Safe normalization, persistent blocker/friction, causal recovery; raw logs/PII исключены | [blocker](../features/blocker-detection/spec.md) |
-| RP-BUDDY-01 / 4 | Backend; backend/ | TODO | RP-BLOCKER-01, RP-CHAT-01 | Exact diagnostic snapshot/confirm/intersection ACL, assigned queue и atomic reply+resolved; recheck после ответа | [buddy](../features/buddy-escalation/spec.md) |
-| RP-REVERSE-01 / 5 | Backend + AI; backend/, ai-service/ | TODO | RP-BLOCKER-01, RP-AI-01 | Трёхчастный ключ, distinct>=2, один candidate, safe AI enrichment/fallback, scoped owner review, no auto-publish | [reverse](../features/reverse-onboarding/spec.md) |
-| RP-FE-01 / 2 | Frontend; frontend/ | TODO | RP-CONTRACT-01; reference | Общий layout/tokens, goal/step/evidence/blocker, approved DTO fixtures помечены; loading/error/empty/forbidden/mobile | [journey](../features/onboarding-journey/spec.md) |
-| RP-FE-02 / 3–4 | Frontend; frontend/ | TODO | RP-FE-01; поэтапно RP-JOURNEY-01, RP-CHAT-01, RP-ACCESS-01, RP-VERIFY-01, RP-BLOCKER-01 | Реальный Go: route/chat/preview/confirm/requests/approvals/checks, factual statuses, refresh; без fixture перехвата API | [access](../features/access-request/spec.md) |
-| RP-FE-03 / 4–5 | Frontend; frontend/ | TODO | RP-FE-02, RP-BUDDY-01, RP-REVERSE-01 | Минимальные buddy queue/detail/reply и docs-owner candidate/review с count/error/instruction/hypothesis | [reverse](../features/reverse-onboarding/spec.md) |
-| RP-QA-01 / 1–6 | Fullstack/QA + component owners; tests/component/E2E | TODO | RP-CONTRACT-01; выполнение по готовности API | Сначала acceptance fixtures/планы; затем happy/negative/security/retry/restart/offline tests, line coverage >80% каждого компонента | [testing](../testing/strategy.md) |
-| RP-INTEGRATION-01 / 6 | Все, QA координатор | TODO | Все P0 implementation задачи выше, RP-INF-01, RP-QA-01 | Полный A/B/C E2E, роли/PII/injection, grant delay, unknown/reconcile, offline без ключа; отчёты/ограничения честны | [demo](../product/demo.md) |
-| RP-DEMO-01 / 7 | TL + Fullstack/QA; docs/demo artifacts | TODO | RP-INTEGRATION-01, RP-TL-02 | Чистый seed сценария, 5-мин rehearsal, README, PDF/видео проверены; весь feedback loop показан, без скрытых SQL-правок | [demo](../product/demo.md) |
+## Группирующие задачи (не отдельная дополнительная нагрузка)
 
-RP-FE-02, RP-AI-01 и RP-QA-01 допускают поэтапную реализацию в течение указанных дней;
-это не требование ждать дня 4 для начала UI или дня 6 для первых тестов. Checkpoints
-фиксируют готовый результат, не только выполнение задач одним компонентом.
-
-## Внешние решения и необязательные расширения
-
-| ID / приоритет | Владелец | Статус / зависимость | Результат |
+| ID | Ответственный за сведение | Статус | Условие завершения |
 |---|---|---|---|
-| RP-TL-02 / P0, день 1–7 | TL | EXTERNAL: оригиналы кейса/интервью/исследования | Сверить coverage/формат сдачи/сроки и приложить реальные ссылки; не блокирует независимый offline development |
-| RP-AI-02 / P1 | AI + TL | EXTERNAL: provider/key/budget, затем RP-AI-01 | Live tool calling/streaming/embeddings и отдельный quality/cost report; не блокирует P0 fallback |
-| RP-HOST-01 / P2 | TL + Fullstack | EXTERNAL: площадка/auth | Public demo только с HTTPS/защищённым входом; hosting/permissions настраивает владелец |
-| RP-P1-01 / P1 | TL + component owners | TODO после стабильного P0 | Второй journey, graph/next-action UI, расширенный buddy/review history, retrieval/evidence UX/новые проверки по Product Spec |
-| RP-P2-01 / P2 | TL | TODO после хакатона | Реальные интеграции, MR/code style/IDE, semantic clustering/Radar, workflow builder/аналитика и HR; отдельный scope |
+| RP-DOC-01 | TL | DONE | Предыдущее перепланирование документации; его исторический отчёт сохранён |
+| RP-CONTRACT-01 | TL | IN_PROGRESS | RP-CONTRACT-REVIEW-01 DONE; TL-пакет готов, BE/AI schemas и FE review ещё нужны |
+| RP-DATA-01 | TL | TODO | RP-DATA-BE-01 + RP-DATA-AI-01 + RP-DATA-TL-01 DONE |
+| RP-AI-01 | AI Engineer | TODO | RP-AI-CORE-01 + RP-AI-DIAG-01 DONE; ранние потребители зависят только от CORE |
 
-## Контрольные точки недели
+## P0: задачи с единственным ответственным
 
-| День | Готовый результат |
+| ID | День | Ответственный | Статус | Зависимости | Результат / критерий done | Материалы |
+|---|---|---|---|---|---|---|
+| RP-TEAM-01 | 1 | TL | DONE | RP-DOC-01 | Назначения пяти ролей, существующие/планируемые ветки, bounded Fullstack и TL contract handoff; только docs | [спецификация](assignments/README.md) |
+| RP-TL-01 | 1 | TL | DONE | RP-DOC-01 | Роли и reviewers назначены по поручению владельца; baseline policy в RP-CONTRACT-TL-01. Handles необязательны для старта, доступы не выданы | [спецификация](working-agreements.md) |
+| RP-CONTRACT-TL-01 | 1 | TL | DONE | RP-DOC-01 | Scope/ownership/ACL/protocol/acceptance и authors зафиксированы; внешнее consumer review не выдумано | [спецификация](../architecture/contract-baseline.md) |
+| RP-CONTRACT-BE-01 | 1–2 | Backend | READY | RP-CONTRACT-TL-01 | Common/public/journey/events/corporate schemas, examples/invalid cases, local validator и tests; без runtime реализации | [спецификация](contract-handoff.md) |
+| RP-CONTRACT-AI-01 | 1–2 | AI Engineer | READY | RP-CONTRACT-TL-01 | AI/knowledge/structured/SSE schemas и fixtures; common definitions согласуются с Backend | [спецификация](contract-handoff.md) |
+| RP-CONTRACT-FE-01 | 1–2 | Frontend | TODO | RP-CONTRACT-BE-01, RP-CONTRACT-AI-01 | Проверены public DTO/SSE/error/nullability и typed fixture parsing, замечания переданы TL | [спецификация](contract-handoff.md) |
+| RP-CONTRACT-REVIEW-01 | 1–2 | TL | TODO | RP-CONTRACT-BE-01, RP-CONTRACT-AI-01, RP-CONTRACT-FE-01 | BE↔AI/FE review и offline checks пройдены, зафиксирован принятый baseline; нет авансового DONE | [спецификация](contract-handoff.md) |
+| RP-INF-01 | 2,6 | TL | IN_PROGRESS | Доступный Docker; финальная target проверка после RP-DATA-01 | Сохранившийся startup blocker: clean up, migrate/seed дважды, role isolation/smoke; текущий volume не удалять | [спецификация](../operations/development.md) |
+| RP-DATA-BE-01 | 2 | Backend | TODO | RP-CONTRACT-01 | Новые app/corporate migrations, роли/constraints/IDs, component tests; applied 001 не переписана | [спецификация](../architecture/data-model.md) |
+| RP-DATA-AI-01 | 2 | AI Engineer | TODO | RP-CONTRACT-01 | Новые kb ACL migrations и synthetic team/restricted/PII knowledge fixtures с согласованными IDs; без псевдоэмбеддингов | [спецификация](../architecture/data-model.md) |
+| RP-DATA-TL-01 | 2 | TL | TODO | RP-DATA-BE-01, RP-DATA-AI-01 | Общий migrate/seed/verify-db/check tooling поддерживает v2 и безопасный переход; проверки повторяемости | [спецификация](../architecture/data-model.md) |
+| RP-MOCK-01 | 2 | Backend | TODO | RP-DATA-01 | Persistent mock IAM/resources/assignments и app/corporate seed a+b team-a, c team-b, approver/docs-owner; knowledge поставляет AI | [спецификация](../features/authorization-and-privacy/spec.md) |
+| RP-AUTH-01 | 2 | Backend | TODO | RP-DATA-01, RP-MOCK-01 | Cookie/Origin/CSRF, role/team/resource/document/ownership, negative tests; own backend coverage | [спецификация](../features/authorization-and-privacy/spec.md) |
+| RP-JOURNEY-01 | 2 | Backend | TODO | RP-AUTH-01, RP-MOCK-01 | JSON DAG, goal/steps/dependencies/version, next action, initial IAM state; schema и template валидны | [спецификация](../features/onboarding-journey/spec.md) |
+| RP-AI-CORE-01 | 2–3 | AI Engineer | TODO | RP-CONTRACT-01, RP-DATA-AI-01 | Offline generate/journey selection/access draft, scoped retrieval/knowledge, SSE fixtures и safety evals; не ждать всех Go handlers | [спецификация](../features/contextual-ai-assistance/spec.md) |
+| RP-AI-DIAG-01 | 4–5 | AI Engineer | TODO | RP-AI-CORE-01 | Safe classification/handoff/candidate draft и AI-failure fallback cases; весь набор >=20 evals, all safety pass | [спецификация](../architecture/ai-design.md) |
+| RP-CHAT-01 | 3 | Backend | TODO | RP-AUTH-01, RP-JOURNEY-01, RP-AI-CORE-01 | Persistent history/run/SSE/validation, cancel/retry/partial; не ждать diagnostic AI этапа дня 5 | [спецификация](../features/contextual-ai-assistance/spec.md) |
+| RP-MOCK-02 | 3 | Backend | TODO | RP-MOCK-01 | Persistent request/scoped decision/grant, same-key replay/delayed grant; no timer approval | [спецификация](../features/access-request/spec.md) |
+| RP-ACCESS-01 | 3 | Backend | TODO | RP-CHAT-01, RP-MOCK-02 | Validated draft/exact confirm/create/reconcile/approval ACL и IAM recheck; no duplicate | [спецификация](../features/access-request/spec.md) |
+| RP-MOCK-03 | 4 | Backend | TODO | RP-MOCK-02 | Safe mock DB check: DB_SSL_REQUIRED/passed/denied/unavailable, correlation, no SQL/DSN | [спецификация](../features/readiness-verification/spec.md) |
+| RP-VERIFY-01 | 4 | Backend | TODO | RP-JOURNEY-01, RP-ACCESS-01, RP-MOCK-03 | Trusted evidence, reducer/version conflict/dedup/stale/revoke tests и persistence; verified только по method | [спецификация](../features/readiness-verification/spec.md) |
+| RP-BLOCKER-01 | 4 | Backend | TODO | RP-VERIFY-01 | Нормализация/Blocker/Friction/recovery; структурированная ошибка сохраняется независимо от AI availability | [спецификация](../features/blocker-detection/spec.md) |
+| RP-BUDDY-01 | 4–5 | Backend | TODO | RP-BLOCKER-01, RP-CHAT-01, RP-AI-DIAG-01 | Exact diagnostic preview/confirm, scoped queue, atomic reply+resolved; ответ не verified | [спецификация](../features/buddy-escalation/spec.md) |
+| RP-REVERSE-01 | 5 | Backend | TODO | RP-BLOCKER-01, RP-AI-DIAG-01 | Distinct>=2, unique candidate, safe enrichment/fallback, scoped review; accepted не publish | [спецификация](../features/reverse-onboarding/spec.md) |
+| RP-FE-01 | 2 | Frontend | TODO | RP-CONTRACT-01 | Goal-first reference layout и states на agreed DTO fixtures (явно mock); component tests/responsiveness | [спецификация](../features/onboarding-journey/spec.md) |
+| RP-FE-02 | 3–4 | Frontend | TODO | RP-FE-01; по поставке RP-JOURNEY-01, RP-CHAT-01, RP-ACCESS-01, RP-VERIFY-01, RP-BLOCKER-01 | Go integration goal/chat/preview/requests/approvals/checks, refresh; принимать API поставки поэтапно | [спецификация](../features/access-request/spec.md) |
+| RP-FE-03 | 4–5 | Frontend | TODO | RP-FE-02, RP-BUDDY-01, RP-REVERSE-01 | Buddy и documentation-owner UI, safe snapshot/count/hypothesis/review; no hidden fixture runtime | [спецификация](../features/reverse-onboarding/spec.md) |
+| RP-E2E-01 | 2–6 | Frontend | TODO | RP-CONTRACT-01; полный прогон после RP-FE-03 | Браузерный A/B/C путь и UI/security assertions, reload; реальный backend restart с TL, без route interception | [спецификация](../testing/strategy.md) |
+| RP-QA-01 | 2–3 | Fullstack–QA–Integration | IN_PROGRESS | Обновлённая QA-ветка владельцем, RP-CONTRACT-01; запуск после RP-AUTH-01, RP-JOURNEY-01 | Только два имеющихся API-теста: v2 goal ownership/reread и 401/CSRF; один отчёт. Legacy подготовка есть, v2 ещё нет | [спецификация](assignments/fullstack-qa-integration.md) |
+| RP-INTEGRATION-01 | 6 | TL | TODO | RP-INF-01, RP-DATA-01, RP-AI-01, RP-REVERSE-01, RP-BUDDY-01, RP-FE-03, RP-E2E-01, RP-QA-01 | Свести component reports и full A/B/C/security/offline/restart результаты; дефекты исправляют владельцы, QA не переписывает всё | [спецификация](../product/demo.md) |
+| RP-DEMO-01 | 7 | TL | TODO | RP-INTEGRATION-01, RP-TL-02 | README/clean seed rehearsal/PDF/video, пять минут и честный mock/live; Frontend даёт UI capture в рамках E2E | [спецификация](../product/demo.md) |
+
+Fullstack–QA–Integration имеет **ровно одну** bounded задачу RP-QA-01. Mock/IAM/DB checks,
+seed, миграции, Compose/CI, все component tests, browser E2E и итоговая приёмка ему не
+назначаются. Tests/coverage своего кода выполняет каждый владелец; отсутствие QA в строке
+не отменяет security приёмку. Детальная зона каждого ID — в handoff соответствующей роли.
+Backend имеет наибольшую реализацию; TL снимает общие scripts/infra/demo/contract coordination,
+AI обеспечивает оба AI этапа, Frontend владеет browser E2E. Это минимальный scope Fullstack,
+а не переименование большого интеграционного пакета в одну задачу.
+
+## Внешние решения и P1/P2
+
+| ID | Приоритет | Ответственный | Статус / зависимость | Результат |
+|---|---|---|---|---|
+| RP-TL-02 | P0 | TL | EXTERNAL: оригиналы кейса/сроки/формат | Сверить требования/coverage/PDF/video; не блокировать независимый offline development |
+| RP-AI-02 | P1 | AI Engineer | EXTERNAL: provider/key/budget от TL; RP-AI-01 | Live adapter/embeddings и отдельный quality/cost report, не обязательный offline gate |
+| RP-HOST-01 | P2 | TL | EXTERNAL: площадка/auth/HTTPS | Public demo только отдельным решением владельца |
+| RP-P1-01 | P1 | TL | TODO после стабильного P0 | Назначить расширения graph/second journey/review history по Product Spec, не раздавать заранее |
+| RP-P2-01 | P2 | TL | TODO после хакатона | Отдельный scope реальных интеграций/MR/IDE/Radar/HR/workflow builder |
+
+## Последовательность и точки передачи
+
+1. Сейчас: RP-CONTRACT-TL-01 готов; Backend и AI начинают свои schemas, Frontend читает
+   baseline и готовит вопросы; Fullstack изучает разницу своего существующего v1 теста.
+2. Contract gate: BE/AI файлы → FE consumer check → TL review → RP-CONTRACT-01 DONE →
+   владелец распространяет одну принятую базу в рабочие ветки.
+3. Data: Backend app/corporate и AI kb/knowledge параллельны; TL подключает общий runner.
+   Затем Backend seed/IAM/auth/journey. AI CORE использует согласованные fixtures независимо
+   от готовности всех Go endpoints. FE layout стартует с принятого DTO.
+4. Access: AI CORE → Go chat + mock request/approval → controlled access/grant recheck.
+   Не ждать AI DIAG дня 5 для начала access UI/Go.
+5. Verification и диагностика: mock DB → evidence → blocker; AI DIAG и Go buddy/reverse;
+   Frontend подключает готовые endpoints постепенно, а не одним merge в конце недели.
+6. Fullstack передаёт два адаптированных API-теста; Frontend — browser E2E; Backend/AI —
+   свои coverage/security reports. TL проводит настоящую общую интеграцию и demo rehearsal.
+
+| День | Наблюдаемый checkpoint |
 |---|---|
-| 1 | Vision/spec/SDD, роли/permissions, API/events и acceptance согласованы; реализация использует один контракт |
-| 2 | DB/migrations, synthetic users/policies, mock IAM, JSON journey; пользователь видит маршрут и фактическое отсутствие доступа |
-| 3 | Draft → validation → confirm → create → отдельный approval → IAM grant recheck; no duplicate |
-| 4 | Safe connection check/evidence, SSL error/blocker, диагностический handoff/reply/recheck; success отличим от claim |
-| 5 | Второй intern той же команды, повтор ошибки, один candidate и карточка документационному owner |
-| 6 | Настоящий E2E, negative security, offline fallback и coverage >80%; интеграционные дефекты исправлены |
-| 7 | Повторяемый seed/setup, README, PDF/video, пятиминутное demo и запас исправлений |
+| 1 | Пять handoff, TL baseline, authors/reviewers и схемы в работе |
+| 2 | Принятый contract, migrations/seed/IAM/auth, разрешённая цель и состояние доступа |
+| 3 | Draft/confirm/отдельное approval/grant recheck, основной API smoke |
+| 4 | Connection success/DB_SSL_REQUIRED/evidence/blocker; diagnostic handoff интегрируется |
+| 5 | Buddy/recheck, второй intern, единственный candidate и owner review |
+| 6 | Full browser/API/security/offline/restart, coverage >80%, дефекты исправлены владельцами |
+| 7 | Чистая репетиция, README/PDF/video, запас исправлений |
 
-Независимые работы после RP-CONTRACT-01: FE fixtures/layout, QA acceptance tests,
-AI adapters и mock implementation; auth/data/journey требуют указанных зависимостей.
-Сокращения допускаются только в P1/P2: P0 RBAC/confirm/verification/error/feedback/offline не вычёркиваются.
+Если оценки команды превышают неделю, TL пересматривает сроки/порядок P1/P2, не убирает
+P0 ACL/confirm/evidence/error/feedback/offline и не расширяет молча задачу Fullstack.
 
 ## Legacy backlog — superseded, не второй обязательный план
 
@@ -75,7 +111,7 @@ AI adapters и mock implementation; auth/data/journey требуют указа�
 | BE-01 | RP-AUTH-01, расширенная модель ролей/ACL |
 | BE-02 | RP-JOURNEY-01/RP-VERIFY-01; ручной task PATCH/done отменён |
 | FE-01, FE-02 | RP-FE-01/02; иерархия goal/evidence вместо checklist |
-| QA-01 | RP-QA-01; новые journey/security критерии вместо старого M1 task-status |
+| QA-01 | RP-QA-01 у Fullstack: адаптация двух уже написанных API-тестов в feature/qa-01-m1; browser/restart отдельно RP-E2E-01 |
 | AI-01, AI-03 | RP-AI-02 (live P1), scoped offline P0 в RP-AI-01 |
 | AI-02 | RP-AI-01: все structured операции, не только mock chat |
 | BE-03, FE-03 | RP-CHAT-01/RP-FE-02: goal/step context и SSE |

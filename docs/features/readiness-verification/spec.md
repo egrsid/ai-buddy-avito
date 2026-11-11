@@ -1,7 +1,7 @@
 # Proof of Readiness — specification
 
 Версия 2.0 · P0 · статус: спроектировано, не реализовано.
-Владельцы: Backend + Fullstack/QA + Frontend. Backlog: RP-VERIFY-01, RP-MOCK-03, RP-FE-02.
+Владельцы: Backend + Frontend. Backlog: RP-VERIFY-01, RP-MOCK-03, RP-FE-02.
 
 ## Проблема и сценарий
 

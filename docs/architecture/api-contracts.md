@@ -1,6 +1,8 @@
 # API target v2 — проектный контракт
 
-Версия 2.0 · 2026-11-11 · требует TL/consumer review в RP-CONTRACT-01 перед реализацией.
+Версия 2.0 · 2026-11-11 · [TL baseline](contract-baseline.md) подготовлен.
+Исполняемые BE/AI schemas, FE consumption и final review ещё требуются по
+[RP-CONTRACT-01 handoff](../team/contract-handoff.md).
 Сейчас реализованы только /healthz. [v1.schema.json](../../contracts/v1.schema.json) и
 [examples.json](../../contracts/examples.json) — неизменённые legacy fixtures, не схема
 этого API. Новые machine-readable schemas/examples будут отдельной задачей; не смешивать
@@ -28,7 +30,9 @@ Idempotency-Key UUID обязателен для POST создания goal/run/
 совпадение возвращает исходный status/body, иной body →409. Confirm/cancel action
 идентифицируются action.id, run cancel/logout идемпотентны. Долгоживущие unique action/operation
 IDs действуют и после истечения replay TTL. После 24h неизвестный write сначала сверяется,
-не повторяется с новым ключом. Все изменения версии требуют expected_version.
+не повторяется с новым ключом. Check/decision/reply/review требуют expected_version. Confirm/cancel используют
+зафиксированную в immutable action версию и body {}; новые объекты не требуют версии
+несуществующей записи. Подробные wire-правила — в contract-baseline.md.
 
 ## Public: auth, маршруты, checks
 
@@ -164,7 +168,7 @@ GET /knowledge/{id} и POST /knowledge/search получают access_scope че
 внутренний запрос (для GET — X-Access-Scope: base64url UTF-8 JSON access_scope, максимум
 8 KiB; для POST — поле body, никогда query из браузера), возвращают только разрешённый
 документ/Source[]. Scope header доступен только аутентифицированному Go; неизвестные
-поля/неверный encoding/отсутствие scope — отказ. Формальная schema фиксируется RP-CONTRACT-01. AI invalid output не исполняется: safe error,
+поля/неверный encoding/отсутствие scope — отказ. Формальную AI schema пишет RP-CONTRACT-AI-01 с common definitions от RP-CONTRACT-BE-01. AI invalid output не исполняется: safe error,
 clarification либо deterministic fallback candidate. Новый schema/fixtures — RP-CONTRACT-01.
 
 ## Internal: Go → mock /internal/v2

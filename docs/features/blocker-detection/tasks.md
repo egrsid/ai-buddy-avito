@@ -1,15 +1,15 @@
 # Causal Blockers & Friction Events — tasks
 
 Все продуктовые задачи не завершены; владельцы, P0/день, зависимости и разрешённые
-директории централизованы в [backlog](../../team/backlog.md). Перед началом назначить
-реального исполнителя/reviewer, не выдумывать имя. [Spec](spec.md), [design](design.md).
+директории централизованы в [backlog](../../team/backlog.md). Исполнители/reviewers
+назначены по ролям в [handoff](../../team/assignments/README.md); имена не выдумывать. [Spec](spec.md), [design](design.md).
 
 Предусловия фичи: RP-VERIFY-01; схемы из RP-CONTRACT-01.
 
 | ID backlog | Работа в рамках фичи | Наблюдаемый результат / done |
 |---|---|---|
 | RP-BLOCKER-01 | Go normalization, blocker reducer, friction records | Safe error persistent, dedup/correct context, recovery allowlist |
-| RP-AI-01 | Классификация и объяснение | Hypothesis/confidence не подменяют evidence, invalid output безопасен |
+| RP-AI-DIAG-01 | Классификация и объяснение | Hypothesis/confidence не подменяют evidence, invalid output безопасен |
 | RP-FE-02 | Карточка ошибки и recovery | Code/причина/следующее действие/buddy видны, без raw logs |
 
 - [ ] Подтвердить общие target DTO/events и границы до реализации; не использовать legacy v1 как новый контракт.

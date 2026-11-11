@@ -3,7 +3,9 @@
 Версия 2.0 · проектирование. Сейчас AI предоставляет только /healthz, не генерацию/RAG.
 [Contextual AI SDD](../features/contextual-ai-assistance/spec.md),
 [API](api-contracts.md), [security](security.md) задают границы; AI Engineer выбирает
-adapters/prompting/retrieval/структуру модулей и eval методику внутри этих контрактов.
+adapters/prompting/retrieval/структуру модулей и eval методику внутри этих контрактов. [Назначение AI](../team/assignments/ai-engineer.md)
+разделяет RP-AI-01 на ранний RP-AI-CORE-01 (generate/retrieval/route/access draft) и
+RP-AI-DIAG-01 (classification/buddy/candidate); Go chat не ждёт завершения DIAG.
 
 ## Режимы и ответственность
 
@@ -47,8 +49,9 @@ checks/actions/errors и hypothesis с confidence, не психологичес
 ## Индексация
 
 Текущие data/knowledge/*.md и evals.json — legacy учебный набор, все demo_public и
-репозиторный сценарий; это не готовый dataset нового MVP. RP-MOCK-01/RP-AI-01 добавляют
-согласованные team/restricted/privacy fixtures и инструкции БД. Не редактировать runtime
+репозиторный сценарий; это не готовый dataset нового MVP. AI RP-DATA-AI-01 добавляет
+согласованные team/restricted/privacy fixtures и инструкции БД; Backend RP-MOCK-01 —
+users/resources/assignments. UUID/refs согласуются до seed. Не редактировать runtime
 материалы как часть документационной задачи. Новая версия source/chunks/ACL публикуется
 только human review; candidate accepted не запускает ingest самостоятельно.
 

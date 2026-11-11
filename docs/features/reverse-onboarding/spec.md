@@ -1,7 +1,7 @@
 # Reverse Onboarding — specification
 
 Версия 2.0 · P0 · статус: спроектировано, не реализовано.
-Владельцы: Backend + AI + Frontend + Fullstack/QA. Backlog: RP-REVERSE-01, RP-FE-03, RP-AI-01.
+Владельцы: Backend + AI + Frontend. Backlog: RP-REVERSE-01, RP-FE-03, RP-AI-DIAG-01.
 
 ## Проблема и сценарий
 
@@ -41,7 +41,7 @@ proposed/under_review/accepted/rejected/resolved; accepted не меняет KB,
 
 ## Зависимости и границы
 
-RP-BLOCKER-01, RP-AUTH-01; synthetic intern-a/intern-b из RP-MOCK-01.
+RP-BLOCKER-01, RP-AUTH-01, RP-AI-DIAG-01; synthetic intern-a/intern-b из RP-MOCK-01.
 [Design](design.md), [tasks](tasks.md), [backlog](../../team/backlog.md).
 P1/P2 не добавлять к обязательной реализации без решения TL; общий scope в [Product Spec](../../product/specification.md).
 

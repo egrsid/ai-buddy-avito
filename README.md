@@ -27,10 +27,15 @@ JSON contracts, SQL migrations, seed, runtime knowledge, Compose/CI и код в
 
 1. Прочитать [AGENTS](AGENTS.md), [vision](docs/product/vision.md), [Product Spec](docs/product/specification.md),
    [ADR](docs/architecture/decisions.md), [API/events](docs/architecture/api-contracts.md).
-2. TL назначает пять участников по [working agreements](docs/team/working-agreements.md),
-   подтверждает допущения/контракты из [audit](docs/team/replan-audit.md).
-3. RP-CONTRACT-01 синхронизирует executable v2 schemas/examples, затем RP-DATA-01 — новые
-   миграции. Текущая [v1 schema](contracts/README.md) не описывает новые Goal/Step.
+2. Пять ролей уже получили [индивидуальные назначения](docs/team/assignments/README.md).
+   Fullstack–QA–Integration имеет один небольшой RP-QA-01; фактические и планируемые
+   рабочие ветки перечислены в [inventory](docs/team/branches.md). Владелец публикует
+   текущую редакцию и готовит рабочие папки, не теряя существующую QA-работу.
+3. TL-часть RP-CONTRACT-01 подготовлена: [решения](docs/architecture/contract-baseline.md).
+   Backend делает RP-CONTRACT-BE-01, AI Engineer — RP-CONTRACT-AI-01, Frontend проверяет
+   потребление DTO, TL затем принимает комплект. [Contract handoff](docs/team/contract-handoff.md).
+   Вся RP-CONTRACT-01 ещё не DONE; после неё — RP-DATA-01. Текущая [v1 schema](contracts/README.md)
+   не описывает новые Goal/Step.
 4. Команда берёт задачи [backlog](docs/team/backlog.md): семь дней от спецификаций до demo.
    Первый продуктовый checkpoint — разрешённый JSON journey и фактический IAM access state.
 5. Агенты работают локально только в назначенной текущей ветке, без создания/переключения
@@ -114,7 +119,9 @@ Vite proxy /api → localhost:8080. Host-run не загружает .env авт
 - make test: дополнительно component checks Go/AI/mock/frontend, vet/build/typecheck;
   line coverage строго >80% каждого прикладного компонента с первой бизнес-фичи.
 - make smoke: только liveness работающего Compose; make verify-db: seed/DB role isolation.
-- Playwright skeleton не содержит P0 E2E. После добавления тестов: из frontend
+- В текущей foundation P0 E2E отсутствуют; в отдельной QA-ветке есть два legacy API-теста
+  ([inventory](docs/team/branches.md)), назначенных Fullstack на адаптацию. Полный browser
+  E2E — задача Frontend RP-E2E-01. После добавления тестов: из frontend
   `npx playwright install chromium`, затем `npm run test:e2e`.
 
 До бизнес-модулей runner пишет BOOTSTRAP, не 100% покрытого MVP. Нельзя помещать логику

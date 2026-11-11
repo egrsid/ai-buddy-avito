@@ -28,6 +28,6 @@ safe DTO/refs, без сырого provider/mock payload. UI используе�
 
 ## Проверка и зависимости
 
-RP-BLOCKER-01, RP-AUTH-01; synthetic intern-a/intern-b из RP-MOCK-01. Negative tests и сценарии [spec](spec.md) обязательны;
+RP-BLOCKER-01, RP-AUTH-01, RP-AI-DIAG-01; synthetic intern-a/intern-b из RP-MOCK-01. Negative tests и сценарии [spec](spec.md) обязательны;
 команды/coverage/E2E в [testing](../../testing/strategy.md). Проверять через настоящий
 Go/AI(mock)/corporate/DB путь; UI fixture не заменяет интеграцию.

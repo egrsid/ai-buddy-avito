@@ -10,16 +10,21 @@ Product Spec, Architecture/ADR, working agreements, назначенный backl
 
 **Зависимости и согласованные контракты:** [IDs; target v2, TL/consumer review]
 
-**Материалы:** [docs/features/<feature>/spec.md, design.md, tasks.md]
+**Материалы:** [свой docs/team/assignments/<role>.md, feature spec/design/tasks;
+для контрактов — docs/team/contract-handoff.md и docs/architecture/contract-baseline.md]
 
 **Приёмка:** [наблюдаемый результат + negative cases + команды проверки]
 
-**Текущая назначенная ветка / папка:** [уже предоставленные владельцем; не создавать/не переключать ветки]
+**Текущая назначенная ветка / папка:** [сверить docs/team/branches.md; предложенная ветка
+не считается созданной. Работать только в предоставленной владельцем папке, не создавать/не переключать ветки]
 
 **Директории:** [только назначенные компоненты]
 
 **Ограничения:**
 - Сохраняй чужие изменения, утверждённый стек и владельцев данных.
+- У Fullstack только RP-QA-01; mock/seed Backend, AI/kb AI Engineer, browser E2E Frontend, infra/integration TL.
+- Чтение чужих веток разрешено для inventory; менять их refs/содержимое запрещено.
+- В текущем RP-TEAM-01 не делай commit/push; подготовь только docs и TL baseline, чужие схемы не реализуй.
 - React → Go; Go владеет state/evidence/actions; Python предлагает и фильтрует знания до LLM.
 - JSON journey фиксирует этапы/проверки. Нет ручного done или verified по ответу AI.
 - Confirm отправки, human approval, фактический grant и DB evidence — разные результаты.
