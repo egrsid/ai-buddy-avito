@@ -1,0 +1,1047 @@
+[
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "ChatMessage",
+    "payload": {
+      "role": "user",
+      "content": "Как проверить подключение к тестовой БД?"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "AllowedJourney",
+    "payload": {
+      "journey_id": "db-access-team-a",
+      "version": 1,
+      "title": "Доступ к тестовой БД команды A"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "ContextEvidence",
+    "payload": {
+      "method": "mock_db_connection",
+      "result": "failed",
+      "observed_at": "2026-11-11T09:00:00Z"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "ContextBlocker",
+    "payload": {
+      "type": "db_ssl_required",
+      "error_code": "DB_SSL_REQUIRED",
+      "status": "open"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "ContextStep",
+    "payload": {
+      "id": "check_connection",
+      "title": "Проверить подключение",
+      "status": "blocked",
+      "dependencies": [
+        "check_access"
+      ],
+      "instruction_reference": {
+        "document_id": "0000000a-0000-4000-8000-00000000000a",
+        "version": 1
+      },
+      "evidence": [
+        {
+          "method": "mock_db_connection",
+          "result": "failed",
+          "observed_at": "2026-11-11T09:00:00Z"
+        }
+      ],
+      "blockers": [
+        {
+          "type": "db_ssl_required",
+          "error_code": "DB_SSL_REQUIRED",
+          "status": "open"
+        }
+      ]
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "GoalContext",
+    "payload": {
+      "goal_id": "0000001e-0000-4000-8000-00000000001e",
+      "journey_id": "db-access-team-a",
+      "journey_version": 1,
+      "resource_id": "db-team-a-test",
+      "status": "blocked",
+      "current_step_id": "check_connection",
+      "steps": [
+        {
+          "id": "select_resource",
+          "title": "Выбрать ресурс",
+          "status": "verified",
+          "dependencies": [],
+          "instruction_reference": {
+            "document_id": "0000000a-0000-4000-8000-00000000000a",
+            "version": 1
+          },
+          "evidence": [
+            {
+              "method": "resource_policy_match",
+              "result": "passed",
+              "observed_at": "2026-11-11T08:00:00Z"
+            }
+          ],
+          "blockers": []
+        },
+        {
+          "id": "check_access",
+          "title": "Проверить доступ",
+          "status": "verified",
+          "dependencies": [
+            "select_resource"
+          ],
+          "instruction_reference": {
+            "document_id": "0000000a-0000-4000-8000-00000000000a",
+            "version": 1
+          },
+          "evidence": [
+            {
+              "method": "iam_permission_present",
+              "result": "passed",
+              "observed_at": "2026-11-11T08:30:00Z"
+            }
+          ],
+          "blockers": []
+        },
+        {
+          "id": "check_connection",
+          "title": "Проверить подключение",
+          "status": "blocked",
+          "dependencies": [
+            "check_access"
+          ],
+          "instruction_reference": {
+            "document_id": "0000000a-0000-4000-8000-00000000000a",
+            "version": 1
+          },
+          "evidence": [
+            {
+              "method": "mock_db_connection",
+              "result": "failed",
+              "observed_at": "2026-11-11T09:00:00Z"
+            }
+          ],
+          "blockers": [
+            {
+              "type": "db_ssl_required",
+              "error_code": "DB_SSL_REQUIRED",
+              "status": "open"
+            }
+          ]
+        }
+      ],
+      "next_actions": [
+        "retry_check",
+        "escalate_to_buddy"
+      ]
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "GenerateRequest",
+    "payload": {
+      "run_id": "00000034-0000-4000-8000-000000000034",
+      "conversation_id": "00000032-0000-4000-8000-000000000032",
+      "goal_context": {
+        "goal_id": "0000001e-0000-4000-8000-00000000001e",
+        "journey_id": "db-access-team-a",
+        "journey_version": 1,
+        "resource_id": "db-team-a-test",
+        "status": "blocked",
+        "current_step_id": "check_connection",
+        "steps": [
+          {
+            "id": "select_resource",
+            "title": "Выбрать ресурс",
+            "status": "verified",
+            "dependencies": [],
+            "instruction_reference": {
+              "document_id": "0000000a-0000-4000-8000-00000000000a",
+              "version": 1
+            },
+            "evidence": [
+              {
+                "method": "resource_policy_match",
+                "result": "passed",
+                "observed_at": "2026-11-11T08:00:00Z"
+              }
+            ],
+            "blockers": []
+          },
+          {
+            "id": "check_access",
+            "title": "Проверить доступ",
+            "status": "verified",
+            "dependencies": [
+              "select_resource"
+            ],
+            "instruction_reference": {
+              "document_id": "0000000a-0000-4000-8000-00000000000a",
+              "version": 1
+            },
+            "evidence": [
+              {
+                "method": "iam_permission_present",
+                "result": "passed",
+                "observed_at": "2026-11-11T08:30:00Z"
+              }
+            ],
+            "blockers": []
+          },
+          {
+            "id": "check_connection",
+            "title": "Проверить подключение",
+            "status": "blocked",
+            "dependencies": [
+              "check_access"
+            ],
+            "instruction_reference": {
+              "document_id": "0000000a-0000-4000-8000-00000000000a",
+              "version": 1
+            },
+            "evidence": [
+              {
+                "method": "mock_db_connection",
+                "result": "failed",
+                "observed_at": "2026-11-11T09:00:00Z"
+              }
+            ],
+            "blockers": [
+              {
+                "type": "db_ssl_required",
+                "error_code": "DB_SSL_REQUIRED",
+                "status": "open"
+              }
+            ]
+          }
+        ],
+        "next_actions": [
+          "retry_check",
+          "escalate_to_buddy"
+        ]
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "Подключение к БД падает с ошибкой про SSL. Что делать?"
+        }
+      ],
+      "access_scope": {
+        "subject_id": "00000001-0000-4000-8000-000000000001",
+        "team_ids": [
+          "team-a"
+        ],
+        "resource_permissions": [
+          {
+            "resource_id": "db-team-a-test",
+            "permissions": [
+              "resource.view",
+              "access.request",
+              "db.check"
+            ]
+          }
+        ],
+        "document_permissions": [
+          {
+            "document_id": "0000000a-0000-4000-8000-00000000000a",
+            "permissions": [
+              "knowledge.read"
+            ]
+          },
+          {
+            "document_id": "0000000b-0000-4000-8000-00000000000b",
+            "permissions": [
+              "knowledge.read"
+            ]
+          }
+        ],
+        "policy_revision": "policy-2026-11-11"
+      },
+      "allowed_journeys": [
+        {
+          "journey_id": "db-access-team-a",
+          "version": 1,
+          "title": "Доступ к тестовой БД команды A"
+        }
+      ],
+      "allowed_tools": [
+        "escalate_to_buddy"
+      ],
+      "action_results": [
+        {
+          "action_id": "0000003c-0000-4000-8000-00000000003c",
+          "type": "create_access_request",
+          "status": "succeeded"
+        }
+      ]
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "GenerateRequest",
+    "payload": {
+      "run_id": "00000034-0000-4000-8000-000000000034",
+      "conversation_id": "00000032-0000-4000-8000-000000000032",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Хочу получить доступ к тестовой базе своей команды."
+        }
+      ],
+      "access_scope": {
+        "subject_id": "00000001-0000-4000-8000-000000000001",
+        "team_ids": [
+          "team-a"
+        ],
+        "resource_permissions": [
+          {
+            "resource_id": "db-team-a-test",
+            "permissions": [
+              "resource.view",
+              "access.request",
+              "db.check"
+            ]
+          }
+        ],
+        "document_permissions": [
+          {
+            "document_id": "0000000a-0000-4000-8000-00000000000a",
+            "permissions": [
+              "knowledge.read"
+            ]
+          },
+          {
+            "document_id": "0000000b-0000-4000-8000-00000000000b",
+            "permissions": [
+              "knowledge.read"
+            ]
+          }
+        ],
+        "policy_revision": "policy-2026-11-11"
+      },
+      "allowed_journeys": [
+        {
+          "journey_id": "db-access-team-a",
+          "version": 1,
+          "title": "Доступ к тестовой БД команды A"
+        }
+      ],
+      "allowed_tools": [],
+      "action_results": []
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "SseEventType",
+    "payload": "tool.proposed"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "RunStartedEvent",
+    "payload": {
+      "run_id": "00000034-0000-4000-8000-000000000034"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "MessageDeltaEvent",
+    "payload": {
+      "run_id": "00000034-0000-4000-8000-000000000034",
+      "text": "Похоже, сервер требует защищённое подключение. "
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "MessageSourcesEvent",
+    "payload": {
+      "run_id": "00000034-0000-4000-8000-000000000034",
+      "sources": [
+        {
+          "document_id": "0000000a-0000-4000-8000-00000000000a",
+          "version": 1,
+          "title": "Подключение к тестовой БД команды A (учебная инструкция)",
+          "url": "/api/v2/knowledge/0000000a-0000-4000-8000-00000000000a",
+          "excerpt": "Учебная инструкция, не регламент Авито: подключитесь к db-team-a-test через выданный клиент."
+        }
+      ]
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "MessageSourcesEvent",
+    "payload": {
+      "run_id": "00000034-0000-4000-8000-000000000034",
+      "sources": []
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "ToolProposedEvent",
+    "payload": {
+      "run_id": "00000034-0000-4000-8000-000000000034",
+      "type": "create_access_request",
+      "parameters": {
+        "resource_id": "db-team-a-test",
+        "requested_role": "db_reader",
+        "reason": "Нужен доступ на чтение к тестовой БД команды A для первой учебной задачи.",
+        "additional_fields": {}
+      },
+      "goal_id": "0000001e-0000-4000-8000-00000000001e",
+      "step_id": "check_access"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "ToolProposedEvent",
+    "payload": {
+      "run_id": "00000034-0000-4000-8000-000000000034",
+      "type": "escalate_to_buddy",
+      "parameters": {
+        "question": "Проверка подключения падает с DB_SSL_REQUIRED после выдачи доступа. Какой режим SSL нужен?",
+        "diagnostic_snapshot": {
+          "goal": {
+            "id": "0000001e-0000-4000-8000-00000000001e",
+            "title": "Доступ к тестовой БД"
+          },
+          "step": {
+            "id": "check_connection",
+            "title": "Проверить подключение"
+          },
+          "blocker": {
+            "id": "00000028-0000-4000-8000-000000000028",
+            "type": "db_ssl_required",
+            "error_code": "DB_SSL_REQUIRED"
+          },
+          "checks": [
+            {
+              "id": "00000014-0000-4000-8000-000000000014",
+              "goal_id": "0000001e-0000-4000-8000-00000000001e",
+              "step_id": "check_connection",
+              "method": "mock_db_connection",
+              "status": "failed",
+              "error_code": "DB_SSL_REQUIRED",
+              "observed_at": "2026-11-11T09:00:00Z"
+            }
+          ],
+          "attempted_actions": [
+            {
+              "action_id": "0000003c-0000-4000-8000-00000000003c",
+              "type": "create_access_request",
+              "status": "succeeded"
+            }
+          ],
+          "instruction_refs": [
+            {
+              "document_id": "0000000a-0000-4000-8000-00000000000a",
+              "version": 1,
+              "title": "Подключение к тестовой БД команды A (учебная инструкция)",
+              "url": "/api/v2/knowledge/0000000a-0000-4000-8000-00000000000a",
+              "excerpt": "Учебная инструкция, не регламент Авито: подключитесь к db-team-a-test через выданный клиент."
+            }
+          ],
+          "hypotheses": [
+            {
+              "text": "Сервер требует SSL, а в учебной инструкции он не упомянут.",
+              "confidence": "medium"
+            }
+          ],
+          "question": "Проверка подключения падает с DB_SSL_REQUIRED после выдачи доступа. Какой режим SSL нужен?"
+        }
+      },
+      "goal_id": "0000001e-0000-4000-8000-00000000001e",
+      "step_id": "check_connection"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "GenerationCompletedEvent",
+    "payload": {
+      "run_id": "00000034-0000-4000-8000-000000000034"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "StreamFailureCode",
+    "payload": "LLM_TIMEOUT"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "RunFailedEvent",
+    "payload": {
+      "run_id": "00000034-0000-4000-8000-000000000034",
+      "code": "LLM_TIMEOUT",
+      "message": "Модель не ответила вовремя."
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "RunFailedEvent",
+    "payload": {
+      "run_id": "00000034-0000-4000-8000-000000000034",
+      "code": "LLM_UNAVAILABLE",
+      "message": "Модель временно недоступна."
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "MockScenario",
+    "payload": "slow_stream"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "JourneySelectionRequest",
+    "payload": {
+      "access_scope": {
+        "subject_id": "00000001-0000-4000-8000-000000000001",
+        "team_ids": [
+          "team-a"
+        ],
+        "resource_permissions": [
+          {
+            "resource_id": "db-team-a-test",
+            "permissions": [
+              "resource.view",
+              "access.request",
+              "db.check"
+            ]
+          }
+        ],
+        "document_permissions": [
+          {
+            "document_id": "0000000a-0000-4000-8000-00000000000a",
+            "permissions": [
+              "knowledge.read"
+            ]
+          },
+          {
+            "document_id": "0000000b-0000-4000-8000-00000000000b",
+            "permissions": [
+              "knowledge.read"
+            ]
+          }
+        ],
+        "policy_revision": "policy-2026-11-11"
+      },
+      "intent": "Мне нужен доступ к тестовой базе команды",
+      "allowed_journeys": [
+        {
+          "journey_id": "db-access-team-a",
+          "version": 1,
+          "title": "Доступ к тестовой БД команды A"
+        }
+      ]
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "JourneySelected",
+    "payload": {
+      "journey_id": "db-access-team-a",
+      "version": 1
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "JourneyClarification",
+    "payload": {
+      "clarification": "Уточните, к какому ресурсу нужен доступ?"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "JourneySelectionResponse",
+    "payload": {
+      "journey_id": "db-access-team-a",
+      "version": 1
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "JourneySelectionResponse",
+    "payload": {
+      "clarification": "Уточните, к какому ресурсу нужен доступ?"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "AccessRequestDraftRequest",
+    "payload": {
+      "access_scope": {
+        "subject_id": "00000001-0000-4000-8000-000000000001",
+        "team_ids": [
+          "team-a"
+        ],
+        "resource_permissions": [
+          {
+            "resource_id": "db-team-a-test",
+            "permissions": [
+              "resource.view",
+              "access.request",
+              "db.check"
+            ]
+          }
+        ],
+        "document_permissions": [
+          {
+            "document_id": "0000000a-0000-4000-8000-00000000000a",
+            "permissions": [
+              "knowledge.read"
+            ]
+          },
+          {
+            "document_id": "0000000b-0000-4000-8000-00000000000b",
+            "permissions": [
+              "knowledge.read"
+            ]
+          }
+        ],
+        "policy_revision": "policy-2026-11-11"
+      },
+      "goal_id": "0000001e-0000-4000-8000-00000000001e",
+      "step_id": "check_access",
+      "permitted_resource": "db-team-a-test",
+      "allowed_roles": [
+        "db_reader"
+      ],
+      "context": "Нужно читать тестовые данные для первой задачи."
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "DraftMissingFields",
+    "payload": {
+      "missing_fields": [
+        "reason"
+      ],
+      "question": "Для какой задачи нужен доступ к тестовой БД?"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "AccessRequestDraftResponse",
+    "payload": {
+      "resource_id": "db-team-a-test",
+      "requested_role": "db_reader",
+      "reason": "Нужен доступ на чтение к тестовой БД команды A для первой учебной задачи.",
+      "additional_fields": {}
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "AccessRequestDraftResponse",
+    "payload": {
+      "missing_fields": [
+        "reason"
+      ],
+      "question": "Для какой задачи нужен доступ к тестовой БД?"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "ClassifyErrorRequest",
+    "payload": {
+      "access_scope": {
+        "subject_id": "00000001-0000-4000-8000-000000000001",
+        "team_ids": [
+          "team-a"
+        ],
+        "resource_permissions": [
+          {
+            "resource_id": "db-team-a-test",
+            "permissions": [
+              "resource.view",
+              "access.request",
+              "db.check"
+            ]
+          }
+        ],
+        "document_permissions": [
+          {
+            "document_id": "0000000a-0000-4000-8000-00000000000a",
+            "permissions": [
+              "knowledge.read"
+            ]
+          },
+          {
+            "document_id": "0000000b-0000-4000-8000-00000000000b",
+            "permissions": [
+              "knowledge.read"
+            ]
+          }
+        ],
+        "policy_revision": "policy-2026-11-11"
+      },
+      "step_id": "check_connection",
+      "error_code": "DB_SSL_REQUIRED",
+      "allowed_blocker_types": [
+        "db_ssl_required",
+        "access_missing"
+      ]
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "ClassifyErrorResponse",
+    "payload": {
+      "blocker_type": "db_ssl_required",
+      "explanation": "Сервер отклонил подключение без SSL. Это гипотеза, а не проверенный факт.",
+      "confidence": "high"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "DiagnosticSummaryRequest",
+    "payload": {
+      "access_scope": {
+        "subject_id": "00000001-0000-4000-8000-000000000001",
+        "team_ids": [
+          "team-a"
+        ],
+        "resource_permissions": [
+          {
+            "resource_id": "db-team-a-test",
+            "permissions": [
+              "resource.view",
+              "access.request",
+              "db.check"
+            ]
+          }
+        ],
+        "document_permissions": [
+          {
+            "document_id": "0000000a-0000-4000-8000-00000000000a",
+            "permissions": [
+              "knowledge.read"
+            ]
+          },
+          {
+            "document_id": "0000000b-0000-4000-8000-00000000000b",
+            "permissions": [
+              "knowledge.read"
+            ]
+          }
+        ],
+        "policy_revision": "policy-2026-11-11"
+      },
+      "goal": {
+        "id": "0000001e-0000-4000-8000-00000000001e",
+        "title": "Доступ к тестовой БД"
+      },
+      "step": {
+        "id": "check_connection",
+        "title": "Проверить подключение"
+      },
+      "blocker": {
+        "id": "00000028-0000-4000-8000-000000000028",
+        "type": "db_ssl_required",
+        "error_code": "DB_SSL_REQUIRED"
+      },
+      "checks": [
+        {
+          "id": "00000014-0000-4000-8000-000000000014",
+          "goal_id": "0000001e-0000-4000-8000-00000000001e",
+          "step_id": "check_connection",
+          "method": "mock_db_connection",
+          "status": "failed",
+          "error_code": "DB_SSL_REQUIRED",
+          "observed_at": "2026-11-11T09:00:00Z"
+        }
+      ],
+      "attempted_actions": [
+        {
+          "action_id": "0000003c-0000-4000-8000-00000000003c",
+          "type": "create_access_request",
+          "status": "succeeded"
+        }
+      ],
+      "instruction_refs": [
+        {
+          "document_id": "0000000a-0000-4000-8000-00000000000a",
+          "version": 1
+        }
+      ],
+      "intern_question": "Почему не подключается, если доступ уже выдали?"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "DiagnosticSummaryResponse",
+    "payload": {
+      "goal": {
+        "id": "0000001e-0000-4000-8000-00000000001e",
+        "title": "Доступ к тестовой БД"
+      },
+      "step": {
+        "id": "check_connection",
+        "title": "Проверить подключение"
+      },
+      "blocker": {
+        "id": "00000028-0000-4000-8000-000000000028",
+        "type": "db_ssl_required",
+        "error_code": "DB_SSL_REQUIRED"
+      },
+      "checks": [
+        {
+          "id": "00000014-0000-4000-8000-000000000014",
+          "goal_id": "0000001e-0000-4000-8000-00000000001e",
+          "step_id": "check_connection",
+          "method": "mock_db_connection",
+          "status": "failed",
+          "error_code": "DB_SSL_REQUIRED",
+          "observed_at": "2026-11-11T09:00:00Z"
+        }
+      ],
+      "attempted_actions": [
+        {
+          "action_id": "0000003c-0000-4000-8000-00000000003c",
+          "type": "create_access_request",
+          "status": "succeeded"
+        }
+      ],
+      "instruction_refs": [
+        {
+          "document_id": "0000000a-0000-4000-8000-00000000000a",
+          "version": 1,
+          "title": "Подключение к тестовой БД команды A (учебная инструкция)",
+          "url": "/api/v2/knowledge/0000000a-0000-4000-8000-00000000000a",
+          "excerpt": "Учебная инструкция, не регламент Авито: подключитесь к db-team-a-test через выданный клиент."
+        }
+      ],
+      "hypotheses": [
+        {
+          "text": "Сервер требует SSL, а в учебной инструкции он не упомянут.",
+          "confidence": "medium"
+        }
+      ],
+      "question": "Проверка подключения падает с DB_SSL_REQUIRED после выдачи доступа. Какой режим SSL нужен?"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "KnowledgeGapDraftRequest",
+    "payload": {
+      "access_scope": {
+        "subject_id": "00000001-0000-4000-8000-000000000001",
+        "team_ids": [
+          "team-a"
+        ],
+        "resource_permissions": [
+          {
+            "resource_id": "db-team-a-test",
+            "permissions": [
+              "resource.view",
+              "access.request",
+              "db.check"
+            ]
+          }
+        ],
+        "document_permissions": [
+          {
+            "document_id": "0000000a-0000-4000-8000-00000000000a",
+            "permissions": [
+              "knowledge.read"
+            ]
+          },
+          {
+            "document_id": "0000000b-0000-4000-8000-00000000000b",
+            "permissions": [
+              "knowledge.read"
+            ]
+          }
+        ],
+        "policy_revision": "policy-2026-11-11"
+      },
+      "journey_id": "db-access-team-a",
+      "step_id": "check_connection",
+      "error_code": "DB_SSL_REQUIRED",
+      "affected_count": 2,
+      "instruction_refs": [
+        {
+          "document_id": "0000000a-0000-4000-8000-00000000000a",
+          "version": 1
+        }
+      ]
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "KnowledgeGapDraftResponse",
+    "payload": {
+      "hypothesis": "Учебная инструкция не говорит, что тестовая БД требует SSL; два стажёра упёрлись в DB_SSL_REQUIRED.",
+      "proposed_fix": "Добавить в инструкцию шаг: включить sslmode=require в настройках подключения.",
+      "source_refs": [
+        {
+          "document_id": "0000000a-0000-4000-8000-00000000000a",
+          "version": 1
+        }
+      ]
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "KnowledgeSearchRequest",
+    "payload": {
+      "access_scope": {
+        "subject_id": "00000001-0000-4000-8000-000000000001",
+        "team_ids": [
+          "team-a"
+        ],
+        "resource_permissions": [
+          {
+            "resource_id": "db-team-a-test",
+            "permissions": [
+              "resource.view",
+              "access.request",
+              "db.check"
+            ]
+          }
+        ],
+        "document_permissions": [
+          {
+            "document_id": "0000000a-0000-4000-8000-00000000000a",
+            "permissions": [
+              "knowledge.read"
+            ]
+          },
+          {
+            "document_id": "0000000b-0000-4000-8000-00000000000b",
+            "permissions": [
+              "knowledge.read"
+            ]
+          }
+        ],
+        "policy_revision": "policy-2026-11-11"
+      },
+      "query": "как подключиться к тестовой БД",
+      "top_k": 5
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "KnowledgeSearchResponse",
+    "payload": {
+      "sources": [
+        {
+          "document_id": "0000000a-0000-4000-8000-00000000000a",
+          "version": 1,
+          "title": "Подключение к тестовой БД команды A (учебная инструкция)",
+          "url": "/api/v2/knowledge/0000000a-0000-4000-8000-00000000000a",
+          "excerpt": "Учебная инструкция, не регламент Авито: подключитесь к db-team-a-test через выданный клиент."
+        }
+      ]
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "KnowledgeSearchResponse",
+    "payload": {
+      "sources": []
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "KnowledgeDocumentResponse",
+    "payload": {
+      "id": "0000000a-0000-4000-8000-00000000000a",
+      "title": "Подключение к тестовой БД команды A (учебная инструкция)",
+      "content": "Учебная инструкция, не регламент Авито. Подключитесь к db-team-a-test через выданный клиент.",
+      "version": 1,
+      "synthetic": true
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "InternalErrorCode",
+    "payload": "NOT_FOUND"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "InternalError",
+    "payload": {
+      "error": {
+        "code": "UNAUTHENTICATED",
+        "message": "Нужен служебный токен.",
+        "request_id": "00000050-0000-4000-8000-000000000050"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "InternalError",
+    "payload": {
+      "error": {
+        "code": "INVALID_REQUEST_ID",
+        "message": "X-Request-ID должен быть UUID.",
+        "request_id": "00000051-0000-4000-8000-000000000051"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "InternalError",
+    "payload": {
+      "error": {
+        "code": "INVALID_JSON",
+        "message": "Тело запроса не является JSON.",
+        "request_id": "00000050-0000-4000-8000-000000000050"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "InternalError",
+    "payload": {
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "message": "Запрос не соответствует схеме.",
+        "request_id": "00000050-0000-4000-8000-000000000050",
+        "fields": [
+          {
+            "name": "access_scope",
+            "code": "required"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "InternalError",
+    "payload": {
+      "error": {
+        "code": "FORBIDDEN",
+        "message": "Тестовые сбои выключены.",
+        "request_id": "00000050-0000-4000-8000-000000000050"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "InternalError",
+    "payload": {
+      "error": {
+        "code": "NOT_FOUND",
+        "message": "Документ не найден.",
+        "request_id": "00000050-0000-4000-8000-000000000050"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/ai.schema.json",
+    "definition": "HealthResponse",
+    "payload": {
+      "status": "ok",
+      "service": "ai-service"
+    }
+  }
+]
