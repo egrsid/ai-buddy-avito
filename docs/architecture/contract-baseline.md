@@ -111,6 +111,15 @@ Frontend фиксирует проверку типов/nullable/status/error/em
 обе стороны generate/knowledge/mock boundaries. Review evidence хранится в
 [contract handoff](../team/contract-handoff.md). Пока этих результатов нет, gate закрыт.
 
+## Дополнение по вопросам AI Engineer
+
+[AI integration policy](ai-integration-policy.md) фиксирует дополнительные TL-решения:
+internal HTTP Error/UUID, Python/Go timeout ownership и heartbeat, controlled mock faults,
+канонический Source.url, schemas в образе, CI/ingest/UTF-8, live resource/dependency policy
+и ручной review evals. Эти решения входят в baseline RP-CONTRACT-TL-01; реализация схем,
+Docker/CI/скриптов и consumer acceptance всё ещё впереди. RP-TL-AI-01 — документационное
+уточнение, не закрытие parent RP-CONTRACT-01.
+
 ## 5. Что выполнено от TL и что остаётся
 
 Выполнено: решение по scope/границам/roles/policy/protocol/versions, назначение authors и

@@ -3,7 +3,9 @@
 Статус parent: IN_PROGRESS. TL-проектирование завершено; схемы и проверки потребителей
 предстоит сделать. [Решения TL](../architecture/contract-baseline.md), [API](../architecture/api-contracts.md),
 [events](../architecture/event-contracts.md), [journey](../architecture/journey-template.md),
-[security](../architecture/security.md) — исходная общая база.
+[security](../architecture/security.md) и [AI integration policy](../architecture/ai-integration-policy.md)
+— исходная общая база. Последняя содержит принятые TL-ответы на вопросы AI Engineer;
+новые wire rules должны быть включены в создаваемые schemas/tests.
 
 ## Разделение работы
 
@@ -53,15 +55,18 @@ dependencies не добавлять без необходимости: jsonsche
 ## Чек-лист результата
 
 - [x] TL baseline и роли/границы/версии зафиксированы по поручению владельца.
-- [ ] Backend: все public/corporate/template/event cases + common schema, локальный registry.
-- [ ] AI: все generate/structured/knowledge schemas, positive/negative payloads.
-- [ ] BE↔AI: scopes/refs/tool.proposed/generation.completed и safe draft проверены обеими сторонами.
+- [ ] Backend: все public/corporate/template/event cases + common schema, локальный registry;
+  Error содержит INVALID_REQUEST_ID, HTTP fixtures соответствуют порядку token/header/JSON/schema.
+- [ ] AI: все generate/structured/knowledge schemas, positive/negative payloads,
+  tool.proposed/generation.completed и internal Error; Source.url строго /api/v2/knowledge/{id}.
+- [ ] BE↔AI: scopes/refs/tool.proposed/generation.completed и safe draft проверены обеими сторонами;
+  mock-header/timeout/heartbeat/terminal race fixtures и canonical Source.url не расходятся.
 - [ ] Frontend: nullable/optional, все состояния, SSE/errors, fixture type parsing проверены.
 - [ ] make check валидирует v1 и v2 отдельно; invalid cases не проходят; сеть/ключи не нужны.
 - [ ] TL: результат review, проверенные revision/file hashes, команды и ограничения записаны.
 - [ ] Владелец включил принятый baseline в назначенные рабочие ветки; потребители видят одну версию.
 
-RP-CONTRACT-01 DONE после технического acceptance (первые шесть пунктов); публикация/доставка
+RP-CONTRACT-01 DONE после всех технических пунктов, включая записанный финальный TL review; публикация/доставка
 базы — отдельный организационный gate владельца перед общей реализацией. В текущем
 поручении нет ни внешнего review, ни новых schemas, ни утверждения, что v2 проверки прошли.
 

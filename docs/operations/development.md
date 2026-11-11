@@ -54,7 +54,9 @@ Health wiring пока не читает эти переменные; это к�
 
 ## Миграции и запуск
 
-Новый volume: bootstrap schemas/roles/extension → migrate → seed → AI/mock → Go → frontend.
+Текущий каркас: bootstrap schemas/roles/extension → migrate → seed → AI/mock → Go → frontend.
+Target v2 добавляет one-shot ingest между seed и AI readiness по требованиям ниже;
+в текущем compose.yaml этого шага ещё нет.
 Postgres-образ собирается через `Dockerfile.postgres`: bootstrap-скрипт копируется внутрь
 с правами 755. Bind mount для него не используется, чтобы исполнение не зависело от
 прав файловой системы хоста (на macOS наблюдался `bad interpreter: Permission denied`).
@@ -100,3 +102,42 @@ Offline mode target: LLM_MODE=mock без ключа, детерминирова
 RP-INF-01 назначена TL и остаётся открытой после bootstrap Permission denied/COPY исправления; текущая
 docs-only задача контейнеры не запускает и volume не удаляет. Проверить clean up,
 повтор migrate/seed, verify-db/smoke и затем target full E2E отдельной задачей.
+
+
+## Принятые TL требования к AI wiring (ещё не реализованы)
+
+Основание: [AI integration policy](../architecture/ai-integration-policy.md). Технические
+изменения выполняются отдельно; это не инструкция запускать отсутствующий service/CLI.
+
+1. **Schemas в образе, RP-INF-01.** После RP-CONTRACT-BE-01/RP-CONTRACT-AI-01 Dockerfile.python
+   копирует contracts/ в /workspace/contracts. AI runtime user читает local schemas/$refs
+   без сети. Проверка собранного образа валидирует реальный GenerateRequest и отвергает
+   неизвестное поле по v2; Pydantic не становится второй независимой schema.
+2. **Ingest, RP-INF-01/RP-DATA-TL-01.** AI Engineer поставляет CLI/exit codes; TL добавляет
+   one-shot в Compose после успешных migrate+seed, до readiness AI. CLI не вызывает AI HTTP,
+   использует ai_service role только в kb и не получает admin DSN. Mock corporate может
+   стартовать после seed независимо от ingest, Go ожидает готовность AI/mock.
+3. **Offline/live.** По умолчанию ingest mock: chunks/ACL/lexical metadata, без ключей/сети/
+   embedding model downloads. Live ingest включается явно только после RP-AI-02 и наличия
+   provider/model/dimension/budget; повторный CLI не дублирует chunks, несовместимая версия
+   или ошибка → nonzero/AI not ready. Старт не выдаёт пустой live индекс за готовый RAG.
+4. **DB integration CI, RP-INF-01.** AI поставляет tests с реальным PostgreSQL/pgvector;
+   TL добавляет отдельный test runner/CI override в Compose-сети. Python job сохраняет быстрые
+   fake-storage unit tests. Runner ждёт migrate/seed/mock ingest, получает runtime ai_service
+   роль без DDL/доступа app/corporate, использует fake LLM/fixture embeddings без платного key.
+   Test image содержит dev pytest deps отдельно от production --no-dev. Логи и exit code
+   runner обязательны; make smoke/verify-db не заменяют эти tests.
+5. **Fault configuration, RP-INF-01.** APP_ENV и MOCK_FAULTS_ENABLED передаются AI явно
+   только в local/test harness; default false. X-Mock-Scenario нельзя включить из public
+   browser request. Server-side AI_MOCK_SCENARIO в Go test environment валидируется при
+   старте; в production/live faults запрещены. Новые переменные ещё не добавлены в .env/Compose.
+6. **UTF-8, RP-DATA-TL-01.** Seed/migrate/check текстовые reads/writes задают encoding="utf-8",
+   включая scripts/seed.py. Добавить non-ASCII fixture roundtrip/hash test без зависимости
+   от locale; текущие неявные read_text ещё не исправлены этой документацией.
+7. **Общие инструкции/config/deps.** AI предоставляет проверенные команды ingest, env names,
+   provider adapter dependency/lock diff и test commands. TL меняет README/.env.example,
+   pyproject.toml/uv.lock и CI wiring после этих входов. Значения ключей/бюджета не придумывать.
+
+Приёмка отдельно показывает: runtime schema доступна в image, ingest повторяем, default
+mock startup без provider calls, DB integration tests реально используют PostgreSQL и
+не читают чужие схемы, UTF-8 проверен. Успешный YAML parse/legacy make check этого не доказывает.

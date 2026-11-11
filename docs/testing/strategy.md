@@ -62,13 +62,32 @@ end position column=1 не включает последнюю строку. М�
 | Buddy | Exact preview/intersection ACL, отсутствие secrets/PII/full chat; чужой buddy 404, assignment changed, atomic reply+resolved, idempotent repeat; no auto KB |
 | Reverse Onboarding | Один intern/много попыток не порог; два distinct intern одной группы → один candidate; concurrent threshold/replay count; разные step/code/journey не смешиваются |
 | Candidate/review | Scoped owner, обезличенные fields/count/refs, AI invalid/unavailable fallback, state/version checks; accepted не publishes, resolved требует human-reviewed reference |
-| SSE | EOF before completed, first/idle/total timeout, disconnect/cancel/retry, partial persistence, повтор GET не создаёт run/action; sources/actions после validation |
-| Offline | Полный P0 при mock mode без ключей/исходящих LLM вызовов; deterministic outcome, mock label; live ошибка не превращается в скрытый success |
+| SSE | Python provider 20/25s + pipeline 85s, Go run 90s; ping 10s на обоих участках не content; EOF/timeout/cancel races дают один terminal result; sources/actions после validation |
+| Offline | Полный P0 без ключа/сети; default faults выключены; X-Mock-Scenario только authenticated local/test harness, public injection не работает; fault outcome отдельно от fake-clock tests |
 | Persistence/DB | Clean migrations + повтор/checksum mismatch; seed дважды не стирает state/answers/decisions; runtime роли не пишут в чужие схемы; restart/refresh consistency |
 | UI | Component tests: goal-first hierarchy, safe next action, evidence/error/unknown/empty/forbidden/loading; keyboard/mobile; confirm/approve/verified явно различаются |
 
 AI live evals отдельно от unit tests/coverage; >=20 новых кейсов и all safety pass, retrieval
 baseline >=80% expected allowed doc in top-5. CI без платного ключа; legacy 10 кейсов не новый отчёт.
+AI Engineer делает deterministic assertions и ручное чтение всех ответов набора; платный
+LLM judge не обязателен. Backend проверяет safety/tool boundary, TL принимает отчёт.
+
+## Дополнительная приёмка AI boundary и инфраструктуры
+
+[AI integration policy](../architecture/ai-integration-policy.md) фиксирует решения TL.
+Backend/AI tests проверяют 401 до stream, 400 INVALID_REQUEST_ID при отсутствии/невалидном/
+multiple header, 400 INVALID_JSON, 422 VALIDATION_ERROR; общий Error и response request ID.
+После начала SSE — run.failed, не второй HTTP JSON response. Heartbeat не сбрасывает
+provider first/content timers и overall deadline; duplicate terminal/cancel/timeout не
+создают второй result/action. Невалидный Source.url/ID/ACL не публикуется.
+
+Python CI job: fake-storage/provider unit tests, без обязательного PostgreSQL. Дополнительный
+compose CI runner запускает настоящие AI DB/pgvector/ACL integration tests после migrate/
+seed/mock ingest, без paid LLM. Tests поставляет AI Engineer, runner/test image/wiring — TL.
+Runtime role ограничена kb, production image не получает dev dependencies ради tests.
+Проверять чтение реально скопированных v2 schemas в image, повтор ingest, index readiness,
+explicit UTF-8 non-ASCII roundtrip/hash. До поставки runner эти проверки не считаются CI pass.
+Конкретные команды tests/CLI поступают от AI, smoke/verify-db не заменяют запуск tests.
 
 ## Ответственность за проверки
 

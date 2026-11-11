@@ -9,11 +9,17 @@
 | Scoped access approver/docs-owner и policy | TL + Backend/AI | TL baseline готов в RP-CONTRACT-TL-01 | Реализовать в schemas/fixtures и подтвердить consumer review, не ждать нового устного решения |
 | Docker Engine/Desktop + Compose v2 | TL | RP-INF-01; чистый запуск после bootstrap fix не подтверждён | Нужен для Compose/checkpoints, не для перепланирования docs |
 | Git hosting/CI protection | Владелец + TL | Remote settings не проверены/не изменены | Только владелец публикует/настраивает; агент не меняет ветки/права/PR |
-| Live LLM/provider/model/key/budget | TL + AI | RP-AI-02 EXTERNAL | P1; offline P0 не зависит от ключа, ключ от организаторов не предполагается |
-| Embeddings/model/dimension | AI | RP-AI-02, затем отдельная migration | Не выдавать lexical mock за live pgvector |
+| Live LLM/provider/model/key/budget | TL + AI | RP-AI-02 EXTERNAL | TL подтверждает key/бюджет до платного spike после предложения AI; сроки/сумма не известны. P1, offline P0 не зависит |
+| Embeddings/model/dimension | AI | RP-AI-02, затем отдельная migration | AI выбирает API/local и измеряет русский/ресурсы/стоимость; TL согласует расходы; не выдавать mock за live |
 | Оригиналы кейса/созвонов/интервью/исследования | TL | RP-TL-02; есть только brief и прежний пересказ | Сверить требования к coverage/сдаче; не цитировать отсутствующий оригинал как проверенный |
 | Площадка публичного demo/auth/HTTPS | TL | RP-HOST-01; не выбрана | Local offline demo — базовый P0, публичный login отдельным решением |
 | PDF-презентация/видео/репетиция | TL | RP-DEMO-01 после работающего P0 | Это deliverables, не уже выполненные файлы/проверки |
+
+Общие решения по внутреннему API и инфраструктуре уже зафиксированы в
+[AI integration policy](../architecture/ai-integration-policy.md); отсутствие runtime
+COPY/ingest/tests/UTF-8 пока относится к реализации, не к новому архитектурному выбору.
+AI предлагает конкретные provider/model/embeddings/SDK и при необходимости source/license
+внешних материалов; TL не выдумывает эти ресурсы/условия.
 
 Внешний live provider не включён в зависимости обязательного offline E2E/demo. Сокращение
 срока не отменяет ACL/confirm/check/evidence/errors/feedback loop. Synthetic IAM, роли и

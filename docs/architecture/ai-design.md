@@ -17,7 +17,13 @@ LLM_MODE=live подключается после RP-AI-02: provider/model/key/b
 и проверены. Платный ключ не нужен CI и не блокирует offline P0. При live-сбое не
 дописывать смесь live/mock токенов в начатый stream: завершить failed, дать явный retry
 в обозначенном offline режиме. Контекст action/права/confirm при смене provider не обходятся.
+OpenAI-совместимость — вариант adapter, не обязательное требование. Provider/model/русская
+embedding model и API/local embedding strategy предлагает AI Engineer в RP-AI-02. TL
+подтверждает доступ/бюджет до платного spike. Конкретные значения ещё не предоставлены.
 
+AI Engineer выбирает минимальный HTTP client/SDK и предоставляет runtime dependency
+предложение TL; root manifest/lock обновляет TL. Если production adapter использует httpx,
+он переносится в production dependencies: текущей dev-group для Docker --no-dev недостаточно.
 Сохраняются LLM_BASE_URL, LLM_MODEL, LLM_API_KEY, EMBEDDING_MODEL/DIM. Ключ только Python,
 .env.example без секретов; environment wiring ещё предстоит реализовать.
 Python ничего не меняет в app/corporate. Ни classification, ни confidence, ни generated
@@ -54,6 +60,9 @@ checks/actions/errors и hypothesis с confidence, не психологичес
 users/resources/assignments. UUID/refs согласуются до seed. Не редактировать runtime
 материалы как часть документационной задачи. Новая версия source/chunks/ACL публикуется
 только human review; candidate accepted не запускает ingest самостоятельно.
+Свои synthetic DB/IAM/SSL fixtures разрешены. Неподтверждённые внутренние сокращения
+остаются unknown cases. Внешний Playbook необязателен: AI предлагает конкретные фрагменты/
+source/license, TL принимает их использование; чужие правила не выдаются за утверждённые.
 
 Markdown → plain text; baseline chunks 600–1000 символов, overlap 100, заголовок и
 source version/hash/model/dimension/ACL в метаданных. Атомарный ingest/reindex; scope-aware
@@ -62,10 +71,22 @@ cache; старый index не открывает отозванный доку�
 фиксируется новой миграцией, несовместимые модели не смешиваются. Exact cosine baseline,
 ANN только после измерения и отдельного решения. kb — физическая logical knowledge.
 
+AI Engineer предоставляет идемпотентный ingest CLI (команду/exit codes/настройки) и
+реальные kb integration tests. TL подключает one-shot после migrate/seed и до AI readiness:
+mock mode готовит разрешённые chunks/ACL/lexical index без API/model downloads; live mode
+явно использует настроенную model/dimension/budget и не подменяется mock молча. CLI
+работает напрямую со своей kb под ai_service, не ждёт готового AI HTTP и не делает DDL.
+Отсутствие/несовместимость ожидаемого индекса — not ready/ошибка ingest, не выдуманный успех.
+Startup/test details — [development](../operations/development.md).
+
 ## Ошибки и оценка
 
-Connect/first token/idle/run limits и cancel по state-machines.md; provider ошибки
-нормализуются LLM_UNAVAILABLE/LLM_TIMEOUT без raw payload. После начала stream нет
+Python контролирует provider first token 20s, provider content idle 25s и AI pipeline 85s;
+Go — внешний run 90s и terminal state. Heartbeat на обоих SSE участках каждые 10s не
+считается content token. Ошибки до SSE используют общий Error; internal X-Request-ID
+обязателен. Точные правила, canonical Source.url и local/test X-Mock-Scenario в
+[AI integration policy](ai-integration-policy.md). Provider ошибки нормализуются
+LLM_UNAVAILABLE/LLM_TIMEOUT без raw payload. После начала stream нет
 автоматического повторного LLM write/tool. Go сохраняет partial/failed, не pending action.
 
 RP-AI-01 расширяет evals >=20: goal selection, draft correctness/missing fields, IAM
@@ -76,4 +97,7 @@ schema и отсутствие запрещённого контента, не �
 Все safety cases обязательны; baseline retrieval target >=80% кейсов с нужным документом
 в top-5 среди разрешённых. Live отчёт фиксирует provider/model/settings/dataset version,
 качество, latency/cost и не смешивается с mock результатами. Текущие 10 legacy evals
-не являются такой приёмкой. Автоматические component tests/coverage >80% отдельны от evals.
+не являются такой приёмкой. Для baseline AI Engineer вручную читает все ответы >=20
+cases в дополнение к deterministic schema/source/ACL/tool checks. Платный LLM judge
+не требуется. Отчёт готовит AI Engineer, Backend проверяет safety/tool/ACL boundary,
+TL принимает результат. Автоматические component tests/coverage >80% отдельны от evals.

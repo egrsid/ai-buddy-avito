@@ -8,7 +8,10 @@ feature/team-start-foundation. Чужие ветки/каталоги не ме�
 
 Прочитать AGENTS/Before starting, [TL baseline](../../architecture/contract-baseline.md),
 [API](../../architecture/api-contracts.md), [events](../../architecture/event-contracts.md),
-[journey](../../architecture/journey-template.md), [handoff](../contract-handoff.md).
+[journey](../../architecture/journey-template.md), [handoff](../contract-handoff.md),
+[AI integration policy](../../architecture/ai-integration-policy.md). В common Error добавить
+INVALID_REQUEST_ID; internal HTTP fixtures, source URL и fault/timeout boundary не
+придумывать независимо от AI.
 Сформировать common/public/journey/events/corporate schemas и positive/negative fixtures,
 shared offline validator/tests по точному списку файлов handoff. Не реализовывать v2
 runtime до общего gate. AI schema пишет AI Engineer, FE проверяет consumer DTO.
@@ -25,7 +28,7 @@ runtime до общего gate. AI schema пишет AI Engineer, FE прове�
 | RP-MOCK-01 | mock-services/corporate/, data/seed/, tests mock | Users/assignments/resources/IAM/seed; после DATA gate, knowledge файлы поступают от AI |
 | RP-AUTH-01 | backend/ | Sessions/CSRF/Origin/scoped policy, own-object isolation |
 | RP-JOURNEY-01 | backend/, data/seed/ journey JSON | Один validated template/Goal/Step/dependencies, no manual done |
-| RP-CHAT-01 | backend/ | History/run/SSE/validation после AI CORE; не ждать AI DIAG |
+| RP-CHAT-01 | backend/ | Persistent run/SSE после AI CORE, Go deadline 90s/один terminal transition, internal fault harness и Source.url validation; не ждать AI DIAG |
 | RP-MOCK-02 | mock-services/ | Request/approval/reject/grant и idempotency без timer |
 | RP-ACCESS-01 | backend/ | Draft/confirm/create/reconcile/approval ACL/IAM recheck |
 | RP-MOCK-03 | mock-services/ | Safe DB check: SSL failure/passed/denied/unavailable |

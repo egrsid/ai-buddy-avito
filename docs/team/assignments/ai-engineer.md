@@ -7,7 +7,9 @@ foundation. Роль назначена, handle не придуман. [Ветк
 
 AGENTS/Before starting, [TL baseline](../../architecture/contract-baseline.md),
 [API](../../architecture/api-contracts.md), [security](../../architecture/security.md),
-[AI design](../../architecture/ai-design.md), [contract handoff](../contract-handoff.md).
+[AI design](../../architecture/ai-design.md), [contract handoff](../contract-handoff.md),
+[принятые TL уточнения](../../architecture/ai-integration-policy.md). Error/ID, timers,
+heartbeat/fault header и Source.url там определены; их не нужно выбирать заново.
 
 Сделать contracts/v2/ai.schema.json, AI positive/negative fixtures и свой contract test.
 Описать generate input/output/SSE, journey selection/clarification, access draft/missing fields,
@@ -24,7 +26,7 @@ TL — security границы. До общего contract gate runtime DTO не
 | ID | Вход | Результат |
 |---|---|---|
 | RP-DATA-AI-01 | Contract gate | Kb ACL migrations, synthetic team/restricted/PII knowledge fixtures, версии/IDs с Backend; физическая schema kb сохраняется |
-| RP-AI-CORE-01 | Contract gate + DATA-AI | Offline generate и scoped retrieval, route selection, access-request draft и SSE/schema validation; Backend может интегрировать доступ |
+| RP-AI-CORE-01 | Contract gate + DATA-AI | Offline generate/retrieval/route/draft, internal Error/ID/таймеры/faults/SSE; предоставить idempotent ingest CLI и реальные kb integration tests TL |
 | RP-AI-DIAG-01 | AI CORE | Error classification, safe buddy summary, candidate hypothesis/fix, invalid/unavailable fixtures; весь набор >=20 evals |
 | RP-AI-02 | P1, provider/key/budget + RP-AI-01 | Live/embeddings adapter и отдельный quality/latency/cost report |
 
@@ -40,6 +42,11 @@ Python не выставляет verified, не меняет route/permissions, 
 Модель видит только разрешённые fragments/titles/metadata: provider-input spy и revoked ACL
 негативные проверки обязательны. Hypothesis/confidence не evidence; handoff без сырого чата/
 секретов; candidate input — safe aggregate без IDs людей. Все structured outputs валидируются.
+
+AI поставляет TL команды/exit codes ingest и DB integration tests, env/runtime dependency
+предложение; Docker/CI/UTF-8/root manifest wiring делает TL отдельно. Для небольшого
+набора evals AI читает все ответы вручную вместе с deterministic assertions; Backend
+проверяет safety/tool границы, TL принимает отчёт, paid LLM judge не обязателен.
 
 make check, AI component checks/coverage >80%, >=20 evals и all safety pass; offline path
 не вызывает сеть/не требует key. Lexical mock не выдаётся за live pgvector. Report model/mode/

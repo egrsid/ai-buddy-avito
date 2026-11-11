@@ -11,6 +11,9 @@ protocol/schema policy, synthetic resource/role/document ACL, evidence/idempoten
 acceptance/negative cases и authors в [contract-baseline](../../architecture/contract-baseline.md).
 Это реально подготовленный TL-пакет; не получены reviews других людей и не написаны их schemas.
 RP-TEAM-01 отслеживает проверку/завершение этого документационного распределения.
+Дополнение RP-TL-AI-01: [AI integration policy](../../architecture/ai-integration-policy.md)
+фиксирует internal Error/ID, таймауты/heartbeat/faults/sources и инфраструктурные требования.
+Это решения TL; Docker/CI/UTF-8/manifest изменения кода ещё не выполнены.
 
 ## Первая передача команде
 
@@ -28,8 +31,8 @@ RP-TEAM-01 отслеживает проверку/завершение этог
 | Задача | Вход | Объём / результат |
 |---|---|---|
 | RP-CONTRACT-REVIEW-01 | BE/AI schemas и FE review | Сверить common refs/scopes/fields/errors/events, запустить offline contract checks; записать реальный accepted baseline |
-| RP-INF-01 | Доступный Docker | Проверить startup fix, Compose/CI/DB-role isolation, безопасно выбрать отдельную demo-БД; не сбрасывать нужный volume |
-| RP-DATA-TL-01 | Новые app/corporate/kb migrations и fixture IDs | Общие migrate/seed/check/verify-db scripts; repeated load не стирает progress, checksum preserved |
+| RP-INF-01 | Доступный Docker | Startup/Compose/CI, contracts COPY, one-shot ingest и AI DB test runner после поставки CLI/tests AI; role isolation, отдельная demo-БД без reset нужного volume |
+| RP-DATA-TL-01 | Новые app/corporate/kb migrations и fixture IDs | Общие migrate/seed/check/verify-db scripts, explicit UTF-8/non-ASCII hash test; repeat не стирает progress, checksum preserved |
 | RP-INTEGRATION-01 | Все компонентные поставки, FE E2E, небольшой QA smoke | Свести окружение и реальные full-path/security/offline/restart/coverage отчёты; ошибки отправить владельцу кода |
 | RP-DEMO-01 | Принятый P0 и требования сдачи | Чистая репетиция, README, PDF/video, обозначение mock/live |
 | RP-TL-02 | Оригинальные требования/сроки | Подтвердить coverage/формат сдачи; не придумывать отсутствующие источники |
@@ -43,6 +46,9 @@ offline P0 не ждёт provider. Личные handles/права/публик�
 исключение: Backend обновляет scripts/check_repo.py только для v2 validation; предварительно
 согласовать момент, чтобы не править файл одновременно. Не писать за BE/AI/FE их бизнес-логику.
 Технический приёмочный gate TL закрывает после предъявленных файлов/проверок, не заранее.
+AI предоставляет commands/env/runtime deps и отчёт evals; TL принимает данные, меняет
+общие README/.env.example/pyproject.toml/uv.lock и CI только на их основе. Ключ/бюджет
+TL подтверждает до платного RP-AI-02, сейчас конкретные значения неизвестны.
 
 ## Проверки/передача
 

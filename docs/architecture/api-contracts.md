@@ -18,7 +18,7 @@ Actor/team/roles/buddy/owner вычисляет Go. Списки {items:[...]}, 
 объектов каждого типа, без пагинации. Success: create 201, read/update 200, no body 204.
 Cookie/Origin/CSRF обязательны по [security](security.md).
 
-Error={error:{code,message,request_id,fields?}}. Коды: 400 INVALID_JSON,
+Error={error:{code,message,request_id,fields?}}. Коды: 400 INVALID_JSON/INVALID_REQUEST_ID,
 401 UNAUTHENTICATED, 403 FORBIDDEN/CSRF_INVALID, 404 NOT_FOUND,
 409 VERSION_CONFLICT/IDEMPOTENCY_CONFLICT/RUN_ACTIVE/ACTION_NOT_PENDING,
 410 ACTION_EXPIRED, 422 VALIDATION_ERROR/TEMPLATE_INVALID/ROLE_NOT_REQUESTABLE,
@@ -86,7 +86,9 @@ KnowledgeDocument={id,title,content,version,synthetic:true}; ACL metadata не �
 Conversation={id,goal_id,step_id,created_at}. Message={id,conversation_id,role:user|assistant,
 content,status:completed|failed|cancelled|interrupted,run_id?,sources:Source[],created_at}.
 Source={document_id,version,title,url,excerpt<=500}; URL только /api/v2/knowledge/{id},
-разрешённый текущим scope. Run={id,conversation_id,user_message_id,assistant_message_id?,
+разрешённый текущим scope. Python строит эту относительную строку по document_id; Go
+проверяет равенство шаблону/ID/ACL и канонически пересобирает URL перед сохранением.
+Произвольная/внешняя ссылка → AI_SCHEMA_INVALID, без публикации source. Run={id,conversation_id,user_message_id,assistant_message_id?,
 status,error_code?,action_ids[],created_at,updated_at}. Один active на диалог, <=5 runs/min/user.
 
 Action={id,type,goal_id,step_id,parameters,preview,expires_at,status,result?,error_code?,created_at}.
@@ -136,7 +138,9 @@ POST публичного создания friction/event/candidate из про�
 ## AI SSE
 
 Envelope: event:<type>, id:<sequence>, data:<однострочный JSON>, пустая строка.
-Sequence с 1 на run; Cache-Control:no-cache, X-Accel-Buffering:no; heartbeat `: ping` 10s.
+Sequence с 1 на run; Cache-Control:no-cache, X-Accel-Buffering:no; heartbeat `: ping` 10s
+на обоих участках Python → Go и Go → React. Ping — SSE comment без sequence ID,
+не первый content token и не продление LLM/overall timeout.
 Публичные events: run.started {run_id}; message.delta {run_id,text}; message.sources
 {run_id,sources}; action.proposed {run_id,action}; run.completed {run_id,message_id};
 run.failed {run_id,code,message}; run.cancelled {run_id}. Ровно одно terminal event при
@@ -147,6 +151,18 @@ run.failed {run_id,code,message}; run.cancelled {run_id}. Ровно одно te
 ## Internal: Go → Python /internal/v2
 
 Bearer service token, X-Request-ID, проверенная сеть. Все DTO закрыты к неизвестным полям.
+До начала SSE применяется общий JSON Error: token проверяется первым (401), затем
+обязательный UUID X-Request-ID (400 INVALID_REQUEST_ID), JSON (400 INVALID_JSON) и
+schema/scope (422 VALIDATION_ERROR). Неверный/отсутствующий ID заменяется новым UUID
+только в error response, запрос не исполняется. Валидный ID отражается в response header/body.
+После начала stream ошибки — run.failed, HTTP status больше не меняется.
+Полные правила/тестовые fixtures: [TL AI policy](ai-integration-policy.md).
+
+Служебный X-Mock-Scenario (normal/unavailable/timeout/slow_stream/invalid_tool) разрешён
+только authenticated local/test + LLM_MODE=mock + MOCK_FAULTS_ENABLED=true; иначе 403,
+неизвестное значение 422. Public browser header/текст не управляют faults: Go не пересылает
+их в AI. Go test transport или изолированная server-side AI_MOCK_SCENARIO выбирают сценарий;
+это тестовая конфигурация, а не новое поле GenerateRequest. Wiring ещё не реализован.
 POST /generate → SSE. Вход: {run_id,conversation_id,goal_context?,messages,access_scope,
 allowed_journeys,allowed_tools,action_results}. Goal context содержит разрешённые goal/step,
 dependencies, evidence, blockers, instruction refs и safe next actions из Go. Scope по

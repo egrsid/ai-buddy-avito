@@ -109,7 +109,17 @@ EventSource onerror → close + GET run/messages. Replay Last-Event-ID не по
 
 ## Таймауты и polling
 
-Connect 3s; mock 5s; LLM first token 20s; run 90s; idle stream 25s; heartbeat 10s.
+Go run: 90s от queued → running; Python AI pipeline: 85s после принятия /generate
+(запас на transport/result handling). Provider first content token: 20s от отправки
+provider request; после первого content delta — idle 25s без новых content delta.
+Heartbeat `: ping` 10s на обоих SSE участках не сбрасывает provider/overall deadline.
+Connect 3s; mock 5s; Go upstream idle 25s по SSE frames/comments — только transport guard.
+Python timeout → run.failed LLM_TIMEOUT с отменой provider; Go внешний deadline →
+failed UPSTREAM_TIMEOUT и отмена AI, если terminal result ещё не принят. Upstream EOF
+без успешного завершения → UPSTREAM_ERROR. Таймер/cancel/reader используют один
+атомарный terminal transition: позднее событие не переписывает terminal state и не
+создаёт второй результат/action. Completed требует проверки deadline перед сохранением.
+Точки отсчёта и fault/test-clock acceptance: [AI policy](ai-integration-policy.md).
 SSE WriteTimeout отключён, отмена через context. GET максимум два retry 0.5/1s, не 4xx.
 Write retry только с тем же operation key/payload. Goal/check/request/escalation/candidate и
 executing/unknown action читаются каждые 5s в активной вкладке и после мутаций;

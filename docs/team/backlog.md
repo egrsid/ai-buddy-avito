@@ -26,19 +26,20 @@ EXTERNAL — внешний ресурс; DONE — фактическая при
 | RP-TEAM-01 | 1 | TL | DONE | RP-DOC-01 | Назначения пяти ролей, существующие/планируемые ветки, bounded Fullstack и TL contract handoff; только docs | [спецификация](assignments/README.md) |
 | RP-TL-01 | 1 | TL | DONE | RP-DOC-01 | Роли и reviewers назначены по поручению владельца; baseline policy в RP-CONTRACT-TL-01. Handles необязательны для старта, доступы не выданы | [спецификация](working-agreements.md) |
 | RP-CONTRACT-TL-01 | 1 | TL | DONE | RP-DOC-01 | Scope/ownership/ACL/protocol/acceptance и authors зафиксированы; внешнее consumer review не выдумано | [спецификация](../architecture/contract-baseline.md) |
+| RP-TL-AI-01 | 1 | TL | DONE | RP-CONTRACT-TL-01 | TL уточнения internal errors/таймеров/faults/sources и требований Docker/CI/ingest/UTF-8/eval review; только документация | [решения](../architecture/ai-integration-policy.md) |
 | RP-CONTRACT-BE-01 | 1–2 | Backend | READY | RP-CONTRACT-TL-01 | Common/public/journey/events/corporate schemas, examples/invalid cases, local validator и tests; без runtime реализации | [спецификация](contract-handoff.md) |
 | RP-CONTRACT-AI-01 | 1–2 | AI Engineer | READY | RP-CONTRACT-TL-01 | AI/knowledge/structured/SSE schemas и fixtures; common definitions согласуются с Backend | [спецификация](contract-handoff.md) |
 | RP-CONTRACT-FE-01 | 1–2 | Frontend | TODO | RP-CONTRACT-BE-01, RP-CONTRACT-AI-01 | Проверены public DTO/SSE/error/nullability и typed fixture parsing, замечания переданы TL | [спецификация](contract-handoff.md) |
 | RP-CONTRACT-REVIEW-01 | 1–2 | TL | TODO | RP-CONTRACT-BE-01, RP-CONTRACT-AI-01, RP-CONTRACT-FE-01 | BE↔AI/FE review и offline checks пройдены, зафиксирован принятый baseline; нет авансового DONE | [спецификация](contract-handoff.md) |
-| RP-INF-01 | 2,6 | TL | IN_PROGRESS | Доступный Docker; финальная target проверка после RP-DATA-01 | Сохранившийся startup blocker: clean up, migrate/seed дважды, role isolation/smoke; текущий volume не удалять | [спецификация](../operations/development.md) |
+| RP-INF-01 | 2,6 | TL | IN_PROGRESS | Доступный Docker; финальная target проверка после RP-DATA-01 | Startup/Compose: clean up, schemas COPY, one-shot ingest, AI DB tests runner/fault env после AI поставки; migrate/seed дважды, role isolation/smoke; volume не удалять | [спецификация](../operations/development.md) |
 | RP-DATA-BE-01 | 2 | Backend | TODO | RP-CONTRACT-01 | Новые app/corporate migrations, роли/constraints/IDs, component tests; applied 001 не переписана | [спецификация](../architecture/data-model.md) |
 | RP-DATA-AI-01 | 2 | AI Engineer | TODO | RP-CONTRACT-01 | Новые kb ACL migrations и synthetic team/restricted/PII knowledge fixtures с согласованными IDs; без псевдоэмбеддингов | [спецификация](../architecture/data-model.md) |
-| RP-DATA-TL-01 | 2 | TL | TODO | RP-DATA-BE-01, RP-DATA-AI-01 | Общий migrate/seed/verify-db/check tooling поддерживает v2 и безопасный переход; проверки повторяемости | [спецификация](../architecture/data-model.md) |
+| RP-DATA-TL-01 | 2 | TL | TODO | RP-DATA-BE-01, RP-DATA-AI-01 | Общий migrate/seed/verify-db/check tooling поддерживает v2, explicit UTF-8 и non-ASCII test, безопасный переход/повторяемость | [спецификация](../architecture/data-model.md) |
 | RP-MOCK-01 | 2 | Backend | TODO | RP-DATA-01 | Persistent mock IAM/resources/assignments и app/corporate seed a+b team-a, c team-b, approver/docs-owner; knowledge поставляет AI | [спецификация](../features/authorization-and-privacy/spec.md) |
 | RP-AUTH-01 | 2 | Backend | TODO | RP-DATA-01, RP-MOCK-01 | Cookie/Origin/CSRF, role/team/resource/document/ownership, negative tests; own backend coverage | [спецификация](../features/authorization-and-privacy/spec.md) |
 | RP-JOURNEY-01 | 2 | Backend | TODO | RP-AUTH-01, RP-MOCK-01 | JSON DAG, goal/steps/dependencies/version, next action, initial IAM state; schema и template валидны | [спецификация](../features/onboarding-journey/spec.md) |
-| RP-AI-CORE-01 | 2–3 | AI Engineer | TODO | RP-CONTRACT-01, RP-DATA-AI-01 | Offline generate/journey selection/access draft, scoped retrieval/knowledge, SSE fixtures и safety evals; не ждать всех Go handlers | [спецификация](../features/contextual-ai-assistance/spec.md) |
-| RP-AI-DIAG-01 | 4–5 | AI Engineer | TODO | RP-AI-CORE-01 | Safe classification/handoff/candidate draft и AI-failure fallback cases; весь набор >=20 evals, all safety pass | [спецификация](../architecture/ai-design.md) |
+| RP-AI-CORE-01 | 2–3 | AI Engineer | TODO | RP-CONTRACT-01, RP-DATA-AI-01 | Offline generate/draft/retrieval/CLI, internal Error/ID, 20/25/85s provider/pipeline и fault fixtures по TL policy; не ждать Go | [спецификация](../features/contextual-ai-assistance/spec.md) |
+| RP-AI-DIAG-01 | 4–5 | AI Engineer | TODO | RP-AI-CORE-01 | Safe classification/handoff/candidate/fallback; >=20 evals с assertions/ручным чтением, all safety pass, отчёт Backend/TL | [спецификация](../architecture/ai-design.md) |
 | RP-CHAT-01 | 3 | Backend | TODO | RP-AUTH-01, RP-JOURNEY-01, RP-AI-CORE-01 | Persistent history/run/SSE/validation, cancel/retry/partial; не ждать diagnostic AI этапа дня 5 | [спецификация](../features/contextual-ai-assistance/spec.md) |
 | RP-MOCK-02 | 3 | Backend | TODO | RP-MOCK-01 | Persistent request/scoped decision/grant, same-key replay/delayed grant; no timer approval | [спецификация](../features/access-request/spec.md) |
 | RP-ACCESS-01 | 3 | Backend | TODO | RP-CHAT-01, RP-MOCK-02 | Validated draft/exact confirm/create/reconcile/approval ACL и IAM recheck; no duplicate | [спецификация](../features/access-request/spec.md) |
@@ -68,7 +69,7 @@ AI обеспечивает оба AI этапа, Frontend владеет browse
 | ID | Приоритет | Ответственный | Статус / зависимость | Результат |
 |---|---|---|---|---|
 | RP-TL-02 | P0 | TL | EXTERNAL: оригиналы кейса/сроки/формат | Сверить требования/coverage/PDF/video; не блокировать независимый offline development |
-| RP-AI-02 | P1 | AI Engineer | EXTERNAL: provider/key/budget от TL; RP-AI-01 | Live adapter/embeddings и отдельный quality/cost report, не обязательный offline gate |
+| RP-AI-02 | P1 | AI Engineer | EXTERNAL: provider/key/budget от TL; RP-AI-01 | AI предлагает provider/model/embeddings/client/deps; TL подтверждает key/budget до spike. Live report отдельный, offline не блокируется |
 | RP-HOST-01 | P2 | TL | EXTERNAL: площадка/auth/HTTPS | Public demo только отдельным решением владельца |
 | RP-P1-01 | P1 | TL | TODO после стабильного P0 | Назначить расширения graph/second journey/review history по Product Spec, не раздавать заранее |
 | RP-P2-01 | P2 | TL | TODO после хакатона | Отдельный scope реальных интеграций/MR/IDE/Radar/HR/workflow builder |

@@ -85,11 +85,18 @@ journey/step/error/instruction versions/count и safe гипотезу, без u
 ## Внутренние вызовы и safe checks
 
 Go → Python/mock: Authorization Bearer INTERNAL_API_TOKEN, constant-time comparison,
-X-Request-ID; порты только в Compose-сети. Health без token и без данных. Go adapter
+X-Request-ID; порты только в Compose-сети. Health без token и без данных. Internal errors/X-Request-ID проходят правила
+[AI integration policy](ai-integration-policy.md): 401 token, затем 400 invalid/missing UUID,
+422 schema; без отражения token/невалидного header в error/logs. Go adapter
 проверяет provenance/корреляцию результата, одного token/строки source недостаточно для
 evidence. Публичного endpoint приёма доверенных events от браузера нет.
 Mock checks используют allowlist методов/options, например ssl_mode=disable/require;
 не принимают SQL/DSN/host/команды и возвращают только outcome + safe code.
+
+Test faults не являются public tools: X-Mock-Scenario допустим только service-auth +
+local/test + mock mode + явный false-by-default flag. Go не пересылает browser header и
+не выполняет `[mock:...]` из чата. Live/production faults выключены; изменения тестового
+окружения не дают пользователю полномочий и не относятся к провайдерным секретам.
 
 ## Лимиты, хранение, логи
 
