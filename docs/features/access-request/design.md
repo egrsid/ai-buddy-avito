@@ -1,12 +1,33 @@
-# S3 · Заявка на доступ — design
+# Controlled DB Access Request — design
 
-Action create_access_request → Go → HTTP corporate mock с Idempotency-Key=action.id. app.actions/access_requests, corporate.access_requests. UI inline preview и /requests. Poll 5s; статус mock после 15s approved/rejected.
+Целевое проектирование v2, implementation pending. [Поведение и приёмка](spec.md).
 
-## Зависимости
+## Компоненты и поток
 
-BE-01, BE-03, BE-04, action contract. DTO: [api-contracts](../../architecture/api-contracts.md).
-Хранение: [data-model](../../architecture/data-model.md), ошибки и переходы:
-[state-machines](../../architecture/state-machines.md).
+Go валидирует и сохраняет immutable action, выполняет с operation_key=action.id; mock владеет persistent request/grant, Go — app mirror и workflow. /approvals — минимальный экран уполномоченной роли. Poll 5s, без скрытой симуляции решения.
 
-UI использует общий reference/tokens; loading, error, empty и forbidden обязательны.
-Тесты включают позитивный путь, границы входов, чужие объекты и сбои внешних зависимостей.
+## Хранение и контракт
+
+Action, AccessRequest, ResourcePolicy, mock request/decision/grant, operation_key, grant_state/sync_status.
+
+POST /api/v2/actions create_access_request; /actions/{id}/confirm; GET /access-requests; GET /approvals; POST /access-requests/{id}/decision; resource IAM checks.
+
+[Модель данных](../../architecture/data-model.md), [API](../../architecture/api-contracts.md),
+[events](../../architecture/event-contracts.md), [states](../../architecture/state-machines.md)
+задают общую семантику. Legacy JSON/DDL/seed не обновлены этой документационной задачей;
+до реализации RP-CONTRACT-01 фиксирует executable schemas, RP-DATA-01 — новые миграции.
+
+## Отказы, безопасность и UI
+
+Missing fields/ROLE_NOT_REQUESTABLE; TTL/version/ACL conflict; timeout/crash → unknown и lookup по прежнему key, не новая заявка.
+
+Переходы в app атомарны; межсервисный unknown сверяется по прежнему operation key.
+[Security](../../architecture/security.md): deny by default, повторная проверка scope,
+safe DTO/refs, без сырого provider/mock payload. UI использует [reference guidelines](../../design/UI_GUIDELINES.md),
+состояния loading/error/empty/forbidden, версии и фактический результат Go. Цвет дополняется текстом.
+
+## Проверка и зависимости
+
+RP-AUTH-01, RP-JOURNEY-01, RP-MOCK-01, RP-AI-01, RP-CHAT-01. Negative tests и сценарии [spec](spec.md) обязательны;
+команды/coverage/E2E в [testing](../../testing/strategy.md). Проверять через настоящий
+Go/AI(mock)/corporate/DB путь; UI fixture не заменяет интеграцию.

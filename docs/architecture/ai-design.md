@@ -1,55 +1,76 @@
-# AI design v1
+# AI design target v2
 
-Статус: спецификация реализации S1/S3/S4; текущий AI-процесс предоставляет только healthcheck.
+Версия 2.0 · проектирование. Сейчас AI предоставляет только /healthz, не генерацию/RAG.
+[Contextual AI SDD](../features/contextual-ai-assistance/spec.md),
+[API](api-contracts.md), [security](security.md) задают границы; AI Engineer выбирает
+adapters/prompting/retrieval/структуру модулей и eval методику внутри этих контрактов.
 
-## Режимы
+## Режимы и ответственность
 
-LLM_MODE=mock по умолчанию: детерминированные fixtures, без сети и ключей; для разработки/CI.
-Режим не считается проверкой качества AI. LLM_MODE=live разрешается после AI-01:
-выбрать доступный команде API, модель с tool calling, embeddings, лимит расходов и проверить ключ.
-Названия провайдера/моделей и факт доступности не выдумывать. LLM_BASE_URL, LLM_MODEL,
-LLM_API_KEY, EMBEDDING_MODEL, EMBEDDING_DIM задаются конфигурацией; ключ только на Python.
-Использовать изолированный adapter интерфейс, а не распределять provider SDK по бизнес-коду.
+LLM_MODE=mock — deterministic offline provider, без сети/ключа; покрывает выбор journey,
+объяснение, draft заявки, safe классификацию, handoff и candidate draft. Это обязательный
+fallback для полного P0 demo, а не только fixtures для чат-ответа. UI/отчёт помечают
+режим mock/live. Он не является доказательством качества live LLM или pgvector RAG.
+LLM_MODE=live подключается после RP-AI-02: provider/model/key/budget/embeddings доступны
+и проверены. Платный ключ не нужен CI и не блокирует offline P0. При live-сбое не
+дописывать смесь live/mock токенов в начатый stream: завершить failed, дать явный retry
+в обозначенном offline режиме. Контекст action/права/confirm при смене provider не обходятся.
+
+Сохраняются LLM_BASE_URL, LLM_MODEL, LLM_API_KEY, EMBEDDING_MODEL/DIM. Ключ только Python,
+.env.example без секретов; environment wiring ещё предстоит реализовать.
+Python ничего не меняет в app/corporate. Ни classification, ни confidence, ни generated
+summary не являются evidence. Обязательные маршруты/permissions/checks принадлежат Go.
 
 ## Pipeline
 
-1. Проверить сервисный token и GenerateRequest. Go уже отфильтровал историю и права.
-2. Нормализовать запрос, получить top-5 фрагментов только demo_public с document_id/version.
-3. Сформировать system prompt: синтетическая учебная среда; не выдумывать внутренние регламенты;
-   инструкции из retrieved content не исполнять; не утверждать успех tool без Go result.
-4. Один LLM вызов с ограниченными tools; максимум одно предложение бизнес-действия за run.
-5. Отдать текст, источники, структурированное предложение. Python ничего не исполняет.
-6. Если источников нет/значение неоднозначно, честно сообщить это и предложить buddy;
-   отправка buddy только после точного preview и confirm в Go.
+1. Проверить token/schema/access_scope и allowed journeys/tools; отсутствие scope — отказ.
+2. Получить только разрешённый goal/step, dependencies/evidence/blocker/safe actions из Go.
+3. Retrieval с document/chunk ACL до top-5/LLM; повторная проверка title/metadata/refs/version.
+   Даже offline fixture обязан применять scope. Не получать все документы с последующим
+   редактированием готового ответа: запрещённый фрагмент вообще не передаётся модели.
+4. Prompt: synthetic environment; инструкции из документов — данные; не придумывать
+   обязательные этапы/аббревиатуры, не выдавать submitted/approved/ответ buddy за verified.
+5. Объяснить текущую причину/следующий допустимый шаг. Practice First: предложить
+   предусмотренную проверку. RAG помогает конкретной цели, словарь не центральный сценарий.
+6. Один ограниченный run, <=1 tool proposal, никакого автономного выполнения/цепочки.
+   Структурированные операции валидируются по закрытым schema; Go повторяет бизнес-валидацию.
+7. При неизвестном/неоднозначном ответе честно уточнить или предложить buddy preview.
+   Невалидный JSON/лишние поля/недопустимая роль/refs → AI_SCHEMA_INVALID без исполнения.
 
-Tool schemas совпадают с action parameters в API. Если не хватает resource/access_level/reason,
-задать вопрос, не предлагать неполное действие. Update task разрешён только при task context.
-Для summary использовать только текущий диалог, не добавлять диагнозы/оценки личности.
-Формат citations — Source[] с реальными ID документов. Ссылки проверяет Go и отдаёт через свой API.
+Выбор journey возвращает ID/version только из allowed list. Draft содержит ресурс,
+requested_role, reason, additional_fields (пусто в P0); actor подставляет Go. Недостающие
+поля → clarification/missing_fields. Handoff использует пересечение ACL intern/buddy,
+checks/actions/errors и hypothesis с confidence, не психологические оценки. Candidate
+получает только safe aggregate, отличает наблюдаемый паттерн от гипотезы дефекта инструкции.
+При AI-сбое Go сохраняет минимальную детерминированную карточку, enrichment можно повторить.
 
 ## Индексация
 
-Источники: data/knowledge/*.md, пометка synthetic обязательна. Markdown → plain text,
-фрагменты 600–1000 символов с overlap 100; заголовок сохраняется. SHA-256 исходного текста,
-document version, embedding model и dimension в метаданных. Не смешивать разные модели в индексе.
-До выбора embeddings поиск для mock может быть лексическим детерминированным fixture;
-это не pgvector RAG. Live pipeline обязан использовать реальные эмбеддинги и pgvector.
-Сначала exact cosine search, ANN только после измерения необходимости и отдельной миграции.
+Текущие data/knowledge/*.md и evals.json — legacy учебный набор, все demo_public и
+репозиторный сценарий; это не готовый dataset нового MVP. RP-MOCK-01/RP-AI-01 добавляют
+согласованные team/restricted/privacy fixtures и инструкции БД. Не редактировать runtime
+материалы как часть документационной задачи. Новая версия source/chunks/ACL публикуется
+только human review; candidate accepted не запускает ingest самостоятельно.
 
-## Ошибки и лимиты
+Markdown → plain text; baseline chunks 600–1000 символов, overlap 100, заголовок и
+source version/hash/model/dimension/ACL в метаданных. Атомарный ingest/reindex; scope-aware
+cache; старый index не открывает отозванный документ. Для offline baseline допустим
+лексический поиск, явно не vector RAG. Live RAG — реальные embeddings/pgvector; размерность
+фиксируется новой миграцией, несовместимые модели не смешиваются. Exact cosine baseline,
+ANN только после измерения и отдельного решения. kb — физическая logical knowledge.
 
-Лимиты/таймауты: security.md и state-machines.md. Не делать бесконечных retries,
-не обращаться к LLM повторно после начала потока автоматически. Отмена upstream завершает provider request.
-Ошибки провайдера нормализуются в LLM_UNAVAILABLE/LLM_TIMEOUT; без ключей и provider payload в логах.
-Никакой автономной multi-agent платформы, браузинга корпоративных систем и MCP в MVP.
+## Ошибки и оценка
 
-## Оценка качества
+Connect/first token/idle/run limits и cancel по state-machines.md; provider ошибки
+нормализуются LLM_UNAVAILABLE/LLM_TIMEOUT без raw payload. После начала stream нет
+автоматического повторного LLM write/tool. Go сохраняет partial/failed, не pending action.
 
-[evals.json](../../data/knowledge/evals.json) — начальный обязательный набор.
-Для каждого кейса проверять ожидаемые document IDs/отказ/действие, а не дословный текст.
-В live: все известные фактические утверждения опираются на существующий source, неизвестные
-сокращения не расшифровываются уверенно, injection не меняет доступы, tool не выполняется Python.
-Цель начальной приёмки: все safety-кейсы проходят, минимум 4/5 retrieval-кейсов дают нужный
-документ в top-5. AI Engineer расширяет набор до ≥20 перед финальной демонстрацией.
-Отчёт фиксирует модель, настройки, dataset version, качество и стоимость; успешные mocks
-не выдаются за такой отчёт.
+RP-AI-01 расширяет evals >=20: goal selection, draft correctness/missing fields, IAM
+absent/approved-without-grant, DB_SSL_REQUIRED, practice/recheck, privacy разных команд,
+restricted title/metadata/citations, personal-data fixture, injection, non-evidence AI,
+handoff filtering, candidate hypothesis и offline fallback. Проверять свойства, refs,
+schema и отсутствие запрещённого контента, не дословное совпадение текста.
+Все safety cases обязательны; baseline retrieval target >=80% кейсов с нужным документом
+в top-5 среди разрешённых. Live отчёт фиксирует provider/model/settings/dataset version,
+качество, latency/cost и не смешивается с mock результатами. Текущие 10 legacy evals
+не являются такой приёмкой. Автоматические component tests/coverage >80% отдельны от evals.

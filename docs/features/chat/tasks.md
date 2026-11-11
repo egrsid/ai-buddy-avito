@@ -1,11 +1,6 @@
-# S1 · Контекстный AI-чат — задачи
+# Legacy chat — superseded
 
-Старт после: BE-01, AI-02; live качество после AI-01/03. Назначения людей: [backlog](../../team/backlog.md).
-
-- [ ] Взять соответствующий ID (AI-01/02/03, BE-03, FE-03), назначить исполнителя и reviewer.
-- [ ] Реализовать серверные DTO/валидацию/права и persistence по design.
-- [ ] Реализовать UI/AI части в зоне ответственности, не меняя общий контракт молча.
-- [ ] Проверить happy path, отрицательный доступ и сценарии ошибок из spec.
-- [ ] Добавить релевантные component/integration tests и coverage >80%.
-- [ ] Проверить сквозной путь на Compose и записать команды/результат в PR.
-- [ ] Обновить статус backlog и отметить реальные ограничения.
+2026-11-11: прежний SDD заменён [contextual-ai-assistance/tasks.md](../contextual-ai-assistance/tasks.md).
+Эта папка оставлена для старых ссылок и не задаёт отдельную обязательную фичу.
+Старые S1/S2, ручное done/PATCH task и общий demo_public scope не являются target MVP.
+[История решений](../../architecture/decisions.md), [миграция backlog](../../team/backlog.md).

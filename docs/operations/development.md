@@ -14,7 +14,7 @@
 | Python пакеты | pyproject.toml, выбранные версии/hashes в uv.lock |
 
 Образы закреплены version tags, не digest. Обновления — отдельным PR с новым lock и
-проверками; latest не использовать. Go pgx/v5 и pool заранее закреплены в go.mod/go.sum; соединение с БД добавляет BE-01/02.
+проверками; latest не использовать. Go pgx/v5 и pool заранее закреплены в go.mod/go.sum; соединение с БД добавляют RP-DATA-01/RP-AUTH-01.
 
 Go закреплён на 1.27.3: образ `golang:1.27.4-alpine` отсутствовал в Docker Hub при
 проверке 2026-11-10 и останавливал CI до сборки кода. Для всех текущих базовых образов
@@ -74,8 +74,27 @@ PGHOST/PGPORT, затем `uv run --frozen python -m scripts.migrate` и
 требует собственной локальной БД с bootstrap или отдельного dev override.
 Не передавать admin DSN runtime сервисам.
 
-## Первый продуктовый checkpoint
 
-M1 после BE-01/02 и FE-02: вход intern-a → задачи → детали → статус → refresh/restart сохраняет;
-intern-b и buddy-a не читают задачи intern-a. Bootstrap-экран не выполняет M1.
-Полный путь MVP — product specification §4. Успешный YAML parse не заменяет Compose smoke.
+
+## Target v2 и первый checkpoint
+
+В перепланировании 2026-11-11 runtime/Compose/CI/manifests/locks не менялись.
+Существующие migrations/seed/contracts и data/knowledge — legacy v1; команды выше
+проверяют именно этот каркас. `kb` остаётся физической схемой логической knowledge.
+RP-CONTRACT-01 фиксирует v2 schemas, RP-DATA-01 добавляет SQL, RP-MOCK-01 — dataset v2;
+не переписывать применённую 001 и не переназначать старый intern-b команде A молча.
+Переход/чистую выделенную demo-БД организует владелец, не автоматический reset.
+
+День 2 нового плана: auth/ACL → доступный JSON journey → состояние доступа из mock IAM;
+день 3: draft/confirm/отдельное approval/grant recheck; день 4: DB check/evidence/blockers/buddy;
+день 5: второй intern и candidate owner. Полная приёмка: [demo](../product/demo.md),
+[testing](../testing/strategy.md). Bootstrap-экран/YAML parse не заменяют checkpoint.
+
+Offline mode target: LLM_MODE=mock без ключа, детерминированные AI и synthetic IAM/DB outcomes;
+без LLM/корпоративной сети после подготовки образов/зависимостей. Первая сборка/установка
+может требовать сеть. Реальный LLM/embeddings — RP-AI-02, не блокирует offline P0.
+Никаких новых .env переменных эта документация не делает работающими автоматически.
+
+RP-INF-01 остаётся открытой после bootstrap Permission denied/COPY исправления; текущая
+docs-only задача контейнеры не запускает и volume не удаляет. Проверить clean up,
+повтор migrate/seed, verify-db/smoke и затем target full E2E отдельной задачей.

@@ -1,11 +1,6 @@
-# S2 · План адаптации — задачи
+# Legacy onboarding — superseded
 
-Старт после: BE-01; shared contracts v1. Назначения людей: [backlog](../../team/backlog.md).
-
-- [ ] Взять соответствующий ID (BE-02, FE-01/02, QA-01), назначить исполнителя и reviewer.
-- [ ] Реализовать серверные DTO/валидацию/права и persistence по design.
-- [ ] Реализовать UI/AI части в зоне ответственности, не меняя общий контракт молча.
-- [ ] Проверить happy path, отрицательный доступ и сценарии ошибок из spec.
-- [ ] Добавить релевантные component/integration tests и coverage >80%.
-- [ ] Проверить сквозной путь на Compose и записать команды/результат в PR.
-- [ ] Обновить статус backlog и отметить реальные ограничения.
+2026-11-11: прежний SDD заменён [onboarding-journey/tasks.md](../onboarding-journey/tasks.md).
+Эта папка оставлена для старых ссылок и не задаёт отдельную обязательную фичу.
+Старые S1/S2, ручное done/PATCH task и общий demo_public scope не являются target MVP.
+[История решений](../../architecture/decisions.md), [миграция backlog](../../team/backlog.md).
