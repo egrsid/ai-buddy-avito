@@ -8,7 +8,7 @@
 | Участник | Его handoff | Первая работа | Ветка |
 |---|---|---|---|
 | TL (владелец) | [tl.md](tl.md) | TL baseline готов; принять поставки schemas/consumer review, подготовить рабочие базы | feature/team-start-foundation, существует |
-| Backend | [backend.md](backend.md) | RP-CONTRACT-BE-01, затем app/corporate/seed/IAM/Go | feature/backend-mvp-v2, план, не создана |
+| Backend | [backend.md](backend.md) | RP-CONTRACT-BE-01, затем app/corporate/seed/IAM/Go | feature/backend-mvp-v2, локально, не опубликована |
 | AI Engineer | [ai-engineer.md](ai-engineer.md) | RP-CONTRACT-AI-01, затем kb/knowledge и ранний offline CORE | feature/ai-mvp-v2, план, не создана |
 | Frontend | [frontend.md](frontend.md) | Прочитать baseline, затем RP-CONTRACT-FE-01; UI и browser E2E | feature/frontend-mvp-v2, план, не создана |
 | Fullstack–QA–Integration | [fullstack-qa-integration.md](fullstack-qa-integration.md) | Один RP-QA-01: адаптировать два имеющихся API-теста | feature/qa-01-m1, существует на GitHub |

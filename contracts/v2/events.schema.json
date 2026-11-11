@@ -1,0 +1,334 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-buddy.invalid/contracts/v2/events.schema.json",
+  "title": "AI-buddy v2 business events",
+  "$comment": "Trusted adapter journal. Not the AI SSE stream. Source is closed to the producer of each type.",
+  "$defs": {
+    "EntityRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["check", "access_request", "blocker", "escalation", "candidate"]
+        },
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+      }
+    },
+    "SafeOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ssl_mode"],
+      "properties": {
+        "ssl_mode": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/SslMode"}
+      }
+    },
+    "BusinessEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "schema_version", "occurred_at", "source", "entity", "correlation_id", "payload", "synthetic"],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "type": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/EventType"},
+        "schema_version": {"const": 1},
+        "occurred_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"},
+        "source": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/EventSource"},
+        "entity": {"$ref": "#/$defs/EntityRef"},
+        "correlation_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "causation_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "payload": true,
+        "synthetic": {"const": true}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "resource_policy_matched"}}, "required": ["type"]},
+          "then": {
+            "properties": {
+              "source": {"const": "go_policy"},
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["check_id", "goal_id", "step_id", "subject_id", "resource_id", "policy_revision"],
+                "properties": {
+                  "check_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "goal_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "step_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+                  "subject_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+                  "policy_revision": {"type": "string", "minLength": 1, "maxLength": 64}
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"type": {"const": "resource_access_checked"}}, "required": ["type"]},
+          "then": {
+            "properties": {
+              "source": {"const": "mock_iam_adapter"},
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["check_id", "goal_id", "step_id", "resource_id", "subject_id", "grant_state"],
+                "properties": {
+                  "check_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "goal_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "step_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+                  "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+                  "subject_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "grant_state": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/GrantState"}
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"type": {"const": "access_request_created"}}, "required": ["type"]},
+          "then": {
+            "properties": {
+              "source": {"const": "mock_access_adapter"},
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["request_id", "operation_key", "resource_id", "status"],
+                "properties": {
+                  "request_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "operation_key": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+                  "status": {"const": "submitted"}
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"type": {"const": "access_request_approved"}}, "required": ["type"]},
+          "then": {
+            "properties": {
+              "source": {"const": "mock_access_adapter"},
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["request_id", "decision_id", "approver_id", "resource_id"],
+                "properties": {
+                  "request_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "decision_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "approver_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"}
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"type": {"const": "access_request_rejected"}}, "required": ["type"]},
+          "then": {
+            "properties": {
+              "source": {"const": "mock_access_adapter"},
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["request_id", "decision_id", "safe_reason_code"],
+                "properties": {
+                  "request_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "decision_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "safe_reason_code": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/RejectReasonCode"}
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"type": {"const": "resource_access_granted"}}, "required": ["type"]},
+          "then": {
+            "properties": {
+              "source": {"const": "mock_iam_adapter"},
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["check_id", "subject_id", "resource_id", "granted_role"],
+                "properties": {
+                  "check_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "subject_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+                  "granted_role": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/RequestedRole"}
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"type": {"const": "db_connection_check_passed"}}, "required": ["type"]},
+          "then": {
+            "properties": {
+              "source": {"const": "mock_db_adapter"},
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["check_id", "goal_id", "step_id", "resource_id", "safe_options"],
+                "properties": {
+                  "check_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "goal_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "step_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+                  "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+                  "safe_options": {"$ref": "#/$defs/SafeOptions"}
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"type": {"const": "db_connection_check_failed"}}, "required": ["type"]},
+          "then": {
+            "properties": {
+              "source": {"const": "mock_db_adapter"},
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["check_id", "goal_id", "step_id", "error_code", "safe_options"],
+                "properties": {
+                  "check_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "goal_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "step_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+                  "error_code": {
+                    "enum": ["DB_SSL_REQUIRED", "ACCESS_DENIED"]
+                  },
+                  "safe_options": {"$ref": "#/$defs/SafeOptions"}
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"type": {"const": "blocker_detected"}}, "required": ["type"]},
+          "then": {
+            "properties": {
+              "source": {"const": "go_policy"},
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["blocker_id", "goal_id", "step_id", "blocker_type", "error_code", "check_id"],
+                "properties": {
+                  "blocker_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "goal_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "step_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+                  "blocker_type": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/BlockerType"},
+                  "error_code": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/SafeErrorCode"},
+                  "check_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"type": {"const": "buddy_escalated"}}, "required": ["type"]},
+          "then": {
+            "properties": {
+              "source": {"const": "go_buddy_workflow"},
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["escalation_id", "blocker_id", "action_id"],
+                "properties": {
+                  "escalation_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "blocker_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "action_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"type": {"const": "buddy_resolved"}}, "required": ["type"]},
+          "then": {
+            "properties": {
+              "source": {"const": "go_buddy_workflow"},
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["escalation_id", "blocker_id"],
+                "properties": {
+                  "escalation_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "blocker_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"type": {"const": "knowledge_gap_candidate_created"}}, "required": ["type"]},
+          "then": {
+            "properties": {
+              "source": {"const": "go_friction_pipeline"},
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["candidate_id", "journey_id", "step_id", "error_code", "affected_count"],
+                "properties": {
+                  "candidate_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "journey_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+                  "step_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+                  "error_code": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/SafeErrorCode"},
+                  "affected_count": {"type": "integer", "minimum": 2, "maximum": 100}
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"type": {"const": "knowledge_gap_reviewed"}}, "required": ["type"]},
+          "then": {
+            "properties": {
+              "source": {"const": "go_knowledge_gap_review"},
+              "payload": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["candidate_id", "review_id", "decision"],
+                "properties": {
+                  "candidate_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "review_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+                  "decision": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/ReviewDecision"}
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "FrictionEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "journey_id",
+        "journey_version",
+        "goal_id",
+        "step_id",
+        "intern_id",
+        "error_code",
+        "blocker_type",
+        "attempt_id",
+        "outcome",
+        "instruction_id",
+        "instruction_version",
+        "occurred_at"
+      ],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "journey_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "journey_version": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/PositiveInt"},
+        "goal_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "step_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "intern_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "error_code": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/SafeErrorCode"},
+        "blocker_type": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/BlockerType"},
+        "attempt_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "outcome": {"type": "string", "enum": ["failed", "unavailable"]},
+        "instruction_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "instruction_version": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/PositiveInt"},
+        "occurred_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"}
+      }
+    }
+  }
+}

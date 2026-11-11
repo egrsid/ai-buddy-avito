@@ -11,8 +11,11 @@
 готов; [contract handoff](../docs/team/contract-handoff.md) назначает Backend common/public/
 journey/events/corporate schemas и validation, AI Engineer — AI schemas, Frontend —
 consumer check, TL — окончательный review. RP-CONTRACT-01 остаётся IN_PROGRESS.
-Новые целевые пути перечислены в handoff, сами схемы ещё не созданы. До принятия
-комплекта не начинать runtime на собственной версии DTO.
+Backend положил исполняемые схемы в `contracts/v2/`: common, public, journey, events,
+corporate, их examples и `invalid/backend.json`. Общий offline helper —
+`tests/contract_v2_support.py`; `make check` гоняет v1 и v2 раздельно и не ходит в сеть.
+`ai.schema.json` ещё не написан: его автор — AI Engineer. До записанного TL review
+не начинать v2 runtime на собственной версии DTO.
 
 Текущий make check подтверждает целостность legacy schemas/examples/seed и ссылки,
 а не полноту нового контракта или готовность нового MVP. JSON, SQL, seed и код в рамках

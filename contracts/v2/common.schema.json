@@ -1,0 +1,460 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+  "title": "AI-buddy v2 common definitions",
+  "$comment": "Single source for IDs, State, Error, Source and AccessScope. AI and public schemas must $ref this file.",
+  "$defs": {
+    "Uuid": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "StableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "PositiveInt": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000000
+    },
+    "Timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "Sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "State": {
+      "type": "string",
+      "enum": ["unverified", "ready", "blocked", "waiting_external", "verified"]
+    },
+    "Role": {
+      "type": "string",
+      "enum": ["intern", "buddy", "access_approver", "documentation_owner"]
+    },
+    "Permission": {
+      "type": "string",
+      "enum": [
+        "resource.view",
+        "access.request",
+        "access.check",
+        "access.approve",
+        "db.check",
+        "knowledge.read",
+        "knowledge_gap.review"
+      ]
+    },
+    "RequestedRole": {
+      "type": "string",
+      "enum": ["db_reader"]
+    },
+    "ErrorCode": {
+      "type": "string",
+      "enum": [
+        "INVALID_JSON",
+        "INVALID_REQUEST_ID",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "CSRF_INVALID",
+        "NOT_FOUND",
+        "VERSION_CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "RUN_ACTIVE",
+        "RUN_ALREADY_STARTED",
+        "ACTION_NOT_PENDING",
+        "ACTION_EXPIRED",
+        "VALIDATION_ERROR",
+        "TEMPLATE_INVALID",
+        "ROLE_NOT_REQUESTABLE",
+        "RATE_LIMITED",
+        "UPSTREAM_ERROR",
+        "AI_SCHEMA_INVALID",
+        "UPSTREAM_TIMEOUT",
+        "TOOL_VALIDATION_ERROR",
+        "LLM_TIMEOUT",
+        "LLM_UNAVAILABLE",
+        "STREAM_NOT_OPENED"
+      ]
+    },
+    "SafeErrorCode": {
+      "type": "string",
+      "enum": ["ACCESS_MISSING", "ACCESS_DENIED", "DB_SSL_REQUIRED", "CHECK_UNAVAILABLE"]
+    },
+    "CheckStatus": {
+      "type": "string",
+      "enum": ["queued", "running", "passed", "failed", "unavailable"]
+    },
+    "RunStatus": {
+      "type": "string",
+      "enum": ["queued", "running", "completed", "failed", "cancelled", "interrupted"]
+    },
+    "MessageRole": {
+      "type": "string",
+      "enum": ["user", "assistant"]
+    },
+    "MessageStatus": {
+      "type": "string",
+      "enum": ["completed", "failed", "cancelled", "interrupted"]
+    },
+    "ActionStatus": {
+      "type": "string",
+      "enum": [
+        "pending_confirmation",
+        "executing",
+        "succeeded",
+        "failed",
+        "unknown",
+        "cancelled",
+        "expired"
+      ]
+    },
+    "ActionType": {
+      "type": "string",
+      "enum": ["create_access_request", "escalate_to_buddy"]
+    },
+    "VerificationMethod": {
+      "type": "string",
+      "enum": ["resource_policy_match", "iam_permission_present", "mock_db_connection"]
+    },
+    "SslMode": {
+      "type": "string",
+      "enum": ["disable", "require"]
+    },
+    "GrantState": {
+      "type": "string",
+      "enum": ["absent", "pending", "present", "unknown"]
+    },
+    "SyncStatus": {
+      "type": "string",
+      "enum": ["ok", "unavailable"]
+    },
+    "AccessRequestStatus": {
+      "type": "string",
+      "enum": ["submitted", "approved", "rejected"]
+    },
+    "BlockerStatus": {
+      "type": "string",
+      "enum": ["open", "resolved"]
+    },
+    "BlockerType": {
+      "type": "string",
+      "enum": ["access_missing", "access_denied", "db_ssl_required", "check_unavailable"]
+    },
+    "RecoveryAction": {
+      "type": "string",
+      "enum": ["retry_check", "create_access_request", "escalate_to_buddy"]
+    },
+    "CandidateState": {
+      "type": "string",
+      "enum": ["proposed", "under_review", "accepted", "rejected", "resolved"]
+    },
+    "EnrichmentStatus": {
+      "type": "string",
+      "enum": ["pending", "failed", "completed"]
+    },
+    "EscalationStatus": {
+      "type": "string",
+      "enum": ["open", "resolved"]
+    },
+    "Confidence": {
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    },
+    "EventSource": {
+      "type": "string",
+      "enum": [
+        "go_policy",
+        "mock_iam_adapter",
+        "mock_access_adapter",
+        "mock_db_adapter",
+        "go_buddy_workflow",
+        "go_friction_pipeline",
+        "go_knowledge_gap_review"
+      ]
+    },
+    "EventType": {
+      "type": "string",
+      "enum": [
+        "resource_policy_matched",
+        "resource_access_checked",
+        "access_request_created",
+        "access_request_approved",
+        "access_request_rejected",
+        "resource_access_granted",
+        "db_connection_check_passed",
+        "db_connection_check_failed",
+        "blocker_detected",
+        "buddy_escalated",
+        "buddy_resolved",
+        "knowledge_gap_candidate_created",
+        "knowledge_gap_reviewed"
+      ]
+    },
+    "RejectReasonCode": {
+      "type": "string",
+      "enum": ["NOT_REQUESTABLE", "OUT_OF_SCOPE"]
+    },
+    "ReviewDecision": {
+      "type": "string",
+      "enum": ["under_review", "accepted", "rejected", "resolved"]
+    },
+    "ErrorBody": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "request_id"],
+      "properties": {
+        "code": {"$ref": "#/$defs/ErrorCode"},
+        "message": {"type": "string", "minLength": 1, "maxLength": 500},
+        "request_id": {"$ref": "#/$defs/Uuid"},
+        "fields": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "code"],
+            "properties": {
+              "name": {"$ref": "#/$defs/StableId"},
+              "code": {"type": "string", "minLength": 1, "maxLength": 64}
+            }
+          }
+        }
+      }
+    },
+    "Error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["error"],
+      "properties": {
+        "error": {"$ref": "#/$defs/ErrorBody"}
+      }
+    },
+    "ResourcePermission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resource_id", "permissions"],
+      "properties": {
+        "resource_id": {"$ref": "#/$defs/StableId"},
+        "permissions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/Permission"}
+        }
+      }
+    },
+    "DocumentPermission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document_id", "permissions"],
+      "properties": {
+        "document_id": {"$ref": "#/$defs/Uuid"},
+        "permissions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/Permission"}
+        }
+      }
+    },
+    "AccessScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subject_id",
+        "team_ids",
+        "resource_permissions",
+        "document_permissions",
+        "policy_revision"
+      ],
+      "properties": {
+        "subject_id": {"$ref": "#/$defs/Uuid"},
+        "team_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/StableId"}
+        },
+        "resource_permissions": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {"$ref": "#/$defs/ResourcePermission"}
+        },
+        "document_permissions": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {"$ref": "#/$defs/DocumentPermission"}
+        },
+        "policy_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9._:-]+$"
+        }
+      }
+    },
+    "InstructionRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document_id", "version"],
+      "properties": {
+        "document_id": {"$ref": "#/$defs/Uuid"},
+        "version": {"$ref": "#/$defs/PositiveInt"}
+      }
+    },
+    "Source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document_id", "version", "title", "url", "excerpt"],
+      "properties": {
+        "document_id": {"$ref": "#/$defs/Uuid"},
+        "version": {"$ref": "#/$defs/PositiveInt"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "url": {
+          "type": "string",
+          "pattern": "^/api/v2/knowledge/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "excerpt": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    },
+    "Hypothesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "confidence"],
+      "properties": {
+        "text": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "confidence": {"$ref": "#/$defs/Confidence"}
+      }
+    },
+    "SafeCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "goal_id", "step_id", "method", "status"],
+      "properties": {
+        "id": {"$ref": "#/$defs/Uuid"},
+        "goal_id": {"$ref": "#/$defs/Uuid"},
+        "step_id": {"$ref": "#/$defs/StableId"},
+        "method": {"$ref": "#/$defs/VerificationMethod"},
+        "status": {"$ref": "#/$defs/CheckStatus"},
+        "error_code": {"$ref": "#/$defs/SafeErrorCode"},
+        "observed_at": {"$ref": "#/$defs/Timestamp"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"status": {"enum": ["failed", "unavailable"]}},
+            "required": ["status"]
+          },
+          "then": {"required": ["error_code", "observed_at"]}
+        },
+        {
+          "if": {
+            "properties": {"status": {"const": "passed"}},
+            "required": ["status"]
+          },
+          "then": {
+            "required": ["observed_at"],
+            "properties": {"error_code": false}
+          }
+        },
+        {
+          "if": {
+            "properties": {"status": {"const": "running"}},
+            "required": ["status"]
+          },
+          "then": {"properties": {"error_code": false}}
+        },
+        {
+          "if": {
+            "properties": {"status": {"const": "queued"}},
+            "required": ["status"]
+          },
+          "then": {"properties": {"error_code": false, "observed_at": false}}
+        }
+      ]
+    },
+    "AttemptedAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action_id", "type", "status"],
+      "properties": {
+        "action_id": {"$ref": "#/$defs/Uuid"},
+        "type": {"$ref": "#/$defs/ActionType"},
+        "status": {"$ref": "#/$defs/ActionStatus"}
+      }
+    },
+    "DiagnosticSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "goal",
+        "step",
+        "blocker",
+        "checks",
+        "attempted_actions",
+        "instruction_refs",
+        "hypotheses",
+        "question"
+      ],
+      "properties": {
+        "goal": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "title"],
+          "properties": {
+            "id": {"$ref": "#/$defs/Uuid"},
+            "title": {"type": "string", "minLength": 1, "maxLength": 200}
+          }
+        },
+        "step": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "title"],
+          "properties": {
+            "id": {"$ref": "#/$defs/StableId"},
+            "title": {"type": "string", "minLength": 1, "maxLength": 200}
+          }
+        },
+        "blocker": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "type", "error_code"],
+          "properties": {
+            "id": {"$ref": "#/$defs/Uuid"},
+            "type": {"$ref": "#/$defs/BlockerType"},
+            "error_code": {"$ref": "#/$defs/SafeErrorCode"}
+          }
+        },
+        "checks": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {"$ref": "#/$defs/SafeCheck"}
+        },
+        "attempted_actions": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {"$ref": "#/$defs/AttemptedAction"}
+        },
+        "instruction_refs": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {"$ref": "#/$defs/Source"}
+        },
+        "hypotheses": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {"$ref": "#/$defs/Hypothesis"}
+        },
+        "question": {"type": "string", "minLength": 1, "maxLength": 4000}
+      }
+    }
+  }
+}

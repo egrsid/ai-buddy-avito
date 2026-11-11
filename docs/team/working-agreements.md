@@ -8,7 +8,7 @@ Backend, AI Engineer, Frontend, Fullstack–QA–Integration — остальн�
 | Участник | Основная работа | Review | Рабочая база |
 |---|---|---|---|
 | TL | Архитектура/API policy, contract gate, общие scripts/infra/CI, интеграция и demo | BE/AI/FE для своих контрактов; TL окончательно сводит | feature/team-start-foundation, существует |
-| Backend | Go app + corporate mock, app/corporate migrations/seed, public/corporate/journey/events schemas и свои tests | AI на Go↔AI, FE на public DTO, TL на границы | feature/backend-mvp-v2, только план |
+| Backend | Go app + corporate mock, app/corporate migrations/seed, public/corporate/journey/events schemas и свои tests | AI на Go↔AI, FE на public DTO, TL на границы | feature/backend-mvp-v2, локально, не опубликована |
 | AI Engineer | AI schemas/service, kb migrations/knowledge ACL fixtures, provider/fallback/RAG/drafts/summaries/evals, свои tests | Backend и TL по границам | feature/ai-mvp-v2, только план |
 | Frontend | UI/typed DTO consumption, component tests и полный browser E2E | Backend по DTO, TL по общему demo | feature/frontend-mvp-v2, только план |
 | Fullstack–QA–Integration | **Только RP-QA-01:** адаптировать два существующих API-теста и QA-план | Backend проверяет API semantics; TL принимает отчёт | feature/qa-01-m1, существует на GitHub |

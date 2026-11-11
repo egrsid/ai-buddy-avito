@@ -22,7 +22,10 @@ Backend не придумывает prompting/AI implementation. Common definiti
 Backend, AI сообщает необходимые поля. Ни один reviewer не считается согласовавшим файл
 по умолчанию; отсутствие замечаний без review не является acceptance.
 
-## Целевые файлы (ещё не созданы)
+## Целевые файлы
+
+Backend-файлы ниже лежат локально и проходят offline-проверку. AI schema, frontend bindings
+и запись TL review ещё не сделаны.
 
 | Файл / зона | Автор | Потребитель/reviewer |
 |---|---|---|
@@ -55,8 +58,9 @@ dependencies не добавлять без необходимости: jsonsche
 ## Чек-лист результата
 
 - [x] TL baseline и роли/границы/версии зафиксированы по поручению владельца.
-- [ ] Backend: все public/corporate/template/event cases + common schema, локальный registry;
+- [x] Backend: все public/corporate/template/event cases + common schema, локальный registry;
   Error содержит INVALID_REQUEST_ID, HTTP fixtures соответствуют порядку token/header/JSON/schema.
+  Локальная проверка пройдена. Это не TL review и не закрывает parent RP-CONTRACT-01.
 - [ ] AI: все generate/structured/knowledge schemas, positive/negative payloads,
   tool.proposed/generation.completed и internal Error; Source.url строго /api/v2/knowledge/{id}.
 - [ ] BE↔AI: scopes/refs/tool.proposed/generation.completed и safe draft проверены обеими сторонами;
@@ -67,8 +71,8 @@ dependencies не добавлять без необходимости: jsonsche
 - [ ] Владелец включил принятый baseline в назначенные рабочие ветки; потребители видят одну версию.
 
 RP-CONTRACT-01 DONE после всех технических пунктов, включая записанный финальный TL review; публикация/доставка
-базы — отдельный организационный gate владельца перед общей реализацией. В текущем
-поручении нет ни внешнего review, ни новых schemas, ни утверждения, что v2 проверки прошли.
+базы — отдельный организационный gate владельца перед общей реализацией. Backend schemas
+и offline-проверка v2 уже есть локально. Внешнего review нет, AI/FE схемы и общий gate не закрыты.
 
 ## Кто начинает сейчас
 

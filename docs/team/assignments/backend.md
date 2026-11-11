@@ -1,8 +1,8 @@
 # Назначение: Backend
 
 Роль назначена пользователем; личный handle не указан. Планируемая ветка
-**feature/backend-mvp-v2 ещё не создана**. Владелец подготовит её от опубликованной
-feature/team-start-foundation. Чужие ветки/каталоги не менять. [Ветки](../branches.md).
+**feature/backend-mvp-v2 создана локально** от опубликованной feature/team-start-foundation
+и не отправлена на remote. Чужие ветки/каталоги не менять. [Ветки](../branches.md).
 
 ## Начать с RP-CONTRACT-BE-01
 

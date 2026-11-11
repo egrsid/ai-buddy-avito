@@ -1,0 +1,378 @@
+[
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Uuid",
+    "payload": "0000000a-0000-4000-8000-00000000000a"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "StableId",
+    "payload": "team-a"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "PositiveInt",
+    "payload": 1
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Timestamp",
+    "payload": "2026-11-11T09:00:00Z"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Sha256",
+    "payload": "abababababababababababababababababababababababababababababababab"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "State",
+    "payload": "unverified"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Role",
+    "payload": "intern"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Permission",
+    "payload": "resource.view"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "RequestedRole",
+    "payload": "db_reader"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "ErrorCode",
+    "payload": "INVALID_JSON"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "SafeErrorCode",
+    "payload": "ACCESS_MISSING"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "CheckStatus",
+    "payload": "queued"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "RunStatus",
+    "payload": "queued"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "MessageRole",
+    "payload": "user"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "MessageStatus",
+    "payload": "completed"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "ActionStatus",
+    "payload": "pending_confirmation"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "ActionType",
+    "payload": "create_access_request"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "VerificationMethod",
+    "payload": "resource_policy_match"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "SslMode",
+    "payload": "disable"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "GrantState",
+    "payload": "absent"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "SyncStatus",
+    "payload": "ok"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "AccessRequestStatus",
+    "payload": "submitted"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "BlockerStatus",
+    "payload": "open"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "BlockerType",
+    "payload": "access_missing"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "RecoveryAction",
+    "payload": "retry_check"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "CandidateState",
+    "payload": "proposed"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "EnrichmentStatus",
+    "payload": "pending"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "EscalationStatus",
+    "payload": "open"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Confidence",
+    "payload": "low"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "EventSource",
+    "payload": "go_policy"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "EventType",
+    "payload": "resource_policy_matched"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "RejectReasonCode",
+    "payload": "NOT_REQUESTABLE"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "ReviewDecision",
+    "payload": "under_review"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "ErrorBody",
+    "payload": {
+      "code": "INVALID_REQUEST_ID",
+      "message": "X-Request-ID must be a single UUID.",
+      "request_id": "00000046-0000-4000-8000-000000000046"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Error",
+    "payload": {
+      "error": {
+        "code": "UNAUTHENTICATED",
+        "message": "Service token is missing.",
+        "request_id": "00000046-0000-4000-8000-000000000046"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Error",
+    "payload": {
+      "error": {
+        "code": "INVALID_REQUEST_ID",
+        "message": "X-Request-ID must be a single UUID.",
+        "request_id": "00000046-0000-4000-8000-000000000046"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Error",
+    "payload": {
+      "error": {
+        "code": "INVALID_JSON",
+        "message": "Request body is not JSON.",
+        "request_id": "00000046-0000-4000-8000-000000000046"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Error",
+    "payload": {
+      "error": {
+        "code": "VALIDATION_ERROR",
+        "message": "Request does not match the schema.",
+        "request_id": "00000046-0000-4000-8000-000000000046",
+        "fields": [
+          {
+            "name": "method",
+            "code": "required"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "ResourcePermission",
+    "payload": {
+      "resource_id": "db-team-a-test",
+      "permissions": [
+        "resource.view",
+        "db.check"
+      ]
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "DocumentPermission",
+    "payload": {
+      "document_id": "0000000a-0000-4000-8000-00000000000a",
+      "permissions": [
+        "knowledge.read"
+      ]
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "AccessScope",
+    "payload": {
+      "subject_id": "00000001-0000-4000-8000-000000000001",
+      "team_ids": [
+        "team-a"
+      ],
+      "resource_permissions": [
+        {
+          "resource_id": "db-team-a-test",
+          "permissions": [
+            "resource.view",
+            "access.request",
+            "db.check"
+          ]
+        }
+      ],
+      "document_permissions": [
+        {
+          "document_id": "0000000a-0000-4000-8000-00000000000a",
+          "permissions": [
+            "knowledge.read"
+          ]
+        }
+      ],
+      "policy_revision": "policy-2026-11-11"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "InstructionRef",
+    "payload": {
+      "document_id": "0000000a-0000-4000-8000-00000000000a",
+      "version": 1
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Source",
+    "payload": {
+      "document_id": "0000000a-0000-4000-8000-00000000000a",
+      "version": 1,
+      "title": "Синтетическая инструкция подключения",
+      "url": "/api/v2/knowledge/0000000a-0000-4000-8000-00000000000a",
+      "excerpt": "Синтетический фрагмент: для учебной БД нужен sslmode=require."
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Hypothesis",
+    "payload": {
+      "text": "Инструкция не требует SSL.",
+      "confidence": "medium"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "SafeCheck",
+    "payload": {
+      "id": "00000014-0000-4000-8000-000000000014",
+      "goal_id": "0000001e-0000-4000-8000-00000000001e",
+      "step_id": "check_connection",
+      "method": "mock_db_connection",
+      "status": "failed",
+      "error_code": "DB_SSL_REQUIRED",
+      "observed_at": "2026-11-11T09:00:00Z"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "AttemptedAction",
+    "payload": {
+      "action_id": "0000003c-0000-4000-8000-00000000003c",
+      "type": "create_access_request",
+      "status": "succeeded"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "DiagnosticSnapshot",
+    "payload": {
+      "goal": {
+        "id": "0000001e-0000-4000-8000-00000000001e",
+        "title": "Доступ к синтетической БД"
+      },
+      "step": {
+        "id": "check_connection",
+        "title": "Проверить подключение"
+      },
+      "blocker": {
+        "id": "00000028-0000-4000-8000-000000000028",
+        "type": "db_ssl_required",
+        "error_code": "DB_SSL_REQUIRED"
+      },
+      "checks": [
+        {
+          "id": "00000014-0000-4000-8000-000000000014",
+          "goal_id": "0000001e-0000-4000-8000-00000000001e",
+          "step_id": "check_connection",
+          "method": "mock_db_connection",
+          "status": "failed",
+          "error_code": "DB_SSL_REQUIRED",
+          "observed_at": "2026-11-11T09:00:00Z"
+        }
+      ],
+      "attempted_actions": [
+        {
+          "action_id": "0000003c-0000-4000-8000-00000000003c",
+          "type": "create_access_request",
+          "status": "succeeded"
+        }
+      ],
+      "instruction_refs": [
+        {
+          "document_id": "0000000a-0000-4000-8000-00000000000a",
+          "version": 1,
+          "title": "Синтетическая инструкция подключения",
+          "url": "/api/v2/knowledge/0000000a-0000-4000-8000-00000000000a",
+          "excerpt": "Синтетический фрагмент: для учебной БД нужен sslmode=require."
+        }
+      ],
+      "hypotheses": [
+        {
+          "text": "Инструкция не требует SSL.",
+          "confidence": "medium"
+        }
+      ],
+      "question": "Как включить SSL для синтетической БД?"
+    }
+  }
+]
