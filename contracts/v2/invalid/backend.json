@@ -545,5 +545,87 @@
       "resource_id": "db-team-a-test",
       "requested_role": "admin"
     }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "Run",
+    "case_id": "public-cancelled-has-error",
+    "expected_error_keyword": "False schema",
+    "payload": {
+      "id": "00000122-0000-4000-8000-000000000122",
+      "conversation_id": "00000032-0000-4000-8000-000000000032",
+      "user_message_id": "00000033-0000-4000-8000-000000000033",
+      "status": "cancelled",
+      "action_ids": [],
+      "created_at": "2026-11-11T09:00:00Z",
+      "updated_at": "2026-11-11T09:00:00Z",
+      "error_code": "CLIENT_DISCONNECTED"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "Run",
+    "case_id": "public-interrupted-missing-code",
+    "expected_error_keyword": "required",
+    "payload": {
+      "id": "00000123-0000-4000-8000-000000000123",
+      "conversation_id": "00000032-0000-4000-8000-000000000032",
+      "user_message_id": "00000033-0000-4000-8000-000000000033",
+      "status": "interrupted",
+      "action_ids": [],
+      "created_at": "2026-11-11T09:00:00Z",
+      "updated_at": "2026-11-11T09:00:00Z"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "Run",
+    "case_id": "public-interrupted-wrong-code",
+    "expected_error_keyword": "enum",
+    "payload": {
+      "id": "00000124-0000-4000-8000-000000000124",
+      "conversation_id": "00000032-0000-4000-8000-000000000032",
+      "user_message_id": "00000033-0000-4000-8000-000000000033",
+      "status": "interrupted",
+      "action_ids": [],
+      "created_at": "2026-11-11T09:00:00Z",
+      "updated_at": "2026-11-11T09:00:00Z",
+      "error_code": "UPSTREAM_TIMEOUT"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "Message",
+    "case_id": "public-empty-assistant-content",
+    "expected_error_keyword": "minLength",
+    "payload": {
+      "id": "00000033-0000-4000-8000-000000000033",
+      "conversation_id": "00000032-0000-4000-8000-000000000032",
+      "role": "user",
+      "content": "",
+      "status": "completed",
+      "sources": [],
+      "created_at": "2026-11-11T09:00:00Z"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "ResourceAccess",
+    "case_id": "public-access-without-observation",
+    "expected_error_keyword": "required",
+    "payload": {
+      "grant_state": "absent",
+      "stale": false
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "ResourceAccess",
+    "case_id": "public-unknown-access-not-stale",
+    "expected_error_keyword": "required",
+    "payload": {
+      "grant_state": "unknown",
+      "stale": false
+    }
   }
 ]

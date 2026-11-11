@@ -374,5 +374,148 @@
       ],
       "question": "Как включить SSL для синтетической БД?"
     }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Error",
+    "payload": {
+      "error": {
+        "code": "VERSION_CONFLICT",
+        "message": "Синтетическая ошибка VERSION_CONFLICT.",
+        "request_id": "00000046-0000-4000-8000-000000000046"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Error",
+    "payload": {
+      "error": {
+        "code": "ACTION_EXPIRED",
+        "message": "Синтетическая ошибка ACTION_EXPIRED.",
+        "request_id": "00000046-0000-4000-8000-000000000046"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Error",
+    "payload": {
+      "error": {
+        "code": "ACTION_NOT_PENDING",
+        "message": "Синтетическая ошибка ACTION_NOT_PENDING.",
+        "request_id": "00000046-0000-4000-8000-000000000046"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Error",
+    "payload": {
+      "error": {
+        "code": "RUN_ACTIVE",
+        "message": "Синтетическая ошибка RUN_ACTIVE.",
+        "request_id": "00000046-0000-4000-8000-000000000046"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Error",
+    "payload": {
+      "error": {
+        "code": "RATE_LIMITED",
+        "message": "Синтетическая ошибка RATE_LIMITED.",
+        "request_id": "00000046-0000-4000-8000-000000000046"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Error",
+    "payload": {
+      "error": {
+        "code": "UPSTREAM_ERROR",
+        "message": "Синтетическая ошибка UPSTREAM_ERROR.",
+        "request_id": "00000046-0000-4000-8000-000000000046"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Error",
+    "payload": {
+      "error": {
+        "code": "UPSTREAM_TIMEOUT",
+        "message": "Синтетическая ошибка UPSTREAM_TIMEOUT.",
+        "request_id": "00000046-0000-4000-8000-000000000046"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Error",
+    "payload": {
+      "error": {
+        "code": "AI_SCHEMA_INVALID",
+        "message": "Синтетическая ошибка AI_SCHEMA_INVALID.",
+        "request_id": "00000046-0000-4000-8000-000000000046"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Error",
+    "payload": {
+      "error": {
+        "code": "FORBIDDEN",
+        "message": "Синтетическая ошибка FORBIDDEN.",
+        "request_id": "00000046-0000-4000-8000-000000000046"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Error",
+    "payload": {
+      "error": {
+        "code": "NOT_FOUND",
+        "message": "Синтетическая ошибка NOT_FOUND.",
+        "request_id": "00000046-0000-4000-8000-000000000046"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Error",
+    "payload": {
+      "error": {
+        "code": "CSRF_INVALID",
+        "message": "Синтетическая ошибка CSRF_INVALID.",
+        "request_id": "00000046-0000-4000-8000-000000000046"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Error",
+    "payload": {
+      "error": {
+        "code": "ROLE_NOT_REQUESTABLE",
+        "message": "Синтетическая ошибка ROLE_NOT_REQUESTABLE.",
+        "request_id": "00000046-0000-4000-8000-000000000046"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Error",
+    "payload": {
+      "error": {
+        "code": "TEMPLATE_INVALID",
+        "message": "Синтетическая ошибка TEMPLATE_INVALID.",
+        "request_id": "00000046-0000-4000-8000-000000000046"
+      }
+    }
   }
 ]
