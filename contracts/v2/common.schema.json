@@ -78,7 +78,8 @@
         "TOOL_VALIDATION_ERROR",
         "LLM_TIMEOUT",
         "LLM_UNAVAILABLE",
-        "STREAM_NOT_OPENED"
+        "STREAM_NOT_OPENED",
+        "CLIENT_DISCONNECTED"
       ]
     },
     "SafeErrorCode": {

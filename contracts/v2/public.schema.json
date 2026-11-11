@@ -362,13 +362,31 @@
     },
     "ResourceAccess": {
       "type": "object",
+      "$comment": "До первой проверки: grant_state unknown, stale true, observed_at отсутствует. После проверки observed_at обязателен.",
       "additionalProperties": false,
-      "required": ["grant_state", "observed_at", "stale"],
+      "required": ["grant_state", "stale"],
       "properties": {
         "grant_state": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/GrantState"},
         "observed_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"},
         "stale": {"type": "boolean"}
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {"grant_state": {"enum": ["absent", "pending", "present"]}},
+                "required": ["grant_state"]
+              },
+              {
+                "properties": {"stale": {"const": false}},
+                "required": ["stale"]
+              }
+            ]
+          },
+          "then": {"required": ["observed_at"]}
+        }
+      ]
     },
     "KnowledgeDocument": {
       "type": "object",
@@ -461,7 +479,12 @@
         "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
         "conversation_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
         "role": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/MessageRole"},
-        "content": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "$comment": "Пустая строка запрещена. Если токенов не было, Go не сохраняет assistant Message."
+        },
         "status": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/MessageStatus"},
         "run_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
         "sources": {
@@ -494,6 +517,7 @@
     },
     "Run": {
       "type": "object",
+      "$comment": "cancelled без error_code. interrupted требует STREAM_NOT_OPENED или CLIENT_DISCONNECTED. completed всегда ссылается на непустое assistant Message.",
       "additionalProperties": false,
       "required": ["id", "conversation_id", "user_message_id", "status", "action_ids", "created_at", "updated_at"],
       "properties": {
@@ -521,10 +545,29 @@
         },
         {
           "if": {
-            "properties": {"status": {"enum": ["queued", "running", "completed"]}},
+            "properties": {"status": {"const": "interrupted"}},
+            "required": ["status"]
+          },
+          "then": {
+            "required": ["error_code"],
+            "properties": {
+              "error_code": {"enum": ["STREAM_NOT_OPENED", "CLIENT_DISCONNECTED"]}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"status": {"enum": ["queued", "running", "completed", "cancelled"]}},
             "required": ["status"]
           },
           "then": {"properties": {"error_code": false}}
+        },
+        {
+          "if": {
+            "properties": {"status": {"const": "completed"}},
+            "required": ["status"]
+          },
+          "then": {"required": ["assistant_message_id"]}
         }
       ]
     },
