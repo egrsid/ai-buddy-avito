@@ -1,5 +1,8 @@
 """Non-destructive integration checks in an isolated development/CI database."""
 
+import json
+from pathlib import Path
+
 import psycopg
 from psycopg import sql
 
@@ -9,8 +12,26 @@ from scripts.db import connect
 def main() -> None:
     with connect() as connection:
         connection.autocommit = True
-        assert connection.execute("SELECT count(*) FROM app.users").fetchone()[0] == 4
-        assert connection.execute("SELECT count(*) FROM app.tasks").fetchone()[0] == 8
+        data = json.loads(
+            (Path(__file__).resolve().parents[1] / "data/seed/demo.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        # Check seed identities, allowing additional runtime records without a destructive reset.
+        for schema, table, key in (
+            ("app", "users", "users"),
+            ("app", "tasks", "tasks"),
+            ("kb", "documents", "documents"),
+        ):
+            ids = [item["id"] for item in data[key]]
+            assert len(ids) == len(set(ids)), f"Duplicate {key} seed IDs"
+            count = connection.execute(
+                sql.SQL("SELECT count(*) FROM {}.{} WHERE id = ANY(%s::uuid[])").format(
+                    sql.Identifier(schema), sql.Identifier(table)
+                ),
+                (ids,),
+            ).fetchone()[0]
+            assert count == len(ids), f"Missing {schema}.{table} seed IDs"
         for role, own in (
             ("app_service", "app"),
             ("ai_service", "kb"),

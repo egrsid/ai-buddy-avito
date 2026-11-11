@@ -1,0 +1,132 @@
+[
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/corporate.schema.json",
+    "definition": "ResourcePolicy",
+    "payload": {
+      "resource_id": "db-team-a-test",
+      "team_id": "team-a",
+      "title": "Синтетическая БД команды A",
+      "requestable_roles": [
+        "db_reader"
+      ],
+      "approver_ids": [
+        "00000006-0000-4000-8000-000000000006"
+      ],
+      "allowed_verification_methods": [
+        "resource_policy_match",
+        "iam_permission_present",
+        "mock_db_connection"
+      ],
+      "synthetic": true
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/corporate.schema.json",
+    "definition": "ResourcePolicyList",
+    "payload": {
+      "items": [
+        {
+          "resource_id": "db-team-a-test",
+          "team_id": "team-a",
+          "title": "Синтетическая БД команды A",
+          "requestable_roles": [
+            "db_reader"
+          ],
+          "approver_ids": [
+            "00000006-0000-4000-8000-000000000006"
+          ],
+          "allowed_verification_methods": [
+            "resource_policy_match",
+            "iam_permission_present",
+            "mock_db_connection"
+          ],
+          "synthetic": true
+        }
+      ]
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/corporate.schema.json",
+    "definition": "IamAccessCheckRequest",
+    "payload": {
+      "check_id": "00000014-0000-4000-8000-000000000014",
+      "subject_id": "00000001-0000-4000-8000-000000000001",
+      "resource_id": "db-team-a-test",
+      "requested_role": "db_reader"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/corporate.schema.json",
+    "definition": "IamAccessCheckResult",
+    "payload": {
+      "event_id": "00000016-0000-4000-8000-000000000016",
+      "check_id": "00000014-0000-4000-8000-000000000014",
+      "subject_id": "00000001-0000-4000-8000-000000000001",
+      "resource_id": "db-team-a-test",
+      "grant_state": "absent",
+      "synthetic": true,
+      "observed_at": "2026-11-11T09:00:00Z"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/corporate.schema.json",
+    "definition": "AccessRequestCreate",
+    "payload": {
+      "operation_key": "00000047-0000-4000-8000-000000000047",
+      "subject_id": "00000001-0000-4000-8000-000000000001",
+      "resource_id": "db-team-a-test",
+      "requested_role": "db_reader",
+      "reason": "Нужен доступ к синтетической БД команды A."
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/corporate.schema.json",
+    "definition": "AccessRequestRecord",
+    "payload": {
+      "mock_id": "00000048-0000-4000-8000-000000000048",
+      "operation_key": "00000047-0000-4000-8000-000000000047",
+      "status": "submitted",
+      "grant_state": "absent",
+      "synthetic": true
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/corporate.schema.json",
+    "definition": "AccessDecision",
+    "payload": {
+      "decision": "approved",
+      "approver_id": "00000006-0000-4000-8000-000000000006",
+      "reason": "Назначение approver-a подтверждено.",
+      "operation_key": "00000047-0000-4000-8000-000000000047"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/corporate.schema.json",
+    "definition": "DbConnectionCheckRequest",
+    "payload": {
+      "check_id": "00000014-0000-4000-8000-000000000014",
+      "subject_id": "00000001-0000-4000-8000-000000000001",
+      "resource_id": "db-team-a-test",
+      "options": {
+        "ssl_mode": "disable"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/corporate.schema.json",
+    "definition": "DbConnectionCheckResult",
+    "payload": {
+      "event_id": "00000016-0000-4000-8000-000000000016",
+      "check_id": "00000014-0000-4000-8000-000000000014",
+      "subject_id": "00000001-0000-4000-8000-000000000001",
+      "resource_id": "db-team-a-test",
+      "outcome": "failed",
+      "error_code": "DB_SSL_REQUIRED",
+      "safe_options": {
+        "ssl_mode": "disable"
+      },
+      "synthetic": true,
+      "observed_at": "2026-11-11T09:00:00Z"
+    }
+  }
+]

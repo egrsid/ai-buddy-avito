@@ -1,0 +1,631 @@
+[
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "AccessScope",
+    "case_id": "common-unknown-property",
+    "expected_error_keyword": "additionalProperties",
+    "payload": {
+      "subject_id": "00000001-0000-4000-8000-000000000001",
+      "team_ids": [
+        "team-a"
+      ],
+      "resource_permissions": [
+        {
+          "resource_id": "db-team-a-test",
+          "permissions": [
+            "resource.view",
+            "access.request",
+            "db.check"
+          ]
+        }
+      ],
+      "document_permissions": [
+        {
+          "document_id": "0000000a-0000-4000-8000-00000000000a",
+          "permissions": [
+            "knowledge.read"
+          ]
+        }
+      ],
+      "policy_revision": "policy-2026-11-11",
+      "role": "intern"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "State",
+    "case_id": "common-invalid-state",
+    "expected_error_keyword": "enum",
+    "payload": "done"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Role",
+    "case_id": "common-invalid-role",
+    "expected_error_keyword": "enum",
+    "payload": "admin"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "AccessScope",
+    "case_id": "common-missing-scope",
+    "expected_error_keyword": "required",
+    "payload": {
+      "subject_id": "00000001-0000-4000-8000-000000000001",
+      "team_ids": [
+        "team-a"
+      ],
+      "resource_permissions": [
+        {
+          "resource_id": "db-team-a-test",
+          "permissions": [
+            "resource.view",
+            "access.request",
+            "db.check"
+          ]
+        }
+      ],
+      "document_permissions": [
+        {
+          "document_id": "0000000a-0000-4000-8000-00000000000a",
+          "permissions": [
+            "knowledge.read"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Uuid",
+    "case_id": "common-bad-uuid",
+    "expected_error_keyword": "format",
+    "payload": "not-a-uuid"
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Source",
+    "case_id": "common-external-url",
+    "expected_error_keyword": "pattern",
+    "payload": {
+      "document_id": "0000000a-0000-4000-8000-00000000000a",
+      "version": 1,
+      "title": "Синтетическая инструкция подключения",
+      "url": "https://example.invalid/secret",
+      "excerpt": "Синтетический фрагмент: для учебной БД нужен sslmode=require."
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "ErrorBody",
+    "case_id": "common-null-fields",
+    "expected_error_keyword": "type",
+    "payload": {
+      "code": "INVALID_REQUEST_ID",
+      "message": "X-Request-ID must be a single UUID.",
+      "request_id": "00000046-0000-4000-8000-000000000046",
+      "fields": null
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/common.schema.json",
+    "definition": "Timestamp",
+    "case_id": "common-numeric-timestamp",
+    "expected_error_keyword": "type",
+    "payload": 1710000000
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "ActionDraft",
+    "case_id": "public-forbidden-actor",
+    "expected_error_keyword": "additionalProperties",
+    "payload": {
+      "conversation_id": "00000032-0000-4000-8000-000000000032",
+      "goal_id": "0000001e-0000-4000-8000-00000000001e",
+      "step_id": "check_access",
+      "type": "create_access_request",
+      "parameters": {
+        "resource_id": "db-team-a-test",
+        "requested_role": "db_reader",
+        "reason": "Нужен доступ к синтетической БД команды A.",
+        "additional_fields": {}
+      },
+      "user_id": "00000001-0000-4000-8000-000000000001"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "ActionDraft",
+    "case_id": "public-forbidden-role",
+    "expected_error_keyword": "additionalProperties",
+    "payload": {
+      "conversation_id": "00000032-0000-4000-8000-000000000032",
+      "goal_id": "0000001e-0000-4000-8000-00000000001e",
+      "step_id": "check_access",
+      "type": "create_access_request",
+      "parameters": {
+        "resource_id": "db-team-a-test",
+        "requested_role": "db_reader",
+        "reason": "Нужен доступ к синтетической БД команды A.",
+        "additional_fields": {}
+      },
+      "role": "intern"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "ActionDraft",
+    "case_id": "public-forbidden-buddy",
+    "expected_error_keyword": "additionalProperties",
+    "payload": {
+      "conversation_id": "00000032-0000-4000-8000-000000000032",
+      "goal_id": "0000001e-0000-4000-8000-00000000001e",
+      "step_id": "check_access",
+      "type": "create_access_request",
+      "parameters": {
+        "resource_id": "db-team-a-test",
+        "requested_role": "db_reader",
+        "reason": "Нужен доступ к синтетической БД команды A.",
+        "additional_fields": {}
+      },
+      "buddy_id": "00000004-0000-4000-8000-000000000004"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "ActionDraft",
+    "case_id": "public-forbidden-state",
+    "expected_error_keyword": "additionalProperties",
+    "payload": {
+      "conversation_id": "00000032-0000-4000-8000-000000000032",
+      "goal_id": "0000001e-0000-4000-8000-00000000001e",
+      "step_id": "check_access",
+      "type": "create_access_request",
+      "parameters": {
+        "resource_id": "db-team-a-test",
+        "requested_role": "db_reader",
+        "reason": "Нужен доступ к синтетической БД команды A.",
+        "additional_fields": {}
+      },
+      "state": "verified"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "CheckCreateRequest",
+    "case_id": "public-sql-option",
+    "expected_error_keyword": "additionalProperties",
+    "payload": {
+      "method": "mock_db_connection",
+      "options": {
+        "ssl_mode": "disable",
+        "sql": "select 1"
+      },
+      "expected_version": 1
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "CheckCreateRequest",
+    "case_id": "public-dsn-option",
+    "expected_error_keyword": "additionalProperties",
+    "payload": {
+      "method": "mock_db_connection",
+      "options": {
+        "ssl_mode": "disable",
+        "dsn": "postgres://db"
+      },
+      "expected_version": 1
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "AccessRequestParameters",
+    "case_id": "public-role-not-requestable",
+    "expected_error_keyword": "enum",
+    "payload": {
+      "resource_id": "db-team-a-test",
+      "requested_role": "write",
+      "reason": "Нужен доступ к синтетической БД команды A.",
+      "additional_fields": {}
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "ActionDraft",
+    "case_id": "public-incomplete-draft",
+    "expected_error_keyword": "required",
+    "payload": {
+      "conversation_id": "00000032-0000-4000-8000-000000000032",
+      "goal_id": "0000001e-0000-4000-8000-00000000001e",
+      "step_id": "check_access",
+      "type": "create_access_request",
+      "parameters": {
+        "resource_id": "db-team-a-test",
+        "requested_role": "db_reader",
+        "additional_fields": {}
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "AccessRequestParameters",
+    "case_id": "public-additional-fields",
+    "expected_error_keyword": "additionalProperties",
+    "payload": {
+      "resource_id": "db-team-a-test",
+      "requested_role": "db_reader",
+      "reason": "Нужен доступ к синтетической БД команды A.",
+      "additional_fields": {
+        "note": "extra"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "GoalCreateRequest",
+    "case_id": "public-version-zero",
+    "expected_error_keyword": "minimum",
+    "payload": {
+      "journey_id": "db-access-team-a",
+      "journey_version": 0
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "ConversationCreateRequest",
+    "case_id": "public-half-context",
+    "expected_error_keyword": "oneOf",
+    "payload": {
+      "goal_id": "0000001e-0000-4000-8000-00000000001e",
+      "step_id": null
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "RunCreateRequest",
+    "case_id": "public-run-both",
+    "expected_error_keyword": "oneOf",
+    "payload": {
+      "content": "Как проверить подключение?",
+      "retry_of": "00000034-0000-4000-8000-000000000034"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "Step",
+    "case_id": "public-null-claim",
+    "expected_error_keyword": "type",
+    "payload": {
+      "id": "select_resource",
+      "title": "select resource",
+      "description": "Синтетический шаг маршрута.",
+      "dependencies": [],
+      "required_permissions": [
+        "resource.view"
+      ],
+      "instruction_reference": {
+        "document_id": "0000000a-0000-4000-8000-00000000000a",
+        "version": 1
+      },
+      "available_actions": [
+        "retry_check"
+      ],
+      "verification_method": "resource_policy_match",
+      "status": "verified",
+      "version": 1,
+      "evidence": [],
+      "blockers": [],
+      "user_claim": null
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "Goal",
+    "case_id": "public-invalid-goal-state",
+    "expected_error_keyword": "enum",
+    "payload": {
+      "id": "0000001e-0000-4000-8000-00000000001e",
+      "journey_id": "db-access-team-a",
+      "journey_version": 1,
+      "resource_id": "db-team-a-test",
+      "status": "done",
+      "version": 2,
+      "steps": [
+        {
+          "id": "select_resource",
+          "title": "select resource",
+          "description": "Синтетический шаг маршрута.",
+          "dependencies": [],
+          "required_permissions": [
+            "resource.view"
+          ],
+          "instruction_reference": {
+            "document_id": "0000000a-0000-4000-8000-00000000000a",
+            "version": 1
+          },
+          "available_actions": [
+            "retry_check"
+          ],
+          "verification_method": "resource_policy_match",
+          "status": "verified",
+          "version": 1,
+          "evidence": [],
+          "blockers": []
+        },
+        {
+          "id": "check_access",
+          "title": "check access",
+          "description": "Синтетический шаг маршрута.",
+          "dependencies": [
+            {
+              "step_id": "select_resource",
+              "condition": "verified"
+            }
+          ],
+          "required_permissions": [
+            "access.request",
+            "access.check"
+          ],
+          "instruction_reference": {
+            "document_id": "0000000a-0000-4000-8000-00000000000a",
+            "version": 1
+          },
+          "available_actions": [
+            "create_access_request",
+            "retry_check"
+          ],
+          "verification_method": "iam_permission_present",
+          "status": "verified",
+          "version": 1,
+          "evidence": [],
+          "blockers": []
+        },
+        {
+          "id": "check_connection",
+          "title": "check connection",
+          "description": "Синтетический шаг маршрута.",
+          "dependencies": [
+            {
+              "step_id": "check_access",
+              "condition": "verified"
+            }
+          ],
+          "required_permissions": [
+            "db.check"
+          ],
+          "instruction_reference": {
+            "document_id": "0000000a-0000-4000-8000-00000000000a",
+            "version": 1
+          },
+          "available_actions": [
+            "retry_check",
+            "escalate_to_buddy"
+          ],
+          "verification_method": "mock_db_connection",
+          "status": "blocked",
+          "version": 1,
+          "evidence": [],
+          "blockers": []
+        }
+      ],
+      "progress": {
+        "verified": 2,
+        "total": 3,
+        "percent": 66
+      },
+      "updated_at": "2026-11-11T09:00:00Z"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/events.schema.json",
+    "definition": "BusinessEvent",
+    "case_id": "events-wrong-source",
+    "expected_error_keyword": "const",
+    "payload": {
+      "id": "00000065-0000-4000-8000-000000000065",
+      "type": "resource_policy_matched",
+      "schema_version": 1,
+      "occurred_at": "2026-11-11T09:00:00Z",
+      "source": "mock_db_adapter",
+      "entity": {
+        "type": "check",
+        "id": "00000014-0000-4000-8000-000000000014"
+      },
+      "correlation_id": "00000050-0000-4000-8000-000000000050",
+      "payload": {
+        "check_id": "00000014-0000-4000-8000-000000000014",
+        "goal_id": "0000001e-0000-4000-8000-00000000001e",
+        "step_id": "select_resource",
+        "subject_id": "00000001-0000-4000-8000-000000000001",
+        "resource_id": "db-team-a-test",
+        "policy_revision": "policy-2026-11-11"
+      },
+      "synthetic": true
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/events.schema.json",
+    "definition": "BusinessEvent",
+    "case_id": "events-payload-chat",
+    "expected_error_keyword": "additionalProperties",
+    "payload": {
+      "id": "00000065-0000-4000-8000-000000000065",
+      "type": "resource_policy_matched",
+      "schema_version": 1,
+      "occurred_at": "2026-11-11T09:00:00Z",
+      "source": "go_policy",
+      "entity": {
+        "type": "check",
+        "id": "00000014-0000-4000-8000-000000000014"
+      },
+      "correlation_id": "00000050-0000-4000-8000-000000000050",
+      "payload": {
+        "check_id": "00000014-0000-4000-8000-000000000014",
+        "goal_id": "0000001e-0000-4000-8000-00000000001e",
+        "step_id": "select_resource",
+        "subject_id": "00000001-0000-4000-8000-000000000001",
+        "resource_id": "db-team-a-test",
+        "policy_revision": "policy-2026-11-11",
+        "chat": "secret"
+      },
+      "synthetic": true
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/journey.schema.json",
+    "definition": "TemplateStep",
+    "case_id": "journey-unknown-method",
+    "expected_error_keyword": "enum",
+    "payload": {
+      "id": "select_resource",
+      "title": "Выбрать ресурс",
+      "description": "Только разрешённый синтетический ресурс.",
+      "dependencies": [],
+      "required_permissions": [
+        "resource.view"
+      ],
+      "instruction_reference": {
+        "document_id": "0000000a-0000-4000-8000-00000000000a",
+        "version": 1
+      },
+      "available_actions": [
+        "retry_check"
+      ],
+      "verification_method": "manual_done"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/journey.schema.json",
+    "definition": "TemplateStep",
+    "case_id": "journey-runtime-status",
+    "expected_error_keyword": "additionalProperties",
+    "payload": {
+      "id": "select_resource",
+      "title": "Выбрать ресурс",
+      "description": "Только разрешённый синтетический ресурс.",
+      "dependencies": [],
+      "required_permissions": [
+        "resource.view"
+      ],
+      "instruction_reference": {
+        "document_id": "0000000a-0000-4000-8000-00000000000a",
+        "version": 1
+      },
+      "available_actions": [
+        "retry_check"
+      ],
+      "verification_method": "resource_policy_match",
+      "status": "verified"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/corporate.schema.json",
+    "definition": "DbConnectionCheckRequest",
+    "case_id": "corporate-sql-option",
+    "expected_error_keyword": "additionalProperties",
+    "payload": {
+      "check_id": "00000014-0000-4000-8000-000000000014",
+      "subject_id": "00000001-0000-4000-8000-000000000001",
+      "resource_id": "db-team-a-test",
+      "options": {
+        "ssl_mode": "disable",
+        "sql": "select 1"
+      }
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/corporate.schema.json",
+    "definition": "IamAccessCheckRequest",
+    "case_id": "corporate-write-role",
+    "expected_error_keyword": "enum",
+    "payload": {
+      "check_id": "00000014-0000-4000-8000-000000000014",
+      "subject_id": "00000001-0000-4000-8000-000000000001",
+      "resource_id": "db-team-a-test",
+      "requested_role": "admin"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "Run",
+    "case_id": "public-cancelled-has-error",
+    "expected_error_keyword": "False schema",
+    "payload": {
+      "id": "00000122-0000-4000-8000-000000000122",
+      "conversation_id": "00000032-0000-4000-8000-000000000032",
+      "user_message_id": "00000033-0000-4000-8000-000000000033",
+      "status": "cancelled",
+      "action_ids": [],
+      "created_at": "2026-11-11T09:00:00Z",
+      "updated_at": "2026-11-11T09:00:00Z",
+      "error_code": "CLIENT_DISCONNECTED"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "Run",
+    "case_id": "public-interrupted-missing-code",
+    "expected_error_keyword": "required",
+    "payload": {
+      "id": "00000123-0000-4000-8000-000000000123",
+      "conversation_id": "00000032-0000-4000-8000-000000000032",
+      "user_message_id": "00000033-0000-4000-8000-000000000033",
+      "status": "interrupted",
+      "action_ids": [],
+      "created_at": "2026-11-11T09:00:00Z",
+      "updated_at": "2026-11-11T09:00:00Z"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "Run",
+    "case_id": "public-interrupted-wrong-code",
+    "expected_error_keyword": "enum",
+    "payload": {
+      "id": "00000124-0000-4000-8000-000000000124",
+      "conversation_id": "00000032-0000-4000-8000-000000000032",
+      "user_message_id": "00000033-0000-4000-8000-000000000033",
+      "status": "interrupted",
+      "action_ids": [],
+      "created_at": "2026-11-11T09:00:00Z",
+      "updated_at": "2026-11-11T09:00:00Z",
+      "error_code": "UPSTREAM_TIMEOUT"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "Message",
+    "case_id": "public-empty-assistant-content",
+    "expected_error_keyword": "minLength",
+    "payload": {
+      "id": "00000033-0000-4000-8000-000000000033",
+      "conversation_id": "00000032-0000-4000-8000-000000000032",
+      "role": "user",
+      "content": "",
+      "status": "completed",
+      "sources": [],
+      "created_at": "2026-11-11T09:00:00Z"
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "ResourceAccess",
+    "case_id": "public-access-without-observation",
+    "expected_error_keyword": "required",
+    "payload": {
+      "grant_state": "absent",
+      "stale": false
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "ResourceAccess",
+    "case_id": "public-unknown-access-not-stale",
+    "expected_error_keyword": "required",
+    "payload": {
+      "grant_state": "unknown",
+      "stale": false
+    }
+  }
+]
