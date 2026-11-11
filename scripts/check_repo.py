@@ -9,6 +9,8 @@ import yaml
 from jsonschema import Draft202012Validator, FormatChecker
 from pglast import parse_sql
 
+from tests.contract_v2_support import check_backend_contracts
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -71,6 +73,7 @@ def main() -> None:
     assert not errors, "\n".join(errors)
     for example in json.loads((ROOT / "contracts/examples.json").read_text()):
         validator(example["schema"]).validate(example["payload"])
+    check_backend_contracts()
     check_seed()
     migrations = [
         *ROOT.glob("backend/migrations/*.sql"),
@@ -89,7 +92,8 @@ def main() -> None:
         "mock-services",
         "frontend",
     }
-    print("Docs, JSON Schema examples, seed, SQL syntax and Compose YAML: OK")
+    print("Docs, legacy v1 examples, seed, SQL syntax and Compose YAML: OK")
+    print("Backend v2 contracts: OK")
 
 
 if __name__ == "__main__":

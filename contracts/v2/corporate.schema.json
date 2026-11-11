@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-buddy.invalid/contracts/v2/corporate.schema.json",
+  "title": "AI-buddy v2 corporate mock payloads",
+  "$comment": "Internal mock DTOs. No SQL, DSN or host. Public browser faults are not fields of these bodies.",
+  "$defs": {
+    "ResourcePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "resource_id",
+        "team_id",
+        "title",
+        "requestable_roles",
+        "approver_ids",
+        "allowed_verification_methods",
+        "synthetic"
+      ],
+      "properties": {
+        "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "team_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "requestable_roles": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/RequestedRole"}
+        },
+        "approver_ids": {
+          "type": "array",
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+        },
+        "allowed_verification_methods": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/VerificationMethod"}
+        },
+        "synthetic": {"const": true}
+      }
+    },
+    "ResourcePolicyList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items"],
+      "properties": {
+        "items": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/ResourcePolicy"}}
+      }
+    },
+    "IamAccessCheckRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check_id", "subject_id", "resource_id", "requested_role"],
+      "properties": {
+        "check_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "subject_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "requested_role": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/RequestedRole"}
+      }
+    },
+    "IamAccessCheckResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "check_id", "subject_id", "resource_id", "grant_state", "synthetic", "observed_at"],
+      "properties": {
+        "event_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "check_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "subject_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "grant_state": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/GrantState"},
+        "synthetic": {"const": true},
+        "observed_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"}
+      }
+    },
+    "AccessRequestCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation_key", "subject_id", "resource_id", "requested_role", "reason"],
+      "properties": {
+        "operation_key": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "subject_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "requested_role": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/RequestedRole"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 1000}
+      }
+    },
+    "AccessRequestRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mock_id", "operation_key", "status", "grant_state", "synthetic"],
+      "properties": {
+        "mock_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "operation_key": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "status": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/AccessRequestStatus"},
+        "grant_state": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/GrantState"},
+        "synthetic": {"const": true}
+      }
+    },
+    "AccessDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "approver_id", "reason", "operation_key"],
+      "properties": {
+        "decision": {"type": "string", "enum": ["approved", "rejected"]},
+        "approver_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "operation_key": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+      }
+    },
+    "DbConnectionCheckRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check_id", "subject_id", "resource_id", "options"],
+      "properties": {
+        "check_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "subject_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "options": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ssl_mode"],
+          "properties": {
+            "ssl_mode": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/SslMode"}
+          }
+        }
+      }
+    },
+    "DbConnectionCheckResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "check_id", "subject_id", "resource_id", "outcome", "synthetic", "observed_at"],
+      "properties": {
+        "event_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "check_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "subject_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "outcome": {"type": "string", "enum": ["passed", "failed", "unavailable"]},
+        "error_code": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/SafeErrorCode"},
+        "safe_options": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ssl_mode"],
+          "properties": {
+            "ssl_mode": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/SslMode"}
+          }
+        },
+        "synthetic": {"const": true},
+        "observed_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"outcome": {"const": "passed"}}, "required": ["outcome"]},
+          "then": {
+            "required": ["safe_options"],
+            "properties": {"error_code": false}
+          }
+        },
+        {
+          "if": {"properties": {"outcome": {"const": "failed"}}, "required": ["outcome"]},
+          "then": {
+            "required": ["error_code", "safe_options"],
+            "properties": {
+              "error_code": {"enum": ["DB_SSL_REQUIRED", "ACCESS_DENIED"]}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"outcome": {"const": "unavailable"}}, "required": ["outcome"]},
+          "then": {
+            "required": ["error_code"],
+            "properties": {"error_code": {"const": "CHECK_UNAVAILABLE"}}
+          }
+        }
+      ]
+    }
+  }
+}
