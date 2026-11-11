@@ -43,3 +43,9 @@ infra, data, всей security матрицы или общего browser E2E. �
 GitHub branches/content прочитаны connector-ом; чужие ветки не изменялись и не копировались.
 Ни schemas v2, ни продуктовые функции, ни Compose/E2E acceptance этой задачей не реализованы.
 RP-TEAM-01 DONE; RP-CONTRACT-TL-01 DONE (design), RP-CONTRACT-01 IN_PROGRESS (schemas/review pending).
+
+## Текущий статус вместо первоначального proposed inventory
+
+Все рабочие ветки уже созданы: [inventory](../branches.md). Contract поставки BE/AI и
+FE review существуют; TL свел schemas и проверил bootstrap/infra. Новая точка передачи:
+[TL record](../tl-readiness.md). Обязанности/единственный RP-QA-01 не расширяются.

@@ -41,16 +41,16 @@ IDs действуют и после истечения replay TTL. После 2
 | POST /auth/demo-login | {account_id} | {user,csrf_token}, новая cookie local/test |
 | GET /auth/me | — | {user,csrf_token}; серверные assignments |
 | POST /auth/logout | — | 204, отзывает cookie |
-| GET /journeys | — | Разрешённые JourneySummary[] без закрытых названий |
+| GET /journeys | — | JourneyList={items:JourneySummary[]} без закрытых названий |
 | POST /goals | {journey_id,journey_version} | Goal, сервер привязывает разрешённый ресурс; повтор active возвращает существующий 200 |
-| GET /goals | — | Только свои Goal[] |
+| GET /goals | — | GoalList={items:Goal[]} только свои, с полными steps |
 | GET /goals/{id} | — | Goal со steps/progress |
 | GET /goals/{id}/steps/{step_id} | — | Step, evidence, blockers, safe next action |
-| GET /goals/{id}/steps/{step_id}/actions | — | Только допустимые descriptors действий |
+| GET /goals/{id}/steps/{step_id}/actions | — | StepActionList={items:RecoveryAction[]}; тот же allowlist, что Step.available_actions; schema addition ожидается от BE |
 | POST /goals/{id}/steps/{step_id}/checks | {method,options,expected_version} | 201 Check, выполнение trusted adapter; 409 при старой версии |
 | GET /checks/{id} | — | Только свой безопасный Check, без инфраструктурных секретов |
 | GET /resources | — | Разрешённые safe resource metadata и requestable_roles |
-| GET /resources/{id}/access | — | Последнее {grant_state,observed_at,stale}; новая проверка только POST check |
+| GET /resources/{id}/access | — | Последнее {grant_state,observed_at?,stale}; до первой проверки unknown/stale=true без времени; новая проверка только POST check |
 | GET /knowledge/{id} | — | Scoped KnowledgeDocument или одинаковый 404 |
 
 User={id,account_id,display_name,roles[],team_id,assignments,buddy_id?}; клиент не задаёт
@@ -209,3 +209,15 @@ outcome. Один key/body — тот же объект, другой body —40
 
 Текущие Go/AI/mock /healthz → {status:"ok",service} только liveness. Будущий /readyz проверяет
 свою DB/миграции; наличие health не означает готовность route/IAM/RAG/feedback loop.
+
+## TL review текущего schema snapshot
+
+BE+AI schemas сведены в TL checkout; final consumer acceptance еще открыт.
+[TL решения](../team/tl-readiness.md) закрывают вопросы FE review 3.1–3.9 на уровне policy.
+Error.fields.name — top-level field (для options.ssl_mode имя options). Все lists — {items}.
+Optional поля отсутствуют, explicit null только у заявленных nullable полей.
+Run cancelled не содержит error_code, interrupted требует STREAM_NOT_OPENED/CLIENT_DISCONNECTED,
+completed требует assistant_message_id. Без первого токена assistant Message не создается.
+Action create/read возвращает HTTP Date; TTL UI рассчитывается от серверных часов, а
+confirm всегда повторно проверяется Go. StepActionList и дополнительные invalid null
+fixtures поставляет Backend; FE подтверждает новый typed parsing, gate до этого не DONE.

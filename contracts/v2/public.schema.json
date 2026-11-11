@@ -1,0 +1,1042 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+  "title": "AI-buddy v2 public API payloads",
+  "$comment": "Browser DTO. Enums, Error, Source and AccessScope come only from common.schema.json.",
+  "$defs": {
+    "Assignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resource_id", "role"],
+      "properties": {
+        "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "role": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/RequestedRole"}
+      }
+    },
+    "User": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "account_id", "display_name", "roles", "team_id", "assignments", "buddy_id"],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "account_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "display_name": {"type": "string", "minLength": 1, "maxLength": 80},
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Role"}
+        },
+        "team_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "assignments": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {"$ref": "#/$defs/Assignment"}
+        },
+        "buddy_id": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+          ]
+        }
+      }
+    },
+    "DemoLoginRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["account_id"],
+      "properties": {
+        "account_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"}
+      }
+    },
+    "AuthSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["user", "csrf_token"],
+      "properties": {
+        "user": {"$ref": "#/$defs/User"},
+        "csrf_token": {
+          "type": "string",
+          "minLength": 32,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      }
+    },
+    "JourneySummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["journey_id", "version", "title", "resource_id"],
+      "properties": {
+        "journey_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "version": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/PositiveInt"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"}
+      }
+    },
+    "JourneyList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {"$ref": "#/$defs/JourneySummary"}
+        }
+      }
+    },
+    "GoalCreateRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["journey_id", "journey_version"],
+      "properties": {
+        "journey_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "journey_version": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/PositiveInt"}
+      }
+    },
+    "Progress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verified", "total", "percent"],
+      "properties": {
+        "verified": {"type": "integer", "minimum": 0, "maximum": 100},
+        "total": {"type": "integer", "minimum": 0, "maximum": 100},
+        "percent": {"type": "integer", "minimum": 0, "maximum": 100}
+      }
+    },
+    "Evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "check_id", "event_id", "source", "method", "result", "observed_at", "synthetic"],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "check_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "event_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "source": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/EventSource"},
+        "method": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/VerificationMethod"},
+        "result": {"type": "string", "enum": ["passed", "failed", "absent"]},
+        "observed_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"},
+        "invalidated_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"},
+        "synthetic": {"const": true}
+      }
+    },
+    "Blocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "error_code", "status", "latest_check_id", "recovery_actions"],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "type": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/BlockerType"},
+        "error_code": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/SafeErrorCode"},
+        "status": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/BlockerStatus"},
+        "latest_check_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "recovery_actions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/RecoveryAction"}
+        }
+      }
+    },
+    "Step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "description",
+        "dependencies",
+        "required_permissions",
+        "instruction_reference",
+        "available_actions",
+        "verification_method",
+        "status",
+        "version",
+        "evidence",
+        "blockers"
+      ],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "description": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "dependencies": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["step_id", "condition"],
+            "properties": {
+              "step_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+              "condition": {"const": "verified"}
+            }
+          }
+        },
+        "required_permissions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Permission"}
+        },
+        "instruction_reference": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/InstructionRef"},
+        "available_actions": {
+          "type": "array",
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/RecoveryAction"}
+        },
+        "verification_method": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/VerificationMethod"},
+        "status": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/State"},
+        "version": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/PositiveInt"},
+        "evidence": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {"$ref": "#/$defs/Evidence"}
+        },
+        "blockers": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {"$ref": "#/$defs/Blocker"}
+        },
+        "user_claim": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    },
+    "Goal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "journey_id",
+        "journey_version",
+        "resource_id",
+        "status",
+        "version",
+        "steps",
+        "progress",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "journey_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "journey_version": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/PositiveInt"},
+        "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "status": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/State"},
+        "version": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/PositiveInt"},
+        "steps": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {"$ref": "#/$defs/Step"}
+        },
+        "progress": {"$ref": "#/$defs/Progress"},
+        "updated_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"}
+      }
+    },
+    "GoalList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items"],
+      "properties": {
+        "items": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/Goal"}}
+      }
+    },
+    "CheckCreateRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "options", "expected_version"],
+      "properties": {
+        "method": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/VerificationMethod"},
+        "options": true,
+        "expected_version": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/PositiveInt"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "method": {"enum": ["resource_policy_match", "iam_permission_present"]}
+            },
+            "required": ["method"]
+          },
+          "then": {
+            "properties": {
+              "options": {"type": "object", "additionalProperties": false, "properties": {}}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"method": {"const": "mock_db_connection"}},
+            "required": ["method"]
+          },
+          "then": {
+            "properties": {
+              "options": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["ssl_mode"],
+                "properties": {
+                  "ssl_mode": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/SslMode"}
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "goal_id", "step_id", "method", "status", "evidence_ids"],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "goal_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "step_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "method": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/VerificationMethod"},
+        "status": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/CheckStatus"},
+        "error_code": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/SafeErrorCode"},
+        "evidence_ids": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+        },
+        "observed_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"status": {"enum": ["failed", "unavailable"]}},
+            "required": ["status"]
+          },
+          "then": {"required": ["error_code", "observed_at"]}
+        },
+        {
+          "if": {
+            "properties": {"status": {"const": "passed"}},
+            "required": ["status"]
+          },
+          "then": {"required": ["observed_at"], "properties": {"error_code": false}}
+        },
+        {
+          "if": {
+            "properties": {"status": {"const": "running"}},
+            "required": ["status"]
+          },
+          "then": {"properties": {"error_code": false}}
+        },
+        {
+          "if": {
+            "properties": {"status": {"const": "queued"}},
+            "required": ["status"]
+          },
+          "then": {"properties": {"error_code": false, "observed_at": false}}
+        }
+      ]
+    },
+    "ResourceSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resource_id", "title", "requestable_roles", "synthetic"],
+      "properties": {
+        "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "requestable_roles": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/RequestedRole"}
+        },
+        "synthetic": {"const": true}
+      }
+    },
+    "ResourceList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items"],
+      "properties": {
+        "items": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/ResourceSummary"}}
+      }
+    },
+    "ResourceAccess": {
+      "type": "object",
+      "$comment": "До первой проверки: grant_state unknown, stale true, observed_at отсутствует. После проверки observed_at обязателен.",
+      "additionalProperties": false,
+      "required": ["grant_state", "stale"],
+      "properties": {
+        "grant_state": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/GrantState"},
+        "observed_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"},
+        "stale": {"type": "boolean"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {"grant_state": {"enum": ["absent", "pending", "present"]}},
+                "required": ["grant_state"]
+              },
+              {
+                "properties": {"stale": {"const": false}},
+                "required": ["stale"]
+              }
+            ]
+          },
+          "then": {"required": ["observed_at"]}
+        }
+      ]
+    },
+    "KnowledgeDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "content", "version", "synthetic"],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "content": {"type": "string", "minLength": 1, "maxLength": 20000},
+        "version": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/PositiveInt"},
+        "synthetic": {"const": true}
+      }
+    },
+    "ConversationCreateRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["goal_id", "step_id"],
+      "properties": {
+        "goal_id": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+          ]
+        },
+        "step_id": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"}
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "goal_id": {"type": "null"},
+            "step_id": {"type": "null"}
+          }
+        },
+        {
+          "properties": {
+            "goal_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+            "step_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"}
+          }
+        }
+      ]
+    },
+    "Conversation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "goal_id", "step_id", "created_at"],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "goal_id": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+          ]
+        },
+        "step_id": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"}
+          ]
+        },
+        "created_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"}
+      },
+      "oneOf": [
+        {"properties": {"goal_id": {"type": "null"}, "step_id": {"type": "null"}}},
+        {
+          "properties": {
+            "goal_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+            "step_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"}
+          }
+        }
+      ]
+    },
+    "ConversationList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items"],
+      "properties": {
+        "items": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/Conversation"}}
+      }
+    },
+    "Message": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "conversation_id", "role", "content", "status", "sources", "created_at"],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "conversation_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "role": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/MessageRole"},
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "$comment": "Пустая строка запрещена. Если токенов не было, Go не сохраняет assistant Message."
+        },
+        "status": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/MessageStatus"},
+        "run_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "sources": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Source"}
+        },
+        "created_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"}
+      }
+    },
+    "MessageList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items"],
+      "properties": {
+        "items": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/Message"}}
+      }
+    },
+    "RunCreateRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "content": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "retry_of": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+      },
+      "oneOf": [
+        {"required": ["content"], "properties": {"retry_of": false}},
+        {"required": ["retry_of"], "properties": {"content": false}}
+      ]
+    },
+    "Run": {
+      "type": "object",
+      "$comment": "cancelled без error_code. interrupted требует STREAM_NOT_OPENED или CLIENT_DISCONNECTED. completed всегда ссылается на непустое assistant Message.",
+      "additionalProperties": false,
+      "required": ["id", "conversation_id", "user_message_id", "status", "action_ids", "created_at", "updated_at"],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "conversation_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "user_message_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "assistant_message_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "status": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/RunStatus"},
+        "error_code": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/ErrorCode"},
+        "action_ids": {
+          "type": "array",
+          "maxItems": 1,
+          "items": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+        },
+        "created_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"},
+        "updated_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"status": {"const": "failed"}},
+            "required": ["status"]
+          },
+          "then": {"required": ["error_code"]}
+        },
+        {
+          "if": {
+            "properties": {"status": {"const": "interrupted"}},
+            "required": ["status"]
+          },
+          "then": {
+            "required": ["error_code"],
+            "properties": {
+              "error_code": {"enum": ["STREAM_NOT_OPENED", "CLIENT_DISCONNECTED"]}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"status": {"enum": ["queued", "running", "completed", "cancelled"]}},
+            "required": ["status"]
+          },
+          "then": {"properties": {"error_code": false}}
+        },
+        {
+          "if": {
+            "properties": {"status": {"const": "completed"}},
+            "required": ["status"]
+          },
+          "then": {"required": ["assistant_message_id"]}
+        }
+      ]
+    },
+    "RunStartedData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id"],
+      "properties": {
+        "run_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+      }
+    },
+    "MessageDeltaData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "text"],
+      "properties": {
+        "run_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "text": {"type": "string", "minLength": 1, "maxLength": 4000}
+      }
+    },
+    "MessageSourcesData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "sources"],
+      "properties": {
+        "run_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "sources": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Source"}
+        }
+      }
+    },
+    "ActionProposedData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "action"],
+      "properties": {
+        "run_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "action": {"$ref": "#/$defs/Action"}
+      }
+    },
+    "RunCompletedData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "message_id"],
+      "properties": {
+        "run_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "message_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+      }
+    },
+    "RunFailedData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "code", "message"],
+      "properties": {
+        "run_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "code": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/ErrorCode"},
+        "message": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    },
+    "RunCancelledData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id"],
+      "properties": {
+        "run_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+      }
+    },
+    "AccessRequestParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resource_id", "requested_role", "reason", "additional_fields"],
+      "properties": {
+        "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "requested_role": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/RequestedRole"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "additional_fields": {
+          "type": "object",
+          "additionalProperties": false,
+          "maxProperties": 0
+        }
+      }
+    },
+    "EscalationParameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["question", "diagnostic_snapshot"],
+      "properties": {
+        "question": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "diagnostic_snapshot": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/DiagnosticSnapshot"}
+      }
+    },
+    "ActionDraft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["conversation_id", "goal_id", "step_id", "type", "parameters"],
+      "properties": {
+        "conversation_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "goal_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "step_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "type": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/ActionType"},
+        "parameters": true
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"type": {"const": "create_access_request"}},
+            "required": ["type"]
+          },
+          "then": {"properties": {"parameters": {"$ref": "#/$defs/AccessRequestParameters"}}}
+        },
+        {
+          "if": {
+            "properties": {"type": {"const": "escalate_to_buddy"}},
+            "required": ["type"]
+          },
+          "then": {"properties": {"parameters": {"$ref": "#/$defs/EscalationParameters"}}}
+        }
+      ]
+    },
+    "AccessRequestPreview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["initiator_id", "resource_id", "requested_role", "reason", "recipient_id"],
+      "properties": {
+        "initiator_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "requested_role": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/RequestedRole"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "recipient_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+      }
+    },
+    "EscalationPreview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["initiator_id", "recipient_id", "question", "diagnostic_snapshot"],
+      "properties": {
+        "initiator_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "recipient_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "question": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "diagnostic_snapshot": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/DiagnosticSnapshot"}
+      }
+    },
+    "Action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "goal_id", "step_id", "parameters", "preview", "expires_at", "status", "created_at"],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "type": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/ActionType"},
+        "goal_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "step_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "parameters": true,
+        "preview": true,
+        "expires_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"},
+        "status": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/ActionStatus"},
+        "result": true,
+        "error_code": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/ErrorCode"},
+        "created_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"type": {"const": "create_access_request"}},
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "parameters": {"$ref": "#/$defs/AccessRequestParameters"},
+              "preview": {"$ref": "#/$defs/AccessRequestPreview"},
+              "result": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["access_request_id"],
+                "properties": {
+                  "access_request_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"type": {"const": "escalate_to_buddy"}},
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "parameters": {"$ref": "#/$defs/EscalationParameters"},
+              "preview": {"$ref": "#/$defs/EscalationPreview"},
+              "result": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["escalation_id"],
+                "properties": {
+                  "escalation_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"status": {"enum": ["pending_confirmation", "executing", "cancelled", "expired"]}},
+            "required": ["status"]
+          },
+          "then": {"properties": {"result": false, "error_code": false}}
+        },
+        {
+          "if": {
+            "properties": {"status": {"const": "succeeded"}},
+            "required": ["status"]
+          },
+          "then": {"required": ["result"], "properties": {"error_code": false}}
+        },
+        {
+          "if": {
+            "properties": {"status": {"enum": ["failed", "unknown"]}},
+            "required": ["status"]
+          },
+          "then": {"required": ["error_code"], "properties": {"result": false}}
+        }
+      ]
+    },
+    "EmptyBody": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {}
+    },
+    "AccessRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "goal_id",
+        "step_id",
+        "resource_id",
+        "requested_role",
+        "reason",
+        "mock_id",
+        "status",
+        "grant_state",
+        "sync_status",
+        "version",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "goal_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "step_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "requested_role": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/RequestedRole"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "mock_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "status": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/AccessRequestStatus"},
+        "grant_state": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/GrantState"},
+        "sync_status": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/SyncStatus"},
+        "version": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/PositiveInt"},
+        "created_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"},
+        "updated_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"}
+      }
+    },
+    "AccessRequestList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items"],
+      "properties": {
+        "items": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/AccessRequest"}}
+      }
+    },
+    "AccessDecisionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "reason", "expected_version"],
+      "properties": {
+        "decision": {"type": "string", "enum": ["approved", "rejected"]},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "expected_version": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/PositiveInt"}
+      }
+    },
+    "PersonRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "display_name"],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "display_name": {"type": "string", "minLength": 1, "maxLength": 80}
+      }
+    },
+    "Escalation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "goal_id",
+        "step_id",
+        "blocker_id",
+        "intern",
+        "buddy",
+        "diagnostic_snapshot",
+        "status",
+        "version",
+        "created_at"
+      ],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "goal_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "step_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "blocker_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "intern": {"$ref": "#/$defs/PersonRef"},
+        "buddy": {"$ref": "#/$defs/PersonRef"},
+        "diagnostic_snapshot": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/DiagnosticSnapshot"},
+        "status": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/EscalationStatus"},
+        "answer": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "version": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/PositiveInt"},
+        "created_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"},
+        "resolved_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"status": {"const": "resolved"}},
+            "required": ["status"]
+          },
+          "then": {"required": ["answer", "resolved_at"]}
+        },
+        {
+          "if": {
+            "properties": {"status": {"const": "open"}},
+            "required": ["status"]
+          },
+          "then": {"properties": {"answer": false, "resolved_at": false}}
+        }
+      ]
+    },
+    "EscalationList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items"],
+      "properties": {
+        "items": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/Escalation"}}
+      }
+    },
+    "EscalationReplyRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["answer", "expected_version"],
+      "properties": {
+        "answer": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "expected_version": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/PositiveInt"}
+      }
+    },
+    "FrictionAggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["journey_id", "step_id", "error_code", "affected_count", "instruction_refs"],
+      "properties": {
+        "journey_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "step_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "error_code": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/SafeErrorCode"},
+        "affected_count": {"type": "integer", "minimum": 2, "maximum": 100},
+        "instruction_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/InstructionRef"}
+        }
+      }
+    },
+    "FrictionAggregateList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items"],
+      "properties": {
+        "items": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/FrictionAggregate"}}
+      }
+    },
+    "Candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "journey_id",
+        "step_id",
+        "error_code",
+        "instruction_refs",
+        "affected_count",
+        "hypothesis",
+        "proposed_fix",
+        "state",
+        "enrichment_status",
+        "version",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "journey_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "step_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "error_code": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/SafeErrorCode"},
+        "instruction_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/InstructionRef"}
+        },
+        "affected_count": {"type": "integer", "minimum": 2, "maximum": 100},
+        "hypothesis": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "proposed_fix": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "state": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/CandidateState"},
+        "enrichment_status": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/EnrichmentStatus"},
+        "version": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/PositiveInt"},
+        "resolved_reference": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/InstructionRef"},
+        "created_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"},
+        "updated_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"state": {"const": "resolved"}},
+            "required": ["state"]
+          },
+          "then": {"required": ["resolved_reference"]}
+        },
+        {
+          "if": {
+            "properties": {"state": {"enum": ["proposed", "under_review", "accepted", "rejected"]}},
+            "required": ["state"]
+          },
+          "then": {"properties": {"resolved_reference": false}}
+        }
+      ]
+    },
+    "CandidateList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items"],
+      "properties": {
+        "items": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/Candidate"}}
+      }
+    },
+    "CandidateReviewRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "reason", "expected_version"],
+      "properties": {
+        "decision": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/ReviewDecision"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "expected_version": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/PositiveInt"},
+        "resolved_reference": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/InstructionRef"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"decision": {"const": "resolved"}},
+            "required": ["decision"]
+          },
+          "then": {"required": ["resolved_reference"]}
+        },
+        {
+          "if": {
+            "properties": {"decision": {"enum": ["under_review", "accepted", "rejected"]}},
+            "required": ["decision"]
+          },
+          "then": {"properties": {"resolved_reference": false}}
+        }
+      ]
+    }
+  }
+}

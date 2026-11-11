@@ -11,12 +11,12 @@
 
 ## Состояние и перепланирование
 
-На 2026-11-11 обновлена документация по [CODEX_PROJECT_REPLAN.md](CODEX_PROJECT_REPLAN.md).
-**Новый MVP ещё не реализован.** Сейчас доступны только bootstrap frontend и liveness;
-login, journeys, AI, access/approvals/checks, buddy и feedback loop — задачи разработки.
-JSON contracts, SQL migrations, seed, runtime knowledge, Compose/CI и код в рамках этого
-перепланирования не менялись; они содержат legacy v1 (task статусы, 4 аккаунта, repo demo).
-Нельзя считать прохождение legacy checks доказательством готовности нового продукта.
+Документация и P0-план обновлены по [CODEX_PROJECT_REPLAN.md](CODEX_PROJECT_REPLAN.md).
+**Новый MVP еще не готов.** В TL checkout сведены executable v2 schemas BE+AI, подготовлены
+общие tooling/Docker/Compose/CI; runtime и dataset пока bootstrap/legacy. В отдельной
+FE-ветке есть fixture UI. Consumer gate и продуктовая реализация еще открыты.
+Фактические commits, TL решения/проверки и остаток: [TL readiness](docs/team/tl-readiness.md).
+Срок владельца — **12 ноября 2026, 22:00 МСК**; он не заменяет приемку P0.
 
 Стек сохранён: React/TypeScript/Tailwind/TanStack Query/Zod → Go REST/SSE → Python/FastAPI
 и corporate mock; одна PostgreSQL с app/kb/corporate, pgvector для knowledge. Только Go
@@ -34,8 +34,7 @@ JSON contracts, SQL migrations, seed, runtime knowledge, Compose/CI и код в
 3. TL-часть RP-CONTRACT-01 подготовлена: [решения](docs/architecture/contract-baseline.md).
    Backend делает RP-CONTRACT-BE-01, AI Engineer — RP-CONTRACT-AI-01, Frontend проверяет
    потребление DTO, TL затем принимает комплект. [Contract handoff](docs/team/contract-handoff.md).
-   Вся RP-CONTRACT-01 ещё не DONE; после неё — RP-DATA-01. Текущая [v1 schema](contracts/README.md)
-   не описывает новые Goal/Step.
+   Вся RP-CONTRACT-01 ещё не DONE; после неё — RP-DATA-01. [Статус schemas](contracts/README.md) отделяет проверенный snapshot от final acceptance.
 4. Команда берёт задачи [backlog](docs/team/backlog.md): семь дней от спецификаций до demo.
    Первый продуктовый checkpoint — разрешённый JSON journey и фактический IAM access state.
 5. Агенты работают локально только в назначенной текущей ветке, без создания/переключения
@@ -62,8 +61,8 @@ migrate → seed → сервисы; сборка загружает образ�
 .env.example содержит только local demo values, .env в Git ignore. LLM_MODE=mock не требует
 ключа; mock provider и live adapter пока не реализованы. Healthcheck — только liveness.
 Предыдущая INF-01 не закрыта: после исправления bootstrap COPY в Dockerfile.postgres
-чистый up/migrate/seed/verify-db/smoke ещё требует подтверждения RP-INF-01. В этом задании
-контейнеры не запускались, существующий volume не удалялся.
+bootstrap up/migrate/seed/verify-db/smoke подтверждены TL, target v2 требует отдельной RP-INF-01 приемки. TL теперь подтвердил bootstrap в отдельном проекте, повтор migrate/seed, role isolation и
+liveness; target P0 еще не проверен. Существующие volumes не удалялись.
 
 ```sh
 make migrate
@@ -153,3 +152,15 @@ HR, реальные интеграции, arbitrary SQL/команды, MR/code
 ML-кластеризация и multi-agent платформа вне MVP. Все P0 — [восемь SDD](docs/features/README.md).
 Внешние provider/key/budget, originals и площадка — [dependencies](docs/operations/external-dependencies.md).
 Live LLM не блокирует offline P0; публичный demo требует отдельной auth/HTTPS и отключения demo-login.
+
+## Target acceptance после поставки компонентов
+
+`make mvp-preflight` выявляет отсутствие runtime/migrations/tests. `make mvp-up` использует
+compose.mvp.yaml: seed → AI ingest → /readyz → Go → UI. `make ai-db-test` запускает
+реальные AI DB tests в отдельном test image под runtime ролью. Сейчас preflight BLOCKED.
+AI Engineer передает **реальные JSON argv arrays**, которые экспортируются в окружение
+как AI_INGEST_COMMAND и AI_DB_TEST_COMMAND перед make mvp-up. Никакого shell eval нет;
+самих CLI/tests в bootstrap пока нет. APP_ENV=local/test, LLM_MODE=mock, faults default false.
+CI workflow_dispatch mvp_acceptance включает тот же gate после поставок, команды берет
+из repository vars; текущая правка не меняет настройки GitHub. Это только AI DB portion,
+не замена browser/security/full offline acceptance. [Инструкции](docs/operations/development.md).

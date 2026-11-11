@@ -127,3 +127,11 @@ reviewers, files/DoD/negative scenarios, порядок интеграции и 
 Исполняемые schemas/examples/validators принадлежат Backend/AI, frontend consumption — FE;
 они этим поручением не реализованы. Финальный TL review реальных схем возможен после
 поставки и не помечен DONE заранее. Оригиналы кейса/бюджет/доступы не придуманы.
+
+## Текущая TL проверка · 2026-11-12
+
+Проверенные BE+AI схемы уже сведены в TL checkout. [Record](../team/tl-readiness.md)
+содержит source revisions, hash lock, ответы на FE 3.1–3.9 и пределы принятия.
+Техническая проверка существующих schema/image fixtures пройдена. Final contract gate
+остается IN_PROGRESS до BE additions и FE/BE↔AI подтверждений; прошлые формулировки
+«schemas не созданы» описывают первоначальный docs-only этап, не текущий inventory.

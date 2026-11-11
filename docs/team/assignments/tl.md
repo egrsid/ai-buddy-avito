@@ -54,5 +54,12 @@ TL подтверждает до платного RP-AI-02, сейчас кон�
 
 Для docs: make check, local links/IDs/dependency DAG, git diff --check. Для будущих tooling
 changes — tests/Makefile по области, для INF — реальные up/migrate/seed/verify-db/smoke.
-Эта задача контейнеры не запускает: пользователь поручил назначения и TL-часть контракта.
+В новом поручении владелец разрешил TL implementation; изолированный bootstrap Compose уже проверен.
+Текущий результат и оставшиеся component dependencies — в [TL record](../tl-readiness.md).
 Коммит/push/подготовку остальных веток выполняет владелец вручную после просмотра результатов.
+
+## Текущий deadline и остаток
+
+2026-11-12 22:00 МСК. TL imports/checks/policy/infra preparation выполнены; final
+contract/data/target infra/integration/demo приемка требует поставок авторов. Не отмечать
+их DONE на основании bootstrap или обещанного срока. Commit/push/PR не выполнялись.
