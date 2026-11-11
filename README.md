@@ -16,6 +16,10 @@
 общие tooling/Docker/Compose/CI; runtime и dataset пока bootstrap/legacy. В отдельной
 FE-ветке есть fixture UI. Consumer gate и продуктовая реализация еще открыты.
 Фактические commits, TL решения/проверки и остаток: [TL readiness](docs/team/tl-readiness.md).
+Новая AI-поставка 3f955322 содержит offline API/SSE/ACL/diagnostics и семь документов:
+184 tests, 99.90% coverage, evals 29/29. Она пока не импортирована в этот checkout;
+[повторный review](docs/team/ai-review-2026-11-12.md) содержит четыре открытых замечания,
+включая отсутствие persistent kb/ingest/readiness. Это не готовность полного MVP.
 Срок владельца — **12 ноября 2026, 22:00 МСК**; он не заменяет приемку P0.
 
 Стек сохранён: React/TypeScript/Tailwind/TanStack Query/Zod → Go REST/SSE → Python/FastAPI

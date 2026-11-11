@@ -4,12 +4,20 @@
 Дедлайн владельца: **2026-11-12 22:00 Europe/Moscow**. Это срок, не утверждение готовности.
 Ни чужие ветки, ни refs, ни remote не изменены. Новая ветка не потребовалась; commit/push/PR нет.
 
+**Повторный review после AI push:** текущая TL база уже fe870967 (прежние изменения
+зафиксированы владельцем до этого прохода); новая AI поставка 3f955322 — семь commits.
+[Актуальный review](ai-review-2026-11-12.md): 184 tests/99.90%, evals 29/29; runtime
+не импортирован в TL. Ниже проверки bootstrap относятся к прежнему проходу; AI теперь
+имеет offline HTTP/SSE/ACL/diagnostics в своей ветке, но остается без persistent kb,
+ingest/DB tests/readiness и с открытыми AI-R2/R3/R4. Текущие правки — только документация.
+
 ## Проверенная поставка и происхождение
 
 | Пакет | Проверенный commit GitHub | Что включено в TL checkout |
 |---|---|---|
 | Backend | 69fea38237068149a7aa07c840f98e1b280d5ca9 | Пять v2 schemas, examples/invalid, общий validator/tests; contract validation в check_repo |
-| AI | 0da47f66a30c3a5aad94ee0fe50a2bb059431e8d | ai.schema.json, AI examples/invalid и девять contract tests |
+| AI contracts | 0da47f66a30c3a5aad94ee0fe50a2bb059431e8d | ai.schema.json, AI examples/invalid и девять contract tests; не изменились в новой поставке |
+| AI runtime | 3f955322eabd2874d5952e160ce1cf5c3898cb0d | Только read-only review/изолированные tests; не импортирован в TL checkout |
 | Frontend | 676b81dd0cb1636a3b578459cd6404298f769335 | Изучен review/код; frontend в TL checkout не копируется и не исправляется за автора |
 | QA | 1d47f6b2d58ded0eacd8e7588270b009663c9388 | Изучены legacy tests; QA-файлы не перезаписываются |
 
@@ -95,9 +103,9 @@ MVP preflight ожидаемо BLOCKED: runtime v2/migrations/CLI/browser tests 
 | TL задача | Реальное состояние / необходимый вход |
 |---|---|
 | RP-CONTRACT-REVIEW-01 | TL решения/проверка готовы; нужны schema additions и consumer acknowledgements |
-| RP-INF-01 | Bootstrap/image/config проверены; target ingest/readiness/AI DB tests ждут AI runtime/CLI/tests |
+| RP-INF-01 | Bootstrap/image/config проверены; AI HTTP уже поставлен, но target ждет AI-R1: kb/ingest/readiness/DB tests |
 | RP-DATA-TL-01 | UTF-8/runner foundation проверены; v2 seed/schema layout/IDs еще нужны от BE/AI |
-| RP-INTEGRATION-01 | Нужны настоящие BE/AI/FE runtime, API/browser/security/coverage reports |
+| RP-INTEGRATION-01 | AI unit/coverage/evals проверены, AI-R1–R4 открыты; нужны BE/FE runtime и общий API/browser/security/restart отчет |
 | RP-DEMO-01 | Нужен принятый работающий путь для честной репетиции/видео/PDF |
 | RP-TL-02 | Срок 12 ноября 22:00 подтвержден владельцем; оригиналы требований/формат сдачи отсутствуют |
 

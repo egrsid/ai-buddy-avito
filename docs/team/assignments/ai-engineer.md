@@ -8,6 +8,15 @@ consumer gate и дальнейшие RP-задачи сохраняются. Ч
 
 ## Начать с RP-CONTRACT-AI-01
 
+**Текущая работа после push 3f955322:** CORE/DIAG и corpus уже частично поставлены,
+не начинать их заново. [Review AI-R1–R4](../ai-review-2026-11-12.md) фиксирует независимые
+184 tests/99.90%, 29 evals и конкретные дефекты. Следующая поставка: persistent kb,
+ingest/readiness/DB commands; response schema bounds и deadlines; eval failure gate,
+полный ручной review. Параллельно передать имеющийся internal API Go и подтвердить
+document UUID/ACL вместе с Backend. Ни parent, ни CORE/DIAG/DATA пока не DONE.
+
+Разделы ниже сохраняют исходный scope/порядок, а не утверждают отсутствие готовых модулей.
+
 AGENTS/Before starting, [TL baseline](../../architecture/contract-baseline.md),
 [API](../../architecture/api-contracts.md), [security](../../architecture/security.md),
 [AI design](../../architecture/ai-design.md), [contract handoff](../contract-handoff.md),

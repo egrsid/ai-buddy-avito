@@ -4,6 +4,11 @@
 source SHA, checksum lock, решения по всем замечаниям FE и реальные результаты проверки.
 Схемы BE/AI уже предъявлены и сведены локально в TL; это не поставка runtime и не final acceptance.
 
+Обновление: AI отдельно поставил runtime 3f955322; schema JSON в семи новых commits
+не менялись. [Повторный review](ai-review-2026-11-12.md): 184 AI tests проходят также
+на TL schemas; это техническая проверка, не BE↔AI approval. AI-R2/R3 требуют runtime
+исправлений, прежние StepActionList/optional-null/FE замечания остаются открытыми.
+
 | ID | Автор | Фактическое состояние / остаток |
 |---|---|---|
 | RP-CONTRACT-TL-01 | TL | DONE: baseline/policy/ownership; дополнительные ответы на FE review зафиксированы |

@@ -18,7 +18,7 @@ EXTERNAL — внешний ресурс; DONE — фактическая при
 | RP-DOC-01 | TL | DONE | Предыдущее перепланирование документации; его исторический отчёт сохранён |
 | RP-CONTRACT-01 | TL | IN_PROGRESS | RP-CONTRACT-REVIEW-01 DONE; BE/AI schemas сведены; BE additions/FE retest/consumer acceptance еще нужны |
 | RP-DATA-01 | TL | TODO | RP-DATA-BE-01 + RP-DATA-AI-01 + RP-DATA-TL-01 DONE |
-| RP-AI-01 | AI Engineer | TODO | RP-AI-CORE-01 + RP-AI-DIAG-01 DONE; ранние потребители зависят только от CORE |
+| RP-AI-01 | AI Engineer | IN_PROGRESS | RP-AI-CORE-01 + RP-AI-DIAG-01 DONE; ранние потребители зависят только от CORE |
 
 ## P0: задачи с единственным ответственным
 
@@ -34,13 +34,13 @@ EXTERNAL — внешний ресурс; DONE — фактическая при
 | RP-CONTRACT-REVIEW-01 | 1–2 | TL | IN_PROGRESS | RP-CONTRACT-BE-01, RP-CONTRACT-AI-01, RP-CONTRACT-FE-01 | BE↔AI/FE review и offline checks пройдены, зафиксирован принятый baseline; нет авансового DONE | [спецификация](contract-handoff.md) |
 | RP-INF-01 | 2,6 | TL | IN_PROGRESS | Доступный Docker; финальная target проверка после RP-DATA-01 | Startup/Compose: clean up, schemas COPY, one-shot ingest, AI DB tests runner/fault env после AI поставки; migrate/seed дважды, role isolation/smoke; volume не удалять | [спецификация](../operations/development.md) |
 | RP-DATA-BE-01 | 2 | Backend | TODO | RP-CONTRACT-01 | Новые app/corporate migrations, роли/constraints/IDs, component tests; applied 001 не переписана | [спецификация](../architecture/data-model.md) |
-| RP-DATA-AI-01 | 2 | AI Engineer | TODO | RP-CONTRACT-01 | Новые kb ACL migrations и synthetic team/restricted/PII knowledge fixtures с согласованными IDs; без псевдоэмбеддингов | [спецификация](../architecture/data-model.md) |
+| RP-DATA-AI-01 | 2 | AI Engineer | IN_PROGRESS | RP-CONTRACT-01 | Новые kb ACL migrations и synthetic team/restricted/PII knowledge fixtures с согласованными IDs; без псевдоэмбеддингов | [спецификация](../architecture/data-model.md) |
 | RP-DATA-TL-01 | 2 | TL | IN_PROGRESS | RP-DATA-BE-01, RP-DATA-AI-01 | Общий migrate/seed/verify-db/check tooling поддерживает v2, explicit UTF-8 и non-ASCII test, безопасный переход/повторяемость | [спецификация](../architecture/data-model.md) |
 | RP-MOCK-01 | 2 | Backend | TODO | RP-DATA-01 | Persistent mock IAM/resources/assignments и app/corporate seed a+b team-a, c team-b, approver/docs-owner; knowledge поставляет AI | [спецификация](../features/authorization-and-privacy/spec.md) |
 | RP-AUTH-01 | 2 | Backend | TODO | RP-DATA-01, RP-MOCK-01 | Cookie/Origin/CSRF, role/team/resource/document/ownership, negative tests; own backend coverage | [спецификация](../features/authorization-and-privacy/spec.md) |
 | RP-JOURNEY-01 | 2 | Backend | TODO | RP-AUTH-01, RP-MOCK-01 | JSON DAG, goal/steps/dependencies/version, next action, initial IAM state; schema и template валидны | [спецификация](../features/onboarding-journey/spec.md) |
-| RP-AI-CORE-01 | 2–3 | AI Engineer | TODO | RP-CONTRACT-01, RP-DATA-AI-01 | Offline generate/draft/retrieval/CLI, internal Error/ID, 20/25/85s provider/pipeline и fault fixtures по TL policy; не ждать Go | [спецификация](../features/contextual-ai-assistance/spec.md) |
-| RP-AI-DIAG-01 | 4–5 | AI Engineer | TODO | RP-AI-CORE-01 | Safe classification/handoff/candidate/fallback; >=20 evals с assertions/ручным чтением, all safety pass, отчёт Backend/TL | [спецификация](../architecture/ai-design.md) |
+| RP-AI-CORE-01 | 2–3 | AI Engineer | IN_PROGRESS | RP-CONTRACT-01, RP-DATA-AI-01 | Offline generate/draft/retrieval/CLI, internal Error/ID, 20/25/85s provider/pipeline и fault fixtures по TL policy; не ждать Go | [спецификация](../features/contextual-ai-assistance/spec.md) |
+| RP-AI-DIAG-01 | 4–5 | AI Engineer | IN_PROGRESS | RP-AI-CORE-01 | Safe classification/handoff/candidate/fallback; >=20 evals с assertions/ручным чтением, all safety pass, отчёт Backend/TL | [спецификация](../architecture/ai-design.md) |
 | RP-CHAT-01 | 3 | Backend | TODO | RP-AUTH-01, RP-JOURNEY-01, RP-AI-CORE-01 | Persistent history/run/SSE/validation, cancel/retry/partial; не ждать diagnostic AI этапа дня 5 | [спецификация](../features/contextual-ai-assistance/spec.md) |
 | RP-MOCK-02 | 3 | Backend | TODO | RP-MOCK-01 | Persistent request/scoped decision/grant, same-key replay/delayed grant; no timer approval | [спецификация](../features/access-request/spec.md) |
 | RP-ACCESS-01 | 3 | Backend | TODO | RP-CHAT-01, RP-MOCK-02 | Validated draft/exact confirm/create/reconcile/approval ACL и IAM recheck; no duplicate | [спецификация](../features/access-request/spec.md) |
@@ -153,3 +153,23 @@ RP-INTEGRATION-01/RP-DEMO-01 нельзя закрыть до настоящег
 Для DATA gate BE/AI передают layout/IDs/минимальные seed test inputs вместе с миграциями,
 не ожидая mock HTTP/AI CORE. Иначе ожидание TL полного RP-MOCK-01 создало бы цикл
 DATA → MOCK → seed layout → DATA. Ingest/AI DB runtime приемка относится к INF после CORE.
+
+## Повторная AI-поставка · 2026-11-12
+
+[Review 3f955322](ai-review-2026-11-12.md): семь commits, 38 файлов; offline internal
+API/SSE/retrieval/diagnostics и семь synthetic документов. Независимо: 184 tests,
+99.90% coverage, 29/29 evals, 18/18 safety, 8/8 retrieval; AI tests проходят также
+с TL contract snapshot. Ниже остаток внутри существующих RP-задач, без нового scope:
+
+| Задача | Поставлено | Остаток до DONE |
+|---|---|---|
+| RP-DATA-AI-01 | Семь Markdown документов с ACL/UUID/version | AI-R1: kb migrations/storage, согласование IDs/ACL с BE |
+| RP-AI-CORE-01 | Offline HTTP/SSE/provider/retrieval/journey/draft и unit tests | AI-R1 ingest/readiness/DB tests; AI-R2 response bounds/validation; AI-R3 deadlines; BE consumer review |
+| RP-AI-DIAG-01 | Classification/handoff/candidate и 29 evals | AI-R4 nonzero при любом failed P0 case; ручное чтение полных outputs, BE safety review, интеграция |
+| RP-CHAT-01 | Потребитель теперь имеет реальный AI HTTP для ранних tests | Go history/run/SSE, повторная schema validation/90s terminal race, persist/confirm остаются Backend |
+| RP-DATA-TL-01 / RP-INF-01 | Общие runners/overlay уже в TL fe870967 | После AI-R1/BE layout реальный ingest/readiness/DB acceptance; eval CLI не заменяет DB tests |
+
+Parent RP-AI-01 IN_PROGRESS; высокий coverage не закрывает дефекты или persistent data.
+RP-CONTRACT-01 остается IN_PROGRESS: StepActionList/null cases, FE retest и явное BE↔AI
+approval не заменены тестами AI. FE/QA scope прежний. Срочный порядок и срок 22:00 —
+[временный список](MVP_UNBLOCK_DELETE_AFTER_RESOLUTION.md).

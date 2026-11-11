@@ -1,6 +1,8 @@
 # Contextual AI Assistance — specification
 
-Версия 2.0 · P0 · статус: спроектировано, не реализовано.
+Версия 2.0 · P0 · статус: AI-часть реализована частично, сквозная приемка открыта.
+[AI review 3f955322](../../team/ai-review-2026-11-12.md): unit/evals проходят;
+persistent kb, AI-R2/R3/R4 и интеграция Go/FE еще требуются.
 Владельцы: AI Engineer + Backend + Frontend. Backlog: RP-AI-01, RP-CHAT-01, RP-FE-02.
 
 ## Проблема и сценарий

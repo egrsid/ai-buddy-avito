@@ -13,9 +13,14 @@ journey, public hosting и сложная аналитика не входят �
 
 ## 0. Сразу всем — одна база и честный статус
 
+- Обновление после AI push: проверен **3f955322** (7 новых commits). Реализованы offline
+  HTTP/SSE/ACL/diagnostics и 7 документов; 184 tests, 99.90% coverage, evals 29/29.
+  [Подробный review и воспроизведение AI-R1–R4](ai-review-2026-11-12.md).
+  Не ставить повторную разработку готовых модулей; приоритет AI — дефекты и persistent kb.
 - [ ] Получить TL snapshot: BE 69fea38 + AI 0da47f6, BASELINE.sha256 и общие infra/tooling
-  изменения; после contract corrections TL обновляет lock и записывает acceptance.
-  TL изменения пока локальные, commit/push/PR не выполнялись. Автор/владелец распространяет
+  изменения (TL head уже fe870967); AI runtime отдельно 3f955322, schemas в нем не менялись.
+  После contract corrections TL обновляет lock и записывает acceptance.
+  Новые review/план изменения этого прохода локальные, без commit/push/PR. Автор/владелец распространяет
   их в соответствующие рабочие папки, сохраняя изменения; чужие ветки агентом не меняются.
 - [ ] До 10:00 предоставить TL фактический остаток/оценку и явно подтвердить возможность
   своих checkpoints. Отсутствие оценки/ответа не является согласием и не гарантирует срок.
@@ -35,6 +40,11 @@ journey, public hosting и сложная аналитика не входят �
   Action TTL приняты TL; не требуется новая дискуссия по этим решениям.
 - [ ] Явный BE↔AI review общей версии: scopes/refs, GenerateRequest, tool.proposed,
   generation.completed, structured draft/handoff/candidate, Source.url и internal errors.
+- [ ] Проверить Go client уже против AI 3f955322; не ждать написания CORE/DIAG с нуля.
+  AI-R2/R3: invalid response и late completion не создают Action; Go независимо
+  контролирует 90s/terminal race. Не принимать ранний HTTP test за полный P0.
+- [ ] Сверить семь document UUID/version из AI review с journey refs, permissions и
+  docs-owner assignments. Backend подтверждает таблицу до seed; второй набор ID не вводить.
 
 Далее по существующим RP-задачам:
 
@@ -61,32 +71,43 @@ journey, public hosting и сложная аналитика не входят �
 Ориентиры: до 12:00 data/auth/journey/IAM; до 15:00 access; до 17:00 verification/buddy/feedback.
 Передавать FE endpoints по готовности. Наибольший риск срока — объем оставшегося BE runtime.
 
-## 2. AI Engineer — CORE ранним потребителям, затем DIAG
+## 2. AI Engineer — исправить границы и завершить persistent kb
 
 Ветка feature/ai-mvp-v2. [Полный handoff](assignments/ai-engineer.md).
 
+- [x] Поставлены offline provider, lexical ACL retrieval, internal API/SSE, journey/draft,
+  classification/handoff/candidate, семь synthetic документов и evals. TL независимо
+  подтвердил 184 tests/99.90%, включая повтор с TL schemas; evals 29/29, safety 18/18,
+  retrieval 8/8. Это component evidence, не DONE CORE/DIAG/DATA или всего MVP.
 - [ ] RP-CONTRACT-AI-01: включить актуальные common/public и подтвердить BE↔AI review.
   Самостоятельные копии common enums/AccessScope/Source запрещены.
-- [ ] RP-DATA-AI-01: kb ACL migrations, synthetic DB/IAM/SSL инструкции; team A/team B,
-  restricted/personal/injection fixtures и согласованные с BE IDs/версии. Не выдавать
-  legacy demo_public corpus за новый, не использовать псевдоэмбеддинги.
-- [ ] RP-AI-CORE-01: реальный offline provider/retrieval/generate, выбор разрешенного
-  journey и access draft/missing_fields; pre-retrieval ACL/provider-input spy; Source.url
-  канонический. Python не пишет app/corporate и не выставляет verified.
+- [ ] **AI-R1 / RP-DATA-AI-01:** добавить kb ACL migrations/storage/atomic ingest к уже
+  готовому корпусу data/knowledge/v2; согласовать семь UUID/версии с BE. Сейчас storage
+  in-memory из Markdown, не persistent kb; embeddings для offline не требуются.
+- [ ] **AI-R2 / RP-AI-CORE-01:** response validation всех structured операций и boundary
+  tests. Валидный запрос с пятью title по 200 символов дает clarification 1051 при лимите
+  1000 и HTTP 200. Не расширять wire schema односторонне, исправить producer.
+- [ ] **AI-R3 / RP-AI-CORE-01:** deadline после provider/EOF и до успешных events; budget
+  85s непотоковых операций. Fake clock t=86 при EOF сейчас приводит к completed при
+  budget=85. Добавить regression/cleanup tests; Go независимо обеспечивает свой deadline.
 - [ ] Передать **проверенные JSON argv** AI_INGEST_COMMAND и AI_DB_TEST_COMMAND, exit codes,
   обязательные env/deps. CLI работает напрямую с kb под ai_service без DDL и AI HTTP;
   повтор ingest не дублирует chunks. Mock ingest без сети/ключа/model downloads.
 - [ ] /readyz реально проверяет schema/index/migrations. Target overlay уже ждет ingest
   и /readyz; пустой индекс/отсутствующий CLI не маскировать liveness или exit 0.
-- [ ] RP-AI-DIAG-01: classification, safe handoff, candidate hypothesis/fix и invalid/
-  unavailable fallback. Не ждать всех Go endpoints для разработки на общем контракте.
+- [ ] **AI-R4 / RP-AI-DIAG-01:** eval runner возвращает nonzero при любом failed P0 case.
+  Сейчас при 28/29 и failure в non-safety journey-db-access summarize.ok остается true.
+  Подтвердить ручное чтение полных 29 outputs (report обрезает их), review Backend.
 - [ ] Реальные kb/pgvector/ACL integration tests под ai_service; unit tests с fake storage.
   Provider timers 20/25s, pipeline 85s, ping 10s, HTTP error order и faults по TL policy.
-- [ ] AI coverage >80%, >=20 eval cases с assertions/provider-input checks и ручным чтением
-  всех ответов; safety pass, retrieval target >=80% top-5. Mock/live отчеты разделены.
+- [ ] После исправлений повторить AI coverage >80% и все 29 eval cases, затем DB/restart
+  acceptance; текущий высокий coverage не доказывает отсутствия boundary defects.
   Production dependencies/минимальный lock diff — TL; ключ и платный spike для P0 не нужны.
 
-Ориентиры: до 12:00 kb/fixtures/CLI; до 14:00 CORE для Go; до 17:00 DIAG/evals.
+Порядок: немедленно передать уже готовый API потребителю Go и согласовать IDs; до 12:00
+kb/CLI/readiness/DB tests; до 14:00 AI-R2/R3 и повтор CORE; до 17:00 AI-R4/ручной review
+и DIAG acceptance. Если время checkpoint прошло, сразу дать остаток/новую оценку TL,
+не отмечать пункт выполненным и не переносить молча дедлайн 22:00.
 
 ## 3. Frontend — сначала исправить контракт, затем реальные операции
 
@@ -106,6 +127,8 @@ journey, public hosting и сложная аналитика не входят �
   goal/step/check/request/approval, ssl_mode=disable/require, contextual chat/SSE/cancel/
   retry/partial, source drawer с Go ACL и HTTP Date для TTL. Unknown IDs не подменять
   первой fixture, состояние не продвигать локально вместо ответа сервера.
+- [ ] Использовать новую AI-поставку только через Go: Python остается внутренним,
+  его coverage/evals не закрывают FE rendering, source ACL, SSE recovery и browser tests.
 - [ ] RP-FE-03: buddy queue/detail/reply и docs-owner review через Go; версия/конфликты,
   resolved reference, accepted без publish; после reload данные сохранены сервером.
 - [ ] RP-E2E-01: новые browser spec файлы A/B/C — реальные клики/login/confirm/approve/
@@ -137,9 +160,10 @@ Mock/DDL/seed/Compose/CI/общий E2E/чужое покрытие/PDF/video э
 | Не позднее 12 ноября | Наблюдаемый результат | Кто передает |
 |---|---|---|
 | 10:00 | Единый contract snapshot, FE retest, BE↔AI acknowledgements | BE + AI + FE → TL final record/lock |
-| 12:00 | v2 data/ACL/IAM/journey; AI ingest/env/test commands | BE + AI → TL runner adaptation/target startup |
+| 12:00 | v2 data/ACL/IAM/journey; согласованные document IDs, AI ingest/readiness/DB commands | BE + AI → TL runner adaptation/target startup |
+| 14:00 | AI-R2/R3 исправлены; повтор CORE tests и Go boundary проверки | AI + BE |
 | 15:00 | Реальный draft/confirm/approval/grant recheck | BE + AI CORE + FE |
-| 17:00 | SSL evidence/blocker/buddy, второй intern и единственный candidate/review | BE + AI DIAG + FE |
+| 17:00 | SSL evidence/blocker/buddy, второй intern/candidate/review; AI-R4 и полный eval review | BE + AI DIAG + FE |
 | 19:00 | Все component coverage >80%, API/browser/security/offline/restart результаты | Все авторы; TL сводит |
 | 20:00 | Исправлены найденные P0 defects и повторены затронутые проверки | Владелец дефекта |
 | 21:00 | Чистая репетиция, проверенные README/SDD, demo capture/PDF/video | TL + FE capture |
