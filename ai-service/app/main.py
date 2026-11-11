@@ -1,10 +1,8 @@
-"""Development liveness only; generate/knowledge are specified but not implemented."""
+"""Точка входа uvicorn: app.main:app. Логика — в app.api и других модулях."""
 
-from fastapi import FastAPI
+import os
 
-app = FastAPI(title="AI-buddy internal AI", docs_url=None, redoc_url=None)
+from app.api import create_app
+from app.config import load_settings
 
-
-@app.get("/healthz")
-def health() -> dict[str, str]:
-    return {"status": "ok", "service": "ai-service"}
+app = create_app(load_settings(os.environ))
