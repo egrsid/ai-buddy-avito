@@ -189,3 +189,30 @@ component/integration findings не закрыты. Новых документ�
 исполняемые файлы/config/contracts/DDL, Git refs/ветка и untracked inventory неизменны.
 Новых документов/коммитов нет, live API/оплата/регистрация/component/E2E не выполнялись;
 это не подтверждение реализации guard/cache или расхода средств.
+
+## Локальная проверка bootstrap и QA API · 2026-11-13
+
+- На Windows `core.autocrlf=true` переводил `scripts/bootstrap-db.sh` в CRLF. Хотя Dockerfile
+  копировал файл с правом 755, Linux не мог разрешить `#!/bin/sh\r` и PostgreSQL выходил 127.
+  В TL checkout добавлено правило `.gitattributes` `scripts/bootstrap-db.sh text eol=lf`;
+  рабочий файл нормализован к LF.
+- Собранный PostgreSQL image проверен на одноразовом контейнере без постоянного volume:
+  bootstrap создал роли/схемы/extension, `pg_isready` вернул accepting connections.
+- Для интеграционного запуска использована временная Compose override с Postgres build context
+  из TL checkout и отдельный project `ai-buddy-api-test` с новой v2 БД. Все сервисы healthy;
+  повторный `migrate` прошёл дважды, `seed` прошёл дважды без сброса прогресса, liveness
+  smoke backend/frontend/AI/mock прошёл. Повторный `npx playwright test e2e/onboarding.spec.ts
+  --reporter=line` против v2 API: **2 passed**. Это только два RP-QA-01 API сценария,
+  не browser E2E/полный P0/restart.
+- `verify-db` запущен, но падает на legacy ожидании `app.tasks`: активный v2 seed не содержит
+  legacy task IDs, а `kb`-данные принадлежат AI. Это несоответствие verifier текущему v2 seed,
+  не подтверждённый дефект сервиса. Отдельный read-only запрос подтвердил отсутствие SELECT
+  через `app_service` в corporate/kb, `ai_service` в app/corporate и `mock_service` в app/kb;
+  полного role-isolation сценария с запретами DDL/DML эта проверка не заменяет.
+- `make check` остановился на contract snapshot guard: требуется consumer review и обновление
+  TL lock. Lock намеренно не перегенерировался, поскольку RP-CONTRACT-REVIEW-01 еще IN_PROGRESS.
+  Отдельные `ruff check`, `ruff format --check` и `pytest tests -q` прошли ранее: 50 tests.
+- Исходный упавший проект `ai-buddy` и его частично инициализированный volume не удалялись.
+  Исправление и отчет зафиксированы локальным коммитом в `feature/team-start-foundation`; push не выполнялся.
+  RP-INF-01 остаётся IN_PROGRESS до v2-aware `verify-db`, CI acceptance и финальной проверки.
+- `git diff --check` прошёл для TL-изменений.
