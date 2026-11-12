@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-buddy.invalid/contracts/v2/journey.schema.json",
+  "title": "AI-buddy v2 journey template",
+  "$comment": "Static template only. Runtime status is not stored here. Cycle checks stay in component tests.",
+  "$defs": {
+    "Dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["step_id", "condition"],
+      "properties": {
+        "step_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "condition": {"const": "verified"}
+      }
+    },
+    "TemplateStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "description",
+        "dependencies",
+        "required_permissions",
+        "instruction_reference",
+        "available_actions",
+        "verification_method"
+      ],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "description": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "dependencies": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {"$ref": "#/$defs/Dependency"}
+        },
+        "required_permissions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Permission"}
+        },
+        "instruction_reference": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/InstructionRef"},
+        "available_actions": {
+          "type": "array",
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/RecoveryAction"}
+        },
+        "verification_method": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/VerificationMethod"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"id": {"const": "select_resource"}}, "required": ["id"]},
+          "then": {
+            "properties": {
+              "verification_method": {"const": "resource_policy_match"},
+              "dependencies": {"maxItems": 0}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"id": {"const": "check_access"}}, "required": ["id"]},
+          "then": {
+            "properties": {
+              "verification_method": {"const": "iam_permission_present"},
+              "dependencies": {
+                "contains": {
+                  "type": "object",
+                  "required": ["step_id", "condition"],
+                  "properties": {
+                    "step_id": {"const": "select_resource"},
+                    "condition": {"const": "verified"}
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"id": {"const": "check_connection"}}, "required": ["id"]},
+          "then": {
+            "properties": {
+              "verification_method": {"const": "mock_db_connection"},
+              "dependencies": {
+                "contains": {
+                  "type": "object",
+                  "required": ["step_id", "condition"],
+                  "properties": {
+                    "step_id": {"const": "check_access"},
+                    "condition": {"const": "verified"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "JourneyTemplate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "journey_id",
+        "version",
+        "title",
+        "description",
+        "team_id",
+        "resource_id",
+        "target_roles",
+        "approved_by",
+        "content_hash",
+        "steps"
+      ],
+      "properties": {
+        "journey_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "version": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/PositiveInt"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "description": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "team_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "resource_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+        "target_roles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/RequestedRole"}
+        },
+        "approved_by": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "content_hash": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Sha256"},
+        "steps": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {"$ref": "#/$defs/TemplateStep"},
+          "allOf": [
+            {"contains": {"type": "object", "required": ["id"], "properties": {"id": {"const": "select_resource"}}}},
+            {"contains": {"type": "object", "required": ["id"], "properties": {"id": {"const": "check_access"}}}},
+            {"contains": {"type": "object", "required": ["id"], "properties": {"id": {"const": "check_connection"}}}}
+          ]
+        }
+      }
+    }
+  }
+}

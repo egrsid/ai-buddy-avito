@@ -1,5 +1,13 @@
 name: checks
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      mvp_acceptance:
+        description: Run target AI ingest/DB acceptance after component delivery
+        type: boolean
+        default: false
 permissions:
   contents: read
 
@@ -68,6 +76,8 @@ jobs:
       - run: cp .env.example .env
       - run: docker compose config --quiet
       - run: make up
+      - name: Validate v2 schemas in the unprivileged image
+        run: docker compose -f compose.yaml -f compose.mvp.yaml --profile acceptance run --build --rm --no-deps contract-image-tests
       - run: |
           make migrate seed
           make migrate seed
@@ -76,3 +86,23 @@ jobs:
         run: docker compose logs --no-color
       - if: always()
         run: docker compose down --volumes
+
+  mvp-ai-db:
+    if: github.event_name == 'workflow_dispatch' && inputs.mvp_acceptance
+    runs-on: ubuntu-latest
+    env:
+      AI_INGEST_COMMAND: ${{ vars.AI_INGEST_COMMAND }}
+      AI_DB_TEST_COMMAND: ${{ vars.AI_DB_TEST_COMMAND }}
+      LLM_MODE: mock
+      APP_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: astral-sh/setup-uv@v6
+        with: {version: '0.13.4'}
+      - run: cp .env.example .env
+      - run: make mvp-up
+      - run: make ai-db-test
+      - if: always()
+        run: docker compose -f compose.yaml -f compose.mvp.yaml down --volumes

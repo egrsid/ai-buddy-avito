@@ -25,8 +25,8 @@ def migration_plan(directory: Path) -> list[Path]:
 
 def apply(connection, schema: str, owner: str, directory: Path) -> None:
     for path in migration_plan(directory):
-        content = path.read_text()
-        checksum = hashlib.sha256(content.encode()).hexdigest()
+        content = path.read_text(encoding="utf-8")
+        checksum = hashlib.sha256(content.encode("utf-8")).hexdigest()
         with connection.transaction():
             connection.execute("SELECT pg_advisory_xact_lock(740011)")
             connection.execute(sql.SQL("SET LOCAL ROLE {}").format(sql.Identifier(owner)))
