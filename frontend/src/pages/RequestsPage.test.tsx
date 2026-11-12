@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { RequestsPage } from './RequestsPage';
 
@@ -26,5 +26,12 @@ describe('RequestsPage', () => {
   it('error: состояние ошибки', async () => {
     render(<RequestsPage view="error" />);
     expect(await screen.findByRole('alert')).toBeInTheDocument();
+  });
+
+  it('error: кнопка повтора перезагружает страницу', async () => {
+    render(<RequestsPage view="error" />);
+    // jsdom не реализует reload — важно, что обработчик вызывается без падения теста
+    fireEvent.click(await screen.findByRole('button', { name: 'Повторить' }));
+    expect(screen.getByRole('alert')).toBeInTheDocument();
   });
 });

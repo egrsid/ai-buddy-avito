@@ -55,7 +55,7 @@ export function OnboardingPage({ view }: { view: ViewState }) {
   );
 }
 
-function GoalView({ goal }: { goal: Goal }) {
+export function GoalView({ goal }: { goal: Goal }) {
   const nextStep = goal.steps.find((s) => s.status === 'ready' || s.status === 'blocked');
   return (
     <div className="space-y-4">

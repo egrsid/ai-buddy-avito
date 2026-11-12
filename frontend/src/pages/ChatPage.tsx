@@ -114,7 +114,7 @@ export function ChatPage({ view }: { view: ViewState }) {
               placeholder="Спроси про цель, шаг, ошибку или следующее действие…"
               className="flex-1 rounded-xl border border-border px-4 py-2.5 text-sm focus-visible:outline-2 focus-visible:outline-primary"
             />
-            <Button type="submit" aria-label="Отправить">
+            <Button type="submit" ariaLabel="Отправить">
               <Send size={16} aria-hidden />
             </Button>
           </form>

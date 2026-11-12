@@ -17,12 +17,14 @@ export function Button({
   disabled,
   onClick,
   type = 'button',
+  ariaLabel,
 }: {
   children: ReactNode;
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   disabled?: boolean;
   onClick?: () => void;
   type?: 'button' | 'submit';
+  ariaLabel?: string;
 }) {
   const styles: Record<string, string> = {
     primary: 'bg-primary text-white hover:bg-primary-hover',
@@ -35,6 +37,7 @@ export function Button({
       type={type}
       disabled={disabled}
       onClick={onClick}
+      aria-label={ariaLabel}
       className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50 ${styles[variant]}`}
     >
       {children}

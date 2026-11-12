@@ -160,6 +160,12 @@ export const Goal = z
 
 export const GoalList = z.object({ items: z.array(Goal).max(100) }).strict();
 
+// GET step actions — тот же allowlist, что Step.available_actions (п. 3.7 review).
+export const StepActionList = z
+  .object({ items: z.array(RecoveryAction).max(3) })
+  .strict()
+  .refine((v) => new Set(v.items).size === v.items.length, { message: 'uniqueItems' });
+
 const EmptyOptions = z.object({}).strict();
 const DbOptions = z.object({ ssl_mode: SslMode }).strict();
 

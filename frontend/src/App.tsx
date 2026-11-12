@@ -4,7 +4,8 @@ import { AppShell, DemoModeNote } from './components/AppShell';
 import { Card } from './components/ui';
 import { matchIdRoute, matchStepRoute, useHashRoute } from './lib/router';
 import type { ViewState } from './lib/useMockData';
-import { users, goals, accessRequests } from './fixtures/all-states';
+import { DataModeProvider, useDataMode } from './lib/dataMode';
+import { goals, accessRequests } from './fixtures/all-states';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { StepPage } from './pages/StepPage';
 import { RequestsPage } from './pages/RequestsPage';
@@ -12,6 +13,12 @@ import { ApprovalsPage } from './pages/ApprovalsPage';
 import { BuddyEscalationDetailPage, BuddyEscalationsPage } from './pages/BuddyPages';
 import { KnowledgeGapDetailPage, KnowledgeGapsPage } from './pages/KnowledgeGapsPages';
 import { ChatPage } from './pages/ChatPage';
+import { LiveOnboardingPage } from './pages/LiveOnboardingPage';
+import { LiveStepPage } from './pages/LiveStepPage';
+import { LiveApprovalsPage, LiveRequestsPage } from './pages/LiveAccessPages';
+import { LiveBuddyEscalationDetailPage, LiveBuddyEscalationsPage } from './pages/LiveBuddyPages';
+import { LiveKnowledgeGapDetailPage, LiveKnowledgeGapsPage } from './pages/LiveKnowledgeGapsPages';
+import { LiveChatPage } from './pages/LiveChatPage';
 import { GrantStateBadge, RequestStatusBadge } from './components/StatusBadge';
 import { href } from './lib/router';
 
@@ -64,10 +71,17 @@ function ContextSidebar() {
 }
 
 export function App() {
+  return (
+    <DataModeProvider>
+      <AppInner />
+    </DataModeProvider>
+  );
+}
+
+function AppInner() {
   const route = useHashRoute();
-  const [account, setAccount] = useState('intern-a');
+  const { mode, setMode, user, accountId, switchAccount, sessionError } = useDataMode();
   const [view, setView] = useState<ViewState>('data');
-  const user = users[account];
 
   const stepRoute = matchStepRoute(route);
   const escalationId = matchIdRoute(route, '/buddy/escalations');
@@ -76,7 +90,27 @@ export function App() {
   let page: React.ReactNode;
   let sidebar: React.ReactNode = null;
 
-  if (stepRoute) {
+  if (mode === 'live') {
+    if (stepRoute) {
+      page = <LiveStepPage goalId={stepRoute.goalId} stepId={stepRoute.stepId} />;
+    } else if (route === '/onboarding') {
+      page = <LiveOnboardingPage />;
+    } else if (route === '/requests') {
+      page = <LiveRequestsPage />;
+    } else if (route === '/approvals') {
+      page = <LiveApprovalsPage />;
+    } else if (escalationId) {
+      page = <LiveBuddyEscalationDetailPage id={escalationId} />;
+    } else if (route === '/buddy/escalations') {
+      page = <LiveBuddyEscalationsPage />;
+    } else if (gapId) {
+      page = <LiveKnowledgeGapDetailPage id={gapId} />;
+    } else if (route === '/knowledge-gaps') {
+      page = <LiveKnowledgeGapsPage />;
+    } else {
+      page = <LiveChatPage />;
+    }
+  } else if (stepRoute) {
     page = <StepPage goalId={stepRoute.goalId} stepId={stepRoute.stepId} view={view} />;
     sidebar = <ContextSidebar />;
   } else if (route === '/onboarding') {
@@ -99,9 +133,21 @@ export function App() {
   }
 
   return (
-    <AppShell user={user} route={route} view={view} onUserChange={setAccount} onViewChange={setView} sidebar={sidebar}>
-      <DemoModeNote />
-      {page}
+    <AppShell
+      user={user}
+      route={route}
+      view={view}
+      onUserChange={(id) => void switchAccount(id)}
+      onViewChange={setView}
+      mode={mode}
+      onModeChange={setMode}
+      sidebar={sidebar}
+    >
+      {mode === 'fixtures' && <DemoModeNote />}
+      {sessionError && (
+        <p className="mb-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-error" role="alert">{sessionError}</p>
+      )}
+      <div key={`${mode}-${accountId}`}>{page}</div>
     </AppShell>
   );
 }
