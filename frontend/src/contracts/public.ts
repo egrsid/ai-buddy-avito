@@ -223,13 +223,25 @@ export const ResourceList = z
   .object({ items: z.array(ResourceSummary).max(100) })
   .strict();
 
+// До первой проверки: grant_state unknown, stale true, observed_at отсутствует.
+// После проверки observed_at обязателен (grant_state absent/pending/present или stale=false).
 export const ResourceAccess = z
   .object({
     grant_state: GrantState,
-    observed_at: Timestamp,
+    observed_at: Timestamp.optional(),
     stale: z.boolean(),
   })
-  .strict();
+  .strict()
+  .superRefine((r, ctx) => {
+    const checked = ['absent', 'pending', 'present'].includes(r.grant_state) || !r.stale;
+    if (checked && !r.observed_at) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'observed_at required after a check',
+        path: ['observed_at'],
+      });
+    }
+  });
 
 export const KnowledgeDocument = z
   .object({
@@ -308,11 +320,25 @@ export const Run = z
   })
   .strict()
   .superRefine((r, ctx) => {
+    const fail = (message: string) =>
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message, path: ['error_code'] });
     if (r.status === 'failed' && !r.error_code) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'run.error_code', path: ['error_code'] });
+      fail('run.error_code required');
     }
-    if (['queued', 'running', 'completed'].includes(r.status) && r.error_code) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'run.error_code', path: ['error_code'] });
+    if (r.status === 'interrupted') {
+      if (!r.error_code || !['STREAM_NOT_OPENED', 'CLIENT_DISCONNECTED'].includes(r.error_code)) {
+        fail('interrupted requires STREAM_NOT_OPENED or CLIENT_DISCONNECTED');
+      }
+    }
+    if (['queued', 'running', 'completed', 'cancelled'].includes(r.status) && r.error_code) {
+      fail('run.error_code must be absent');
+    }
+    if (r.status === 'completed' && !r.assistant_message_id) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'run.assistant_message_id required',
+        path: ['assistant_message_id'],
+      });
     }
   });
 

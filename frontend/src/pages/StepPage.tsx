@@ -1,27 +1,41 @@
 import { useState } from 'react';
 import { ArrowLeft, BookOpen, FlaskConical, MessageSquareWarning, RefreshCw } from 'lucide-react';
-import type { Goal } from '../fixtures/all-states';
-import { actions, checks, goals } from '../fixtures/all-states';
+import type { Action, Goal } from '../fixtures/all-states';
+import { checks, escalationPendingAction, goals, knowledgeDoc } from '../fixtures/all-states';
 import { href } from '../lib/router';
 import type { ViewState } from '../lib/useMockData';
 import { useMockData } from '../lib/useMockData';
 import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '../components/ui';
+import { ActionCard } from '../components/ActionCard';
+import { SourceDrawer } from '../components/SourceDrawer';
 import {
-  ActionStatusBadge,
   BlockerStatusBadge,
   CheckStatusBadge,
   StateBadge,
 } from '../components/StatusBadge';
 
-// Демо-детали шага: зависимости, инструкция, evidence, blocker, проверки,
-// action preview/confirm/cancel. Данные — FE fixtures, до подключения Go.
+// Демо-детали шага: зависимости, инструкция (drawer), evidence, blocker, проверки,
+// action preview → confirm → executing → succeeded на локальном состоянии.
+// Данные — FE fixtures, до подключения Go.
 
 export function StepPage({ goalId, stepId, view }: { goalId: string; stepId: string; view: ViewState }) {
   const goal = goals.find((g) => g.id === goalId) ?? goals[0];
   const step = goal.steps.find((s) => s.id === stepId) ?? goal.steps[0];
   const result = useMockData<Goal>(goal, goal, view);
-  const [showPreview, setShowPreview] = useState(false);
-  const pendingAction = actions.find((a) => a.status === 'pending_confirmation');
+  const [action, setAction] = useState<Action | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const confirmAction = () => {
+    if (!action) return;
+    setAction({ ...action, status: 'executing' });
+    setTimeout(() => {
+      setAction((current) =>
+        current
+          ? { ...current, status: 'succeeded', result: { escalation_id: '00000052-0000-4000-8000-000000000052' } }
+          : current,
+      );
+    }, 1200);
+  };
 
   if (result.state === 'loading') return <Card><LoadingState /></Card>;
   if (result.state === 'error') return <ErrorState onRetry={() => window.location.reload()} />;
@@ -54,10 +68,11 @@ export function StepPage({ goalId, stepId, view }: { goalId: string; stepId: str
 
           <button
             type="button"
+            onClick={() => setDrawerOpen(true)}
             className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm text-primary hover:bg-primary-light focus-visible:outline-2 focus-visible:outline-primary"
           >
             <BookOpen size={16} aria-hidden />
-            Инструкция (версия {step.instruction_reference.version}) — откроется в drawer после проверки доступа
+            Инструкция (версия {step.instruction_reference.version})
           </button>
 
           {step.user_claim && (
@@ -85,7 +100,7 @@ export function StepPage({ goalId, stepId, view }: { goalId: string; stepId: str
                 </Button>
               )}
               {blocker.recovery_actions.includes('escalate_to_buddy') && (
-                <Button variant="secondary" onClick={() => setShowPreview(true)}>
+                <Button variant="secondary" onClick={() => setAction(escalationPendingAction)}>
                   <MessageSquareWarning size={16} className="mr-1 inline" aria-hidden /> Спросить наставника
                 </Button>
               )}
@@ -104,25 +119,12 @@ export function StepPage({ goalId, stepId, view }: { goalId: string; stepId: str
           </Card>
         )}
 
-        {showPreview && pendingAction && (
-          <Card className="border-primary/40" aria-label="Предпросмотр действия">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="font-medium">Предпросмотр передачи наставнику</p>
-              <ActionStatusBadge status={pendingAction.status} />
-            </div>
-            <p className="mb-2 text-sm text-text-secondary">
-              Наставник получит: цель, шаг, блокер, результаты проверок, разрешённые источники и гипотезы.
-              Полная переписка не передаётся.
-            </p>
-            <div className="mb-3 rounded-xl bg-surface-muted p-3 text-xs text-text-secondary">
-              <p>Получатель: Бадди A</p>
-              <p>Действует до: {pendingAction.expires_at} (серверное время)</p>
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={() => setShowPreview(false)}>Подтвердить отправку</Button>
-              <Button variant="ghost" onClick={() => setShowPreview(false)}>Отмена</Button>
-            </div>
-          </Card>
+        {action && (
+          <ActionCard
+            action={action}
+            onConfirm={confirmAction}
+            onCancel={() => setAction(null)}
+          />
         )}
 
         {step.evidence.length > 0 && (
@@ -162,6 +164,14 @@ export function StepPage({ goalId, stepId, view }: { goalId: string; stepId: str
           </ul>
         </Card>
       </div>
+
+      <SourceDrawer
+        open={drawerOpen}
+        title={knowledgeDoc.title}
+        content={knowledgeDoc.content}
+        version={knowledgeDoc.version}
+        onClose={() => setDrawerOpen(false)}
+      />
     </>
   );
 }

@@ -49,6 +49,7 @@ export const ErrorCode = z.enum([
   'LLM_TIMEOUT',
   'LLM_UNAVAILABLE',
   'STREAM_NOT_OPENED',
+  'CLIENT_DISCONNECTED',
 ]);
 export const SafeErrorCode = z.enum([
   'ACCESS_MISSING',

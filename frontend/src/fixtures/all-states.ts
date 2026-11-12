@@ -81,39 +81,40 @@ const stepConnBlocked = step({
   user_claim: 'Вроде всё настроил по инструкции',
 });
 
-function goal(status: Goal['status'], steps: Step[], verified: number, version = 2): Goal {
+function goal(status: Goal['status'], steps: Step[], verified: number, version = 2, id = '1e'): Goal {
   return {
-    id: u('1e'), journey_id: 'db-access-team-a', journey_version: 1,
+    id: u(id), journey_id: 'db-access-team-a', journey_version: 1,
     resource_id: 'db-team-a-test', status, version, steps,
     progress: { verified, total: 3, percent: Math.floor((verified * 100) / 3) },
     updated_at: T2,
   };
 }
 
+// У каждой цели свой id — иначе lookup по goalId всегда находит первую.
 export const goalBlocked = goal('blocked', [stepVerified, stepAccessVerified, stepConnBlocked], 2);
 
 export const goalReady = goal('ready', [
   stepVerified,
   stepAccessVerified,
   step({ ...stepConnBlocked, status: 'ready', evidence: [], blockers: [], user_claim: undefined }),
-], 2);
+], 2, 2, '1f');
 
 export const goalWaitingExternal = goal('waiting_external', [
   stepVerified,
   step({ ...stepAccessVerified, status: 'waiting_external', evidence: [], blockers: [blockerOpen] }),
   step({ ...stepConnBlocked, status: 'unverified', evidence: [], blockers: [], user_claim: undefined }),
-], 1);
+], 1, 2, '20');
 
 export const goalVerified = goal('verified', [
   stepVerified, stepAccessVerified,
   step({ ...stepConnBlocked, status: 'verified', evidence: [evidencePassed], blockers: [], user_claim: undefined }),
-], 3, 4);
+], 3, 4, '21');
 
 export const goalUnverified = goal('unverified', [
   step({ ...stepVerified, status: 'ready', evidence: [] }),
   step({ ...stepAccessVerified, status: 'unverified', evidence: [] }),
   step({ ...stepConnBlocked, status: 'unverified', evidence: [], blockers: [], user_claim: undefined }),
-], 0, 1);
+], 0, 1, '22');
 
 export const goals = [goalBlocked, goalReady, goalWaitingExternal, goalVerified, goalUnverified];
 export const emptyGoals: Goal[] = [];
@@ -268,6 +269,54 @@ export const errors: ErrorBody[] = [
 ];
 
 // --- Пользователи демо ---
+
+export const knowledgeDoc = {
+  id: u('0a'),
+  title: 'Синтетическая инструкция подключения',
+  content:
+    'Синтетический учебный текст. Это не регламент Авито.\n\n1. Запросите роль db_reader для db-team-a-test.\n2. Дождитесь согласования.\n3. Проверьте подключение.',
+  version: 1,
+  synthetic: true as const,
+};
+
+// Эскалация, ожидающая подтверждения (для карточки действия на странице шага).
+export const escalationPendingAction: Action = {
+  id: u('60'),
+  type: 'escalate_to_buddy',
+  goal_id: u('1e'),
+  step_id: 'check_connection',
+  parameters: {
+    question: 'Как включить SSL для синтетической БД?',
+    diagnostic_snapshot: {
+      goal: { id: u('1e'), title: 'Доступ к синтетической БД' },
+      step: { id: 'check_connection', title: 'Проверить подключение' },
+      blocker: { id: u('28'), type: 'db_ssl_required', error_code: 'DB_SSL_REQUIRED' },
+      checks: [],
+      attempted_actions: [],
+      instruction_refs: [],
+      hypotheses: [],
+      question: 'Как включить SSL для синтетической БД?',
+    },
+  },
+  preview: {
+    initiator_id: u('01'),
+    recipient_id: u('04'),
+    question: 'Как включить SSL для синтетической БД?',
+    diagnostic_snapshot: {
+      goal: { id: u('1e'), title: 'Доступ к синтетической БД' },
+      step: { id: 'check_connection', title: 'Проверить подключение' },
+      blocker: { id: u('28'), type: 'db_ssl_required', error_code: 'DB_SSL_REQUIRED' },
+      checks: [],
+      attempted_actions: [],
+      instruction_refs: [],
+      hypotheses: [],
+      question: 'Как включить SSL для синтетической БД?',
+    },
+  },
+  expires_at: '2026-11-11T09:10:00Z',
+  status: 'pending_confirmation',
+  created_at: T,
+};
 
 export const users: Record<string, User> = {
   'intern-a': {
