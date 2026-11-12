@@ -128,9 +128,9 @@ def write_index(
 
 
 def make_embedder(settings: Settings):
-    from app.embeddings import OllamaEmbedder
+    from app.embeddings import make_live_embedder
 
-    return OllamaEmbedder(settings)
+    return make_live_embedder(settings)
 
 
 async def compute_vectors(embedder, documents: list[Document]) -> dict:

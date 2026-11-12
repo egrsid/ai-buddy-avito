@@ -67,6 +67,10 @@ async def within_budget(
 def make_provider(settings: Settings):
     if settings.llm_mode == "live":
         # Импорт здесь: httpx нужен только live-режиму, mock должен стартовать и без него.
+        if settings.llm_provider == "openai":
+            from app.openai_provider import OpenAIProvider
+
+            return OpenAIProvider(settings)
         from app.ollama_provider import OllamaProvider
 
         return OllamaProvider(settings)
@@ -77,9 +81,9 @@ def make_embedder(settings: Settings):
     """Эмбеддер вопросов и корпуса — только в live; в mock поиск лексический."""
     if settings.llm_mode != "live":
         return None
-    from app.embeddings import OllamaEmbedder
+    from app.embeddings import make_live_embedder
 
-    return OllamaEmbedder(settings)
+    return make_live_embedder(settings)
 
 
 def make_knowledge_source(settings: Settings, embedder):

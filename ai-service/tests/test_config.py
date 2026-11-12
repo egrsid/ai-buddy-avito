@@ -75,6 +75,8 @@ def test_live_limits_from_env():
         {"LLM_NUM_CTX": "2048"},
         {"LLM_MAX_OUTPUT_TOKENS": "-5"},
         {"LLM_NUM_CTX": "4096", "LLM_MAX_OUTPUT_TOKENS": "2048"},
+        # Жёсткий потолок ответа — 1000 токенов.
+        {"LLM_MAX_OUTPUT_TOKENS": "1001"},
     ],
 )
 def test_bad_live_configuration_stops_startup(extra):
@@ -95,3 +97,60 @@ def test_knowledge_and_embedding_defaults_survive_empty_compose_values():
 def test_bad_knowledge_settings_stop_startup(extra):
     with pytest.raises(ConfigError):
         load_settings({**LIVE, **extra})
+
+
+PAID = {
+    **LIVE,
+    "LLM_PROVIDER": "openai",
+    "LLM_BASE_URL": "https://foundation-models.example/v1",
+    "LLM_MODEL": "ai-sage/GigaChat3.5-432B-A28B",
+    "LLM_API_KEY": "secret-key",
+    "LLM_BUDGET_LEDGER_PATH": "/var/lib/ai-budget/budget.sqlite",
+    "LLM_PRICE_INPUT_RUB": "96.22",
+    "LLM_PRICE_OUTPUT_RUB": "288.60",
+    "EMBEDDING_PRICE_RUB": "0.61",
+}
+
+
+def test_paid_api_settings():
+    settings = load_settings(PAID)
+    assert settings.llm_provider == "openai"
+    assert settings.budget_stop_rub == 800.0
+    assert settings.price_input_rub == 96.22
+    assert settings.price_output_rub == 288.60
+    assert settings.price_embedding_rub == 0.61
+    assert load_settings({**PAID, "LLM_BUDGET_STOP_RUB": "100"}).budget_stop_rub == 100.0
+    assert settings.llm_reasoning_effort == ""
+    env = {**PAID, "LLM_REASONING_EFFORT": "none"}
+    assert load_settings(env).llm_reasoning_effort == "none"
+
+
+def test_api_key_is_not_in_settings_repr():
+    assert "secret-key" not in repr(load_settings(PAID))
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "LLM_API_KEY",
+        "LLM_BUDGET_LEDGER_PATH",
+        "LLM_PRICE_INPUT_RUB",
+        "LLM_PRICE_OUTPUT_RUB",
+        "EMBEDDING_PRICE_RUB",
+    ],
+)
+def test_paid_api_without_key_ledger_or_tariff_stops_startup(name):
+    with pytest.raises(ConfigError):
+        load_settings({**PAID, name: ""})
+
+
+@pytest.mark.parametrize("value", ["abc", "0", "-1", "nan", "inf"])
+def test_bad_tariff_or_stop_stops_startup(value):
+    with pytest.raises(ConfigError):
+        load_settings({**PAID, "LLM_PRICE_INPUT_RUB": value})
+    with pytest.raises(ConfigError):
+        load_settings({**PAID, "LLM_BUDGET_STOP_RUB": value})
+
+
+def test_ollama_does_not_need_paid_settings():
+    assert load_settings({**LIVE, "LLM_PROVIDER": "ollama"}).llm_api_key == ""
