@@ -72,7 +72,9 @@ async def run_generate(
     scenario: str = "normal",
     clock: Callable[[], float] = time.monotonic,
     embedder=None,
+    accepted: float | None = None,
 ) -> AsyncIterator[str]:
+    """accepted — время приёма HTTP-запроса по тем же часам clock: от него считаются 85 с."""
     run_id = request["run_id"]
     sequence = 0
 
@@ -81,11 +83,18 @@ async def run_generate(
         sequence += 1
         return format_event(event_type, sequence, payload)
 
-    yield event("run.started", {"run_id": run_id})
+    def timeout_event() -> str:
+        payload = {"run_id": run_id, "code": "LLM_TIMEOUT", "message": TIMEOUT_MESSAGE}
+        return event("run.failed", payload)
 
-    started = clock()
+    started = clock() if accepted is None else accepted
     pipeline_deadline = started + settings.pipeline_timeout
     token_deadline = started + settings.first_token_timeout
+
+    def too_late() -> bool:
+        return clock() >= pipeline_deadline
+
+    yield event("run.started", {"run_id": run_id})
 
     scope = request["access_scope"]
     query = search_query(request)
@@ -94,6 +103,10 @@ async def run_generate(
         query_vector = await embed_query(embedder, query)
     # Фильтр прав внутри search — до ранжирования и до модели.
     hits = knowledge.search(scope, query, GENERATE_TOP_K, query_vector)
+    # Эмбеддинг вопроса тоже тратит общий бюджет: проверяем до запроса к модели.
+    if too_late():
+        yield timeout_event()
+        return
     llm_input = LlmInput(build_messages(request, hits), request, hits)
     chunks = provider.stream(llm_input, scenario)
     pending = None
@@ -117,9 +130,7 @@ async def run_generate(
                 token_deadline = clock() + settings.stream_idle_timeout
                 yield event("message.delta", {"run_id": run_id, "text": text})
     except LlmTimeout:
-        yield event(
-            "run.failed", {"run_id": run_id, "code": "LLM_TIMEOUT", "message": TIMEOUT_MESSAGE}
-        )
+        yield timeout_event()
         return
     except ProviderUnavailable:
         yield event(
@@ -135,6 +146,12 @@ async def run_generate(
             await asyncio.wait({pending})
         await chunks.aclose()
 
+    # Хвост потока. Провайдер мог закончить уже после дедлайна, а каждая отправка события
+    # тоже занимает время, поэтому время проверяем перед каждым из трёх событий.
+    # Опоздали — ровно один run.failed, и после него ничего.
+    if too_late():
+        yield timeout_event()
+        return
     # Перед выдачей ещё раз проверяем права на каждый источник.
     sources = []
     for hit in hits:
@@ -143,5 +160,11 @@ async def run_generate(
     yield event("message.sources", {"run_id": run_id, "sources": sources})
     proposal = tool_proposal(request, scenario)
     if proposal is not None:
+        if too_late():
+            yield timeout_event()
+            return
         yield event("tool.proposed", proposal)
+    if too_late():
+        yield timeout_event()
+        return
     yield event("generation.completed", {"run_id": run_id})

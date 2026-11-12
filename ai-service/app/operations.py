@@ -44,6 +44,15 @@ GAP_TEXTS = {
     ),
 }
 MAX_QUESTION = 4000
+# В уточняющий вопрос идут до 5 названий маршрутов по <=200 символов, а лимит ответа — 1000.
+# 5 названий по 150 символов вместе с текстом вопроса — около 800 символов.
+MAX_TITLE_IN_QUESTION = 150
+
+
+def short_title(title: str) -> str:
+    if len(title) <= MAX_TITLE_IN_QUESTION:
+        return title
+    return title[: MAX_TITLE_IN_QUESTION - 1].rstrip() + "…"
 
 
 def select_journey(body: dict) -> dict:
@@ -58,7 +67,7 @@ def select_journey(body: dict) -> dict:
     tie = len(scored) > 1 and scored[1][0] == best_score
     if best_score > 0 and not tie:
         return {"journey_id": best["journey_id"], "version": best["version"]}
-    titles = "; ".join(f"«{journey['title']}»" for _, journey in scored[:5])
+    titles = "; ".join(f"«{short_title(journey['title'])}»" for _, journey in scored[:5])
     return {"clarification": f"Уточните, какая цель вам нужна: {titles}?"}
 
 

@@ -1,6 +1,8 @@
 """Связка api со знаниями: выбор источника/эмбеддера, старт/закрытие, вектор вопроса в поиске."""
 
+import asyncio
 import json
+import time
 
 import pytest
 from ai_test_support import (
@@ -138,3 +140,62 @@ def test_generate_puts_vector_found_fragment_into_sources():
     assert DOC_PUBLIC in [source["document_id"] for source in sources["data"]["sources"]]
     assert len(sources["data"]["sources"]) <= 3
     assert len(embedder.calls) == 1
+
+
+# --- /readyz: индекс годен и модели прогреты (ревью TL, AI-R1) ------------------------
+
+
+class GatedProvider:
+    """Провайдер, чей прогрев идёт, пока тест не откроет ворота."""
+
+    def __init__(self):
+        self.gate = asyncio.Event()
+
+    async def warm_up(self):
+        await self.gate.wait()
+
+    async def aclose(self):
+        pass
+
+
+def wait_ready(client) -> object:
+    """Прогрев идёт фоновой задачей: даём ей несколько шансов завершиться."""
+    response = client.get("/readyz")
+    for _ in range(20):
+        if response.status_code == 200:
+            break
+        time.sleep(0.01)
+        response = client.get("/readyz")
+    return response
+
+
+def test_readyz_ok_with_corpus_after_warm_up():
+    with TestClient(create_app(make_settings())) as client:
+        response = wait_ready(client)
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "service": "ai-service"}
+
+
+def test_readyz_fails_on_empty_corpus_while_healthz_lives():
+    source = StaticKnowledge(KnowledgeBase([]))
+    with TestClient(create_app(make_settings(), source=source)) as client:
+        assert client.get("/healthz").status_code == 200
+        response = client.get("/readyz")
+    assert response.status_code == 503
+    assert response.json()["status"] == "not_ready"
+    assert "пуст" in response.json()["reason"]
+
+
+def test_readyz_waits_for_model_warm_up():
+    provider = GatedProvider()
+    with TestClient(create_app(make_settings(), provider=provider)) as client:
+        response = client.get("/readyz")
+        assert response.status_code == 503
+        assert "прогрева" in response.json()["reason"]
+        client.portal.call(provider.gate.set)
+        assert wait_ready(client).status_code == 200
+
+
+def test_readyz_without_startup_is_not_ready():
+    response = TestClient(create_app(make_settings())).get("/readyz")
+    assert response.status_code == 503
