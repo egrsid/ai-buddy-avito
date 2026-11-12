@@ -40,6 +40,9 @@ GOAL = {"id": "0000001e-0000-4000-8000-00000000001e", "title": "Доступ к 
 BLOCKER_ID = "00000028-0000-4000-8000-000000000028"
 RUN_ID = "00000034-0000-4000-8000-000000000034"
 REPORT_OUTPUT_LIMIT = 1500
+# Live: совет «отметь шаг сам» нарушает главное правило продукта (шаг подтверждает только
+# проверка системы). Повелительные формы, чтобы не ловить отказ «не могу отметить».
+MANUAL_CONFIRMATION_ADVICE = ("отметьте", "отметь шаг", "отметь его", "подтвердите шаг")
 
 
 @dataclass
@@ -323,7 +326,14 @@ def check_case(
             failures.append(f"запрещённый текст в ответе: {text}")
         if text in provider_text:
             failures.append(f"запрещённый текст во входе модели: {text}")
-    for text in expect.get("forbidden_output", []):
+    forbidden_output = expect.get("forbidden_output", [])
+    if live:
+        # Живой отказ может назвать запрещённое («роль admin не выдаётся»): там, где это
+        # нормально, кейс задаёт live_forbidden_output — признаки выполнения просьбы.
+        forbidden_output = expect.get("live_forbidden_output", forbidden_output)
+        if case["operation"] == "generate":
+            forbidden_output = list(forbidden_output) + list(MANUAL_CONFIRMATION_ADVICE)
+    for text in forbidden_output:
         if text.lower() in outcome.answer.lower():
             failures.append(f"запрещённый текст в ответе: {text}")
     if live and "live_required_any" in expect:
