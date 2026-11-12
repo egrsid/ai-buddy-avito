@@ -65,12 +65,12 @@ def test_live_ingest_stores_vectors_of_configured_model(capsys):
     fake = FakeEmbedder(lambda text: axis(2, 1024))
     assert run_ingest(database, LIVE_ENV, fake) == ingest.EXIT_OK
     chunks = database.inserts("chunks")
-    assert all(row[5] == "bge-m3" for row in chunks)
+    assert all(row[5] == "ollama:bge-m3:1024:p1" for row in chunks)
     assert chunks[0][4] == ingest.vector_literal(axis(2, 1024))
     (metadata,) = database.inserts("index_metadata")
-    assert metadata[:3] == ("live", "bge-m3", 1024)
+    assert metadata[:3] == ("live", "ollama:bge-m3:1024:p1", 1024)
     assert "aclose" in fake.lifecycle
-    assert "live, bge-m3, 1024" in capsys.readouterr().out
+    assert "live, ollama:bge-m3:1024:p1, 1024" in capsys.readouterr().out
 
 
 def test_repeated_ingest_without_changes_writes_nothing(capsys):

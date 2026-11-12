@@ -15,7 +15,7 @@ import psycopg
 from app.config import Settings
 from app.knowledge import Document, chunk_document
 from app.retrieval import KnowledgeBase
-from app.vectors import EmbeddingError, embed_corpus
+from app.vectors import EmbeddingError, embed_corpus, embedding_profile
 
 logger = logging.getLogger(__name__)
 CONNECT_TIMEOUT = 5
@@ -114,9 +114,12 @@ def check_ready(revision: tuple | None, settings: Settings) -> None:
     mode, model = revision[2], revision[3]
     if settings.llm_mode == "live" and mode != "live":
         raise IndexNotReady("LLM_MODE=live, а в kb индекс без векторов: нужен live-ingest")
-    # Несовместимые модели не смешиваем: вектор вопроса и векторы фрагментов от одной модели.
-    if mode == "live" and model != settings.embedding_model:
-        raise IndexNotReady(f"индекс построен моделью {model}, а настроена другая")
+    # Несовместимые векторы не смешиваем: вопрос и фрагменты — с одним профилем.
+    profile = embedding_profile(settings)
+    if mode == "live" and model != profile:
+        raise IndexNotReady(
+            f"индекс построен с профилем {model}, а настроен {profile}: нужен ingest"
+        )
 
 
 class DbKnowledge:

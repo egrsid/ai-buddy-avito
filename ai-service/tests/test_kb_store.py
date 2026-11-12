@@ -55,7 +55,7 @@ def chunk_rows(with_vectors: bool = True, documents=DOCUMENTS) -> list[tuple]:
 
 
 def live_revision(version: str = "kb-1") -> tuple:
-    return (version, "2026-11-12T10:00:00", "live", "bge-m3")
+    return (version, "2026-11-12T10:00:00", "live", "ollama:bge-m3:1024:p1")
 
 
 def connection_with(revision, chunks=None) -> FakeConnection:
@@ -147,6 +147,13 @@ LIVE = {"llm_mode": "live", "llm_base_url": "http://ollama:11434", "llm_model": 
         (("kb-1", "t", "mock", None), LIVE),  # live-сервис на индексе без векторов
         (("kb-1", "t", "live", "other-model"), LIVE),  # векторы другой модели
         (("kb-1", "t", "live", "other-model"), {}),  # и в mock не смешиваем
+        # Старый индекс (только имя модели) и та же модель у другого провайдера — reindex.
+        (("kb-1", "t", "live", "bge-m3"), LIVE),
+        (("kb-1", "t", "live", "ollama:bge-m3:1024:p1"), {**LIVE, "llm_provider": "openai"}),
+        (
+            ("kb-1", "t", "live", "ollama:bge-m3:1024:p1"),
+            {**LIVE, "embedding_model": "BAAI/bge-m3"},
+        ),
     ],
 )
 def test_check_ready_rejects_unsuitable_index(revision, settings):
@@ -158,8 +165,13 @@ def test_check_ready_rejects_unsuitable_index(revision, settings):
     "revision, settings",
     [
         (("kb-1", "t", "mock", None), {}),
-        (("kb-1", "t", "live", "bge-m3"), LIVE),
-        (("kb-1", "t", "live", "bge-m3"), {}),  # mock-сервис просто не использует векторы
+        (("kb-1", "t", "live", "ollama:bge-m3:1024:p1"), LIVE),
+        # Смена модели чата не требует reindex: профиль векторов тот же.
+        (("kb-1", "t", "live", "ollama:bge-m3:1024:p1"), {**LIVE, "llm_model": "another-chat"}),
+        (
+            ("kb-1", "t", "live", "ollama:bge-m3:1024:p1"),
+            {},
+        ),  # mock-сервис просто не использует векторы
     ],
 )
 def test_check_ready_accepts_suitable_index(revision, settings):

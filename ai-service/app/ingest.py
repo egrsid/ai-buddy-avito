@@ -32,7 +32,7 @@ from app.knowledge import (
     chunk_document,
     load_corpus,
 )
-from app.vectors import EmbeddingError, embed_corpus
+from app.vectors import EmbeddingError, embed_corpus, embedding_profile
 
 EXIT_OK = 0
 EXIT_INPUT = 1
@@ -155,7 +155,8 @@ def run(
         print(f"Ошибка входных данных: {error}", file=sys.stderr)
         return EXIT_INPUT
 
-    model = settings.embedding_model if settings.llm_mode == "live" else None
+    # В kb записываем полный профиль векторов, а не только имя модели.
+    model = embedding_profile(settings) if settings.llm_mode == "live" else None
     version = dataset_version(documents, settings.llm_mode, model)
     try:
         with connect(autocommit=True, connect_timeout=CONNECT_TIMEOUT) as connection:
