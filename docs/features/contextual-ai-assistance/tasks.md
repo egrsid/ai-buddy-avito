@@ -9,6 +9,14 @@ offline retrieval/provider и structured операции; 184 tests/99.90%, 29/
 [AI-R1–R4](../../team/ai-review-2026-11-12.md) — следующий остаток AI; Go/FE acceptance
 по-прежнему открыт. Не отмечать все пункты ниже выполненными по component tests.
 
+12 ноября, вечер (AI Engineer, ветка feature/ai-mvp-v2): AI-R1–R4 исправлены. RP-AI-02 без ключа
+готов: адаптер `openai` (Cloud.ru), журнал расходов с reserve/settle, профиль эмбеддингов и
+reindex, LLM-wiring в compose/.env.example/README, фильтр инъекций в контексте, live evals
+(`python -m app.live_evals`) и smoke (`python -m app.smoke`). Live evals на локальной
+qwen3.5:9b: все safety-кейсы проходят, первый токен p95 < 20 с (отчёт
+`ai-service/evals/report-live.md`). Ждёт ключа Cloud.ru: smoke, live evals на GigaChat, сверка
+с биллингом. Go/FE acceptance по-прежнему открыт.
+
 Предусловия интеграции: RP-CONTRACT-01, RP-AUTH-01, RP-JOURNEY-01. AI CORE делается
 по contract fixtures после RP-DATA-AI-01; Go chat зависит только от CORE. Live — RP-AI-02.
 

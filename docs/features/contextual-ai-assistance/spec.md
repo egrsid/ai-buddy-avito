@@ -49,9 +49,9 @@ Run queued/running/completed/failed/cancelled/interrupted; partial не озна
 - [ ] Draft, classification, handoff и candidate соответствуют schema; попытка изменить state/permission запрещена.
 - [ ] SSE/cancel/retry не дублируют message/action; после refresh сохранённый результат совпадает.
 - [ ] Полный offline P0 без сети/ключа; mock/live обозначены; safety evals и schema-invalid fixtures проходят.
-- [ ] Для live: budget guard проверен до вызова, parallel/restart/retry/unknown usage не обходят stop; ledger loss/corrupt fail closed, hard cap соблюдается.
-- [ ] Если включён QA cache: revoke/source/model revision и cross-user tests проходят, dynamic/actions не кэшируются, live eval cache-off.
-- [ ] Embedding index/query profile совпадает, несовместимая смена требует reindex; live smoke фиксирует usage/TTFT <=20s/timeout, без автоматической смены модели.
+- [x] Для live: budget guard проверен до вызова, parallel/restart/retry/unknown usage не обходят stop; ledger loss/corrupt fail closed, hard cap соблюдается. *(AI 2026-11-12: `ai-service/app/budget.py`, tests `test_budget.py`/`test_openai_provider.py`; сверка с биллингом Cloud.ru — после ключа.)*
+- [ ] Если включён QA cache: revoke/source/model revision и cross-user tests проходят, dynamic/actions не кэшируются, live eval cache-off. *(AI 2026-11-12: кэш не включён — опционален.)*
+- [ ] Embedding index/query profile совпадает, несовместимая смена требует reindex; live smoke фиксирует usage/TTFT <=20s/timeout, без автоматической смены модели. *(AI 2026-11-12: профиль и reindex готовы и протестированы; smoke-команда `python -m app.smoke` проверена на Ollama `/v1`, прогон на Cloud.ru ждёт ключа.)*
 - [ ] Релевантные component/integration проверки и coverage >80% выполнены; health/fixtures не считаются фичей.
 
 ## Зависимости и границы
