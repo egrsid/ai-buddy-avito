@@ -4,16 +4,23 @@
 тестовые сбои или недонастроенный live-режим.
 """
 
+import math
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 APP_ENVS = ("local", "test", "production")
 LLM_MODES = ("mock", "live")
-LLM_PROVIDERS = ("ollama",)  # openai (/v1, платный API) появится позже
+# ollama — локальная модель (нативный /api/chat); openai — OpenAI-совместимый /v1
+# платного API (Cloud.ru), с ключом и учётом расходов.
+LLM_PROVIDERS = ("ollama", "openai")
 # Окно контекста задаём сами: дефолт Ollama (4096) зависит от машины и молча режет промпт.
 DEFAULT_NUM_CTX = 16384
 MIN_NUM_CTX = 4096
 DEFAULT_MAX_OUTPUT_TOKENS = 400
+# Жёсткий потолок ответа: дороже выходные токены, и от него считается резерв бюджета.
+MAX_OUTPUT_CAP = 1000
+# Автостоп платных вызовов (бюджет хакатона 1000 ₽, 200 ₽ — резерв на расхождения).
+DEFAULT_BUDGET_STOP_RUB = 800.0
 # Размерность зафиксирована миграцией kb 002 (bge-m3): другая модель — новая миграция.
 EMBEDDING_DIM = 1024
 # files — корпус из data/knowledge/v2 в памяти (тесты, офлайн); db — индекс kb после ingest.
@@ -48,6 +55,17 @@ class Settings:
     # Эмбеддинги (live) берутся у той же Ollama, что и чат.
     embedding_model: str = "bge-m3"
     knowledge_source: str = "files"
+    # Платный API (LLM_PROVIDER=openai). Ключ не попадает в repr и логи.
+    llm_api_key: str = field(default="", repr=False)
+    budget_ledger_path: str = ""
+    # reasoning_effort для /v1. Пусто — параметр не отправляем (Cloud.ru, модель без
+    # рассуждений). none — выключить «размышления» у Ollama /v1, иначе они съедают лимит.
+    llm_reasoning_effort: str = ""
+    budget_stop_rub: float = DEFAULT_BUDGET_STOP_RUB
+    # Тарифы, ₽ за 1 млн токенов. Неизвестный тариф — сервис не стартует.
+    price_input_rub: float = 0.0
+    price_output_rub: float = 0.0
+    price_embedding_rub: float = 0.0
 
 
 def parse_bool(name: str, value: str) -> bool:
@@ -62,6 +80,39 @@ def parse_positive_int(name: str, value: str) -> int:
     if not value.isdigit() or int(value) == 0:
         raise ConfigError(f"{name} должен быть целым числом больше 0")
     return int(value)
+
+
+def parse_rub(name: str, value: str) -> float:
+    try:
+        number = float(value)
+    except ValueError:
+        raise ConfigError(f"{name} должен быть числом больше 0") from None
+    if not math.isfinite(number) or number <= 0:
+        raise ConfigError(f"{name} должен быть числом больше 0")
+    return number
+
+
+def load_paid_api(env: Mapping[str, str]) -> dict:
+    """Ключ, журнал расходов и тарифы платного API: без любого из них не стартуем."""
+    values = {}
+    for name in (
+        "LLM_API_KEY",
+        "LLM_BUDGET_LEDGER_PATH",
+        "LLM_PRICE_INPUT_RUB",
+        "LLM_PRICE_OUTPUT_RUB",
+        "EMBEDDING_PRICE_RUB",
+    ):
+        if not env.get(name):
+            raise ConfigError(f"Для LLM_PROVIDER=openai нужен {name}")
+    values["llm_api_key"] = env["LLM_API_KEY"]
+    values["budget_ledger_path"] = env["LLM_BUDGET_LEDGER_PATH"]
+    values["price_input_rub"] = parse_rub("LLM_PRICE_INPUT_RUB", env["LLM_PRICE_INPUT_RUB"])
+    values["price_output_rub"] = parse_rub("LLM_PRICE_OUTPUT_RUB", env["LLM_PRICE_OUTPUT_RUB"])
+    values["price_embedding_rub"] = parse_rub("EMBEDDING_PRICE_RUB", env["EMBEDDING_PRICE_RUB"])
+    stop = env.get("LLM_BUDGET_STOP_RUB") or str(DEFAULT_BUDGET_STOP_RUB)
+    values["budget_stop_rub"] = parse_rub("LLM_BUDGET_STOP_RUB", stop)
+    values["llm_reasoning_effort"] = env.get("LLM_REASONING_EFFORT", "")
+    return values
 
 
 def load_settings(env: Mapping[str, str]) -> Settings:
@@ -97,6 +148,8 @@ def load_settings(env: Mapping[str, str]) -> Settings:
     )
     if max_output >= num_ctx // 2:
         raise ConfigError("LLM_MAX_OUTPUT_TOKENS должен быть меньше половины LLM_NUM_CTX")
+    if max_output > MAX_OUTPUT_CAP:
+        raise ConfigError(f"LLM_MAX_OUTPUT_TOKENS должен быть не больше {MAX_OUTPUT_CAP}")
 
     # compose передаёт незаданные переменные пустой строкой: пусто = дефолт.
     embedding_model = env.get("EMBEDDING_MODEL") or "bge-m3"
@@ -106,6 +159,10 @@ def load_settings(env: Mapping[str, str]) -> Settings:
     knowledge_source = env.get("KNOWLEDGE_SOURCE") or "files"
     if knowledge_source not in KNOWLEDGE_SOURCES:
         raise ConfigError(f"KNOWLEDGE_SOURCE должен быть одним из {KNOWLEDGE_SOURCES}")
+
+    paid = {}
+    if llm_mode == "live" and provider == "openai":
+        paid = load_paid_api(env)
 
     return Settings(
         internal_api_token=token,
@@ -120,4 +177,5 @@ def load_settings(env: Mapping[str, str]) -> Settings:
         llm_keep_alive=env.get("LLM_KEEP_ALIVE", "30m"),
         embedding_model=embedding_model,
         knowledge_source=knowledge_source,
+        **paid,
     )

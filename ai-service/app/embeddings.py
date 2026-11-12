@@ -1,4 +1,4 @@
-"""Эмбеддинги через Ollama /api/embed (модель bge-m3, 1024 числа на текст).
+"""Эмбеддинги через Ollama /api/embed (модель bge-m3, 1024 числа на текст) и выбор эмбеддера.
 
 Клиент нужен только live-режиму (httpx), общие функции — в app.vectors.
 Префиксы-инструкции bge-m3 не нужны: вопрос и фрагмент отправляем как есть.
@@ -59,3 +59,12 @@ class OllamaEmbedder:
 
     async def aclose(self) -> None:
         await self.client.aclose()
+
+
+def make_live_embedder(settings: Settings):
+    """Эмбеддер того же провайдера, что и чат: Ollama локально или платный /v1."""
+    if settings.llm_provider == "openai":
+        from app.openai_provider import OpenAIEmbedder
+
+        return OpenAIEmbedder(settings)
+    return OllamaEmbedder(settings)
