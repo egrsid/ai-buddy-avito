@@ -37,6 +37,15 @@ Common определения и helper не дублируются. `$id`/`$ref
 - [ ] TL обновил BASELINE.sha256 после этой поставки и записал окончательное acceptance.
 - [ ] Одна принятая база доставлена в рабочие папки авторами/владельцем, QA работа сохранена.
 
+## Ответы Backend на frontend review `RP-CONTRACT-FE-01`, пункты 3.2–3.4
+
+- `Run.status=cancelled` не содержит `error_code`: это явная отмена.
+- `Run.status=interrupted` всегда содержит `error_code`: `STREAM_NOT_OPENED`, если поток не открылся, или `CLIENT_DISCONNECTED` после обрыва или рестарта.
+- `Message.content` не бывает пустым. Если токенов не было, Go не создаёт assistant Message, и у Run нет `assistant_message_id`. У `completed` ссылка на такое сообщение обязательна. Частичный ответ — непустой текст со статусом `interrupted`, `failed` или `cancelled`.
+- `GET /resources/{id}/access` до первой проверки видимого ресурса возвращает `grant_state: unknown`, `stale: true` и не содержит `observed_at`. После любой проверки `observed_at` обязателен. Чужой или неизвестный ресурс по-прежнему даёт 404.
+
+Fixtures всех этих состояний лежат в `contracts/v2/examples/public.json` и `contracts/v2/examples/common.json`. Пункты 3.5–3.9 в эту поставку не входят.
+
 Никакой review не подразумевается отсутствием ответа. Изменение hash lock не является
 approval. До final gate можно проектировать и готовить component tests; runtime общих
 DTO не закрепляется на расходящихся копиях. Подробные решения уже даны, повторного
