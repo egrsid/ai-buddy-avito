@@ -1,6 +1,7 @@
 """Общие помощники тестов AI-сервиса: пример запроса из контракта и разбор SSE."""
 
 import asyncio
+import contextlib
 import copy
 import json
 from functools import cache
@@ -121,3 +122,75 @@ def greedy_scope() -> dict:
     """Go по ошибке выдал knowledge.read на всё; собственная ACL документов всё равно режет."""
     resources = {"db-team-a-test": ["resource.view", "access.request"]}
     return scope("team-a", ALL_DOCS, resources)
+
+
+def axis(index: int, size: int = 8) -> list[float]:
+    """Единичный вектор по оси index: косинус с собой 1, с другой осью 0."""
+    return [1.0 if position == index else 0.0 for position in range(size)]
+
+
+class FakeEmbedder:
+    """Эмбеддер без сети: вектор по правилу vector_for(text); запоминает все тексты."""
+
+    def __init__(self, vector_for=None, error: Exception | None = None):
+        self.vector_for = vector_for or (lambda text: axis(len(text) % 8))
+        self.error = error
+        self.calls = []
+        self.lifecycle = []
+
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        self.calls.append(list(texts))
+        if self.error is not None:
+            raise self.error
+        return [self.vector_for(text) for text in texts]
+
+    async def warm_up(self) -> None:
+        self.lifecycle.append("warm_up")
+
+    async def aclose(self) -> None:
+        self.lifecycle.append("aclose")
+
+
+class FakeRows:
+    def __init__(self, rows: list):
+        self.rows = rows
+
+    def fetchone(self):
+        return self.rows[0] if self.rows else None
+
+    def fetchall(self):
+        return self.rows
+
+
+class FakeConnection:
+    """Соединение psycopg без базы: ответы на SELECT по началу текста запроса."""
+
+    def __init__(self, answers: dict | None = None, error: Exception | None = None):
+        self.answers = answers or {}
+        self.error = error
+        self.statements = []
+        self.closed = False
+        self.transactions = 0
+
+    def execute(self, query: str, params=None):
+        if self.error is not None:
+            raise self.error
+        self.statements.append((query, params))
+        for prefix, rows in self.answers.items():
+            if query.startswith(prefix):
+                return FakeRows(rows() if callable(rows) else rows)
+        return FakeRows([])
+
+    def transaction(self):
+        self.transactions += 1
+        return contextlib.nullcontext()
+
+    def close(self):
+        self.closed = True
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+        return False

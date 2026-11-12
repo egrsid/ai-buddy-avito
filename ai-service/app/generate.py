@@ -21,10 +21,14 @@ from app.mock_provider import ProviderUnavailable, current_step, invalid_tool_pr
 from app.prompt import LlmInput, build_messages, last_user_message
 from app.retrieval import KnowledgeBase, source_for
 from app.sse import PING, format_event
+from app.vectors import embed_query
 
 # Безопасные тексты для run.failed: без деталей провайдера.
 TIMEOUT_MESSAGE = "Модель не ответила вовремя"
 UNAVAILABLE_MESSAGE = "Модель временно недоступна"
+# Фрагментов в промпт. На CPU каждый новый токен промпта — ~15 мс до первого слова
+# ответа, а фрагмент — 200–300 токенов: больше трёх не влезает в 20 с.
+GENERATE_TOP_K = 3
 
 
 class LlmTimeout(Exception):
@@ -67,6 +71,7 @@ async def run_generate(
     settings: Settings,
     scenario: str = "normal",
     clock: Callable[[], float] = time.monotonic,
+    embedder=None,
 ) -> AsyncIterator[str]:
     run_id = request["run_id"]
     sequence = 0
@@ -83,8 +88,12 @@ async def run_generate(
     token_deadline = started + settings.first_token_timeout
 
     scope = request["access_scope"]
+    query = search_query(request)
+    query_vector = None
+    if knowledge.vectors:
+        query_vector = await embed_query(embedder, query)
     # Фильтр прав внутри search — до ранжирования и до модели.
-    hits = knowledge.search(scope, search_query(request))
+    hits = knowledge.search(scope, query, GENERATE_TOP_K, query_vector)
     llm_input = LlmInput(build_messages(request, hits), request, hits)
     chunks = provider.stream(llm_input, scenario)
     pending = None
