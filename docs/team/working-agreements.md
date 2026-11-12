@@ -1,44 +1,77 @@
-# Работа команды
+# Работа пяти участников
 
-Версия 1.0 · роли назначены по областям, имена Tech Lead вносит перед раздачей задач.
+2026-11-11 · назначения по прямому поручению пользователя. TL — владелец проекта;
+Backend, AI Engineer, Frontend, Fullstack–QA–Integration — остальные четыре участника.
+Личные имена/GitHub handles не предоставлены и не придуманы; ответственность по ролям
+действует сразу, внешние права не создаются документацией.
 
-| Роль | Имя / GitHub | Владение | Review |
+| Участник | Основная работа | Review | Рабочая база |
 |---|---|---|---|
-| Tech Lead | Заполнить TL | Общие контракты, scope, приоритеты, merge | Все изменения границ/API |
-| Backend | Заполнить TL | backend/, app migrations, public API, mock-services/ | API + AI/FE потребитель |
-| AI Engineer | Заполнить TL | ai-service/, kb migrations, data/knowledge/ | Backend для internal API |
-| Frontend | Заполнить TL | frontend/, UI и frontend fixtures | Backend для DTO |
-| Infra | Заполнить TL; может быть Backend | Compose, scripts/, CI, запуск | Владелец затронутого сервиса |
-| QA | Заполнить TL; может совмещаться | Acceptance/E2E, coverage, demo | Владелец проверяемой фичи |
+| TL | Архитектура/API policy, contract gate, общие scripts/infra/CI, интеграция и demo | BE/AI/FE для своих контрактов; TL окончательно сводит | feature/team-start-foundation, существует |
+| Backend | Go app + corporate mock, app/corporate migrations/seed, public/corporate/journey/events schemas и свои tests | AI на Go↔AI, FE на public DTO, TL на границы | feature/backend-mvp-v2, существует на GitHub |
+| AI Engineer | AI schemas/service, kb migrations/knowledge ACL fixtures, provider/fallback/RAG/drafts/summaries/evals, свои tests | Backend и TL по границам | feature/ai-mvp-v2, существует на GitHub |
+| Frontend | UI/typed DTO consumption, component tests и полный browser E2E | Backend по DTO, TL по общему demo | feature/frontend-mvp-v2, существует на GitHub |
+| Fullstack–QA–Integration | **Только RP-QA-01:** адаптировать два существующих API-теста и QA-план | Backend проверяет API semantics; TL принимает отчёт | feature/qa-01-m1, существует на GitHub |
 
-## Постановка и приёмка
+[Handoff для каждого](assignments/README.md), [полный backlog](backlog.md),
+[read-only inventory веток](branches.md). Для Fullstack не подразумевается помощь всем
+остальным: дополнительные задачи только новым явным решением TL. Слово Integration
+в названии роли не делает его владельцем всех инфраструктурных проблем.
 
-Задача содержит ID из backlog, владельца, зависимости, изменяемые директории, наблюдаемый
-результат и команды проверки. Нельзя начинать потребителя на незафиксированной собственной
-версии DTO. Работа с fixtures разрешена после принятия контракта. Открытое внешнее условие
-не мешает независимым задачам; зависимые задачи явно помечаются blocked.
+## Владение файлами и исключения
 
-Ветка feature/<ID>-<name>, PR описывает поведение, проверку и ограничения. Один reviewer
-из владельцев потребителей обязателен для API; TL обязателен для границ/безопасности/миграций.
-Не редактировать чужие каталоги без координации. Нельзя исключать прикладной код из coverage
-ради порога. Не коммитить зависимости, .env, ключи, отчёты и build artifacts.
-Проверки CI должны пройти; main не ломать. Merge выполняет TL/назначенный maintainer.
-Настройки branch protection/required reviews в hosting ещё нужно включить: файл не включает их автоматически.
+| Зона | Единственный автор | Согласование |
+|---|---|---|
+| backend/, backend/migrations/ | Backend | TL/потребитель |
+| mock-services/, mock-services/migrations/, data/seed/ и journey JSON | Backend | TL + AI для ссылок на knowledge |
+| ai-service/, ai-service/migrations/, data/knowledge/ | AI Engineer | Backend по IDs/ACL boundary |
+| contracts/v2/common/public/journey/events/corporate schemas и их fixtures | Backend | AI/FE/TL по contract-handoff |
+| contracts/v2/ai.schema.json и AI fixtures/tests | AI Engineer | Backend/TL |
+| frontend/ | Frontend | Кроме зарезервированного API test ниже |
+| frontend/e2e/onboarding.spec.ts и docs/testing/qa-01-m1.md (пока в QA-ветке) | Fullstack–QA–Integration | Backend + TL; Frontend не переписывает эти файлы |
+| frontend/e2e/ остальные browser scenarios | Frontend | TL, без дублирования QA smoke |
+| scripts/, compose.yaml, Dockerfiles, Makefile, .github/, root tooling | TL | Component owners; исключение scripts/check_repo.py только contract validation в RP-CONTRACT-BE-01 |
+| tests/test_contracts_v2_backend.py, tests/contract_v2_support.py | Backend | TL; helper общий |
+| tests/test_contracts_v2_ai.py | AI Engineer | Backend; common helper не дублировать |
+| docs/team/, общий scope/architecture/testing policy | TL | Участники передают факт/замечания; не переписывают общий backlog параллельно |
+| SDD своей области | Владелец реализации | TL при смене scope/API/ownership |
 
-## Синхронизация
+Фактически созданные contract/tooling пути перечислены в TL record; runtime пути остаются у авторов.
+Runtime owners app/kb/corporate не меняются: Go app, Python AI kb, отдельный mock corporate.
+Передача разработки mock Backend касается людей/каталогов, не переноса corporate SQL в Go app.
+TL не выбирает внутренние AI решения за AI Engineer. Каждый пишет tests собственного кода
+и отвечает за >80% coverage; Fullstack не отвечает за чужой denominator.
 
-В начале рабочего дня участники пишут в используемом командой трекере: результат, следующая
-задача, блокер. Канал и время определяет TL (в репозитории не известны).
-Изменение контракта сначала обсуждается с потребителями, затем оформляется одним PR
-с синхронными fixtures/schema/spec updates. SQL-миграции после применения не переписывать.
-Фиксированные integration checkpoints перечислены в backlog. До каждого checkpoint
-QA проверяет путь на чистой БД и отрицательный доступ второй пары аккаунтов.
+## Контракты и зависимости
 
-## Источники и неопределённость
+TL-пакет [contract-baseline](../architecture/contract-baseline.md) готов. RP-CONTRACT-01
+разбит на TL design, BE schemas, AI schemas, FE consumption и final TL review в
+[handoff](contract-handoff.md). Не помечать parent DONE после одних документов.
+v1 contracts/DDL/seed остаются legacy; v2 schemas сведены, но consumer gate открыт; RP-DATA-01 также разделена по владельцам.
+RP-AI-CORE-01 нужен для раннего access flow, RP-AI-DIAG-01 — для buddy/reverse; не блокировать
+день 3 ожиданием всей AI-фичи дня 5.
 
-Scope: product/specification.md; технические границы: ARCHITECTURE.md и decisions.md;
-DTO: contracts + api-contracts.md; DDL: migrations; поведение фич: docs/features/.
-При расхождении не выбирать удобный документ молча: PR исправляет обе стороны до реализации.
-Первоначальные материалы организаторов/интервью отсутствуют. Ссылки и лицензии добавляет TL;
-до сверки требования из product spec считаются рабочими требованиями команды, а не проверенной цитатой.
-Никаких фиктивных имён, доступов, provider keys и утверждений о пройденной демонстрации.
+## Работа с ветками
+
+Текущее поручение TL integration выполняется в feature/team-start-foundation. Владелец
+разрешил новую свою ветку при необходимости, но она не понадобилась. Ветки BE/AI/FE/QA
+существуют и не меняются TL-агентом. Shared tooling/infra/docs и импорт проверенных
+contract artifacts в TL checkout разрешены; component runtime/DDL/seed — у их авторов.
+Прежние docs-only ограничения RP-DOC/RP-TEAM были границами тех поручений.
+Публикация, PR/merge/permissions остаются операциями владельца. Локальных commit/push/PR
+нет. [Проверенный inventory](branches.md), [TL record](tl-readiness.md).
+
+## Передача результата и приёмка
+
+Участник получает один role handoff с очередью задач/зависимостей/DoD. Перед стартом AGENTS
+и Before starting обязательны; проверяется существующий код и актуальность рабочей базы.
+Результат: изменённые файлы, команды/выходы tests/coverage, API примеры, remaining blockers.
+TL вносит фактический статус в общий backlog, не обещание результата.
+
+Компонентные проверки — у автора. Frontend ведёт browser E2E, Fullstack только два API
+smoke, TL сводит общую интеграцию с реальным restart/offline/clean DB и demo.
+Нельзя выдавать reread за restart, health/fixtures за готовую фичу и неполученный review за approval.
+Ошибки исправляет владелец кода; QA не становится общей очередью разработки.
+
+Ежедневно результат/следующая задача/блокер в согласованном TL канале (канал не придуман).
+Оригиналы кейса/бюджет/ключи/площадка остаются внешними решениями; offline P0 независим от live.

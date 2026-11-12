@@ -1,182 +1,223 @@
-# API v1
+# API target v2 — проектный контракт
 
-Версия 1.0 · 2026-11-10 · контракт для реализации. На момент подготовки каркаса реализованы
-только health endpoints; наличие маршрута в этом файле не означает его реализацию.
-Формы DTO: [JSON Schema](../../contracts/v1.schema.json); проверяемые примеры:
-[fixtures](../../contracts/examples.json). Поведение состояний: [state-machines.md](state-machines.md).
+Версия 2.0 · 2026-11-11 · [TL baseline](contract-baseline.md) подготовлен.
+Исполняемые BE/AI schemas, FE consumption и final review ещё требуются по
+[RP-CONTRACT-01 handoff](../team/contract-handoff.md).
+Сейчас реализованы только /healthz. [v1.schema.json](../../contracts/v1.schema.json) и
+[examples.json](../../contracts/examples.json) — неизменённые legacy fixtures, не схема
+этого API. Новые machine-readable schemas/examples будут отдельной задачей; не смешивать
+task DTO v1 с Goal/Step v2. Versioned prefix /api/v2 и /internal/v2 выбран для явного
+отделения нового контракта; наличие v2 URL не означает, что старый бизнес-API работает.
 
 ## Общие правила
 
-Публичный prefix /api/v1, JSON UTF-8, snake_case, даты UTC RFC3339, ID UUID.
-Исключения: account_id — фиксированная строка demo-login; mock_id — ACC-<UUID>.
-Неизвестные поля входного DTO отклоняются. Мутации требуют Origin и CSRF по security.md.
-Лимит JSON 64 KiB; входной текст ограничен по символам, не байтам. Списки MVP возвращают
-{"items":[...]} без пагинации (seed ≤100 объектов каждого типа). ID и роль инициатора
-сервер выводит из сессии. Удаление объектов через API вне MVP.
+JSON UTF-8, snake_case, UTC RFC3339. Entity IDs — UUID; account_id, team_id, resource_id,
+journey_id, step_id и error_code — стабильные строковые ключи (например db-team-a-test).
+Неизвестные поля входа отклоняются; 64 KiB body; текстовые лимиты в security.md.
+Actor/team/roles/buddy/owner вычисляет Go. Списки {items:[...]}, в synthetic P0 <=100
+объектов каждого типа, без пагинации. Success: create 201, read/update 200, no body 204.
+Cookie/Origin/CSRF обязательны по [security](security.md).
 
-Успех: объект напрямую; создание 201, чтение/изменение 200, пустой ответ 204.
-Ошибка: {"error":{"code":"VALIDATION_ERROR","message":"Проверьте поля",
-"request_id":"<uuid>","fields":{"reason":"Обязательное поле"}}}.
-fields необязательно. X-Request-ID создаёт Go и передаёт downstream; входной ID валидируется.
-401 UNAUTHENTICATED, 403 FORBIDDEN/CSRF_INVALID, 404 NOT_FOUND, 409 VERSION_CONFLICT/
-IDEMPOTENCY_CONFLICT/ACTION_NOT_PENDING/RUN_ACTIVE, 410 ACTION_EXPIRED,
-422 VALIDATION_ERROR, 429 RATE_LIMITED, 502 UPSTREAM_ERROR, 504 UPSTREAM_TIMEOUT.
-Не отдавать внутренние SQL/provider ошибки. Невалидный JSON → 400 INVALID_JSON.
+Error={error:{code,message,request_id,fields?}}. Коды: 400 INVALID_JSON/INVALID_REQUEST_ID,
+401 UNAUTHENTICATED, 403 FORBIDDEN/CSRF_INVALID, 404 NOT_FOUND,
+409 VERSION_CONFLICT/IDEMPOTENCY_CONFLICT/RUN_ACTIVE/ACTION_NOT_PENDING,
+410 ACTION_EXPIRED, 422 VALIDATION_ERROR/TEMPLATE_INVALID/ROLE_NOT_REQUESTABLE,
+429 RATE_LIMITED, 502 UPSTREAM_ERROR/AI_SCHEMA_INVALID, 504 UPSTREAM_TIMEOUT.
+Нельзя раскрывать SQL/provider payload и чужие имена/ресурсы через ошибки.
 
-Все POST создания бизнес-объектов, создания run, ответа buddy и прямое изменение задачи требуют
-Idempotency-Key UUID. Go хранит (user_id, route, key, canonical body hash, resource_id/response)
-24h, уникальность тройки; одновременно пришедшие запросы сериализуются.
-Тот же ключ/body возвращает исходный объект с исходным status code; иной body → 409.
-Confirm/cancel идентифицируются самим action_id; Idempotency-Key для них не нужен.
-DELETE session и cancel run идемпотентны. После 24h frontend не повторяет неизвестный POST,
-сначала читает объект. Долгоживущая уникальность action_id/operation_key сохраняется в БД.
+Idempotency-Key UUID обязателен для POST создания goal/run/action/check, решения approver,
+ответа buddy и review. Go хранит (user,route,key,canonical_body_hash,response) 24h;
+совпадение возвращает исходный status/body, иной body →409. Confirm/cancel action
+идентифицируются action.id, run cancel/logout идемпотентны. Долгоживущие unique action/operation
+IDs действуют и после истечения replay TTL. После 24h неизвестный write сначала сверяется,
+не повторяется с новым ключом. Check/decision/reply/review требуют expected_version. Confirm/cancel используют
+зафиксированную в immutable action версию и body {}; новые объекты не требуют версии
+несуществующей записи. Подробные wire-правила — в contract-baseline.md.
 
-## Public: auth и задачи
+## Public: auth, маршруты, checks
 
-| Метод и путь | Вход | Выход / правило |
+| Метод /api/v2 + путь | Вход | Выход и правило |
 |---|---|---|
-| POST /auth/demo-login | {account_id} | 200 {user,csrf_token}; устанавливает cookie |
-| GET /auth/me | — | {user,csrf_token} |
-| POST /auth/logout | — | 204; отзывает cookie |
-| GET /tasks | — | {items:Task[],progress:{done,total,percent}} только свои; percent=floor(done*100/total), 0 при total=0 |
-| GET /tasks/{id} | — | Task |
-| PATCH /tasks/{id} | {status,version} | Task с version+1; прямой UI-клик — явное действие, второй confirm не нужен |
-| POST /conversations | {task_id:UUID|null} | Conversation; возвращает существующий с 200 или создаёт с 201 |
-| GET /conversations | — | {items:Conversation[]} только свои |
-| GET /conversations/{id}/messages | — | {items:Message[]} в порядке created_at,id |
-| GET /knowledge/{id} | — | KnowledgeDocument через AI; общий синтетический документ |
+| POST /auth/demo-login | {account_id} | {user,csrf_token}, новая cookie local/test |
+| GET /auth/me | — | {user,csrf_token}; серверные assignments |
+| POST /auth/logout | — | 204, отзывает cookie |
+| GET /journeys | — | JourneyList={items:JourneySummary[]} без закрытых названий |
+| POST /goals | {journey_id,journey_version} | Goal, сервер привязывает разрешённый ресурс; повтор active возвращает существующий 200 |
+| GET /goals | — | GoalList={items:Goal[]} только свои, с полными steps |
+| GET /goals/{id} | — | Goal со steps/progress |
+| GET /goals/{id}/steps/{step_id} | — | Step, evidence, blockers, safe next action |
+| GET /goals/{id}/steps/{step_id}/actions | — | StepActionList={items:RecoveryAction[]}; тот же allowlist, что Step.available_actions; schema addition ожидается от BE |
+| POST /goals/{id}/steps/{step_id}/checks | {method,options,expected_version} | 201 Check, выполнение trusted adapter; 409 при старой версии |
+| GET /checks/{id} | — | Только свой безопасный Check, без инфраструктурных секретов |
+| GET /resources | — | Разрешённые safe resource metadata и requestable_roles |
+| GET /resources/{id}/access | — | Последнее {grant_state,observed_at?,stale}; до первой проверки unknown/stale=true без времени; новая проверка только POST check |
+| GET /knowledge/{id} | — | Scoped KnowledgeDocument или одинаковый 404 |
 
-User={id,account_id,display_name,role:intern|buddy,team,buddy_id:UUID|null}.
-Task={id,title,description,status,position,source_ids:UUID[],version,updated_at}.
-Conversation={id,task_id:UUID|null,created_at}. Один общий и один на каждую задачу пользователя.
-Message={id,conversation_id,role:user|assistant,content,status:completed|failed|cancelled|interrupted,
-run_id:UUID|null,sources:Source[],created_at}. Source={document_id,title,url,excerpt};
-url только относительный /api/v1/knowledge/{document_id}, excerpt ≤500 символов.
-KnowledgeDocument={id,title,content,version,visibility:"demo_public",synthetic:true}.
+User={id,account_id,display_name,roles[],team_id,assignments,buddy_id?}; клиент не задаёт
+permissions. JourneySummary={journey_id,version,title,resource_id}. Goal={id,journey_id,
+journey_version,resource_id,status,version,steps:Step[],progress:{verified,total,percent},updated_at}.
+Step={id,title,description,dependencies,required_permissions,instruction_reference,
+available_actions,verification_method,status,version,evidence:Evidence[],blockers:Blocker[],user_claim?}.
+Статический набор полей: [journey template](journey-template.md). State — пять значений
+[state machines](state-machines.md); PATCH state/done и tool update_task_status отсутствуют.
+Check={id,goal_id,step_id,method,status:queued|running|passed|failed|unavailable,error_code?,
+evidence_ids,observed_at?}. Options строго по методу: IAM — {}, mock_db_connection —
+{ssl_mode:disable|require}, resource_policy_match — {}. Никаких SQL/DSN/host.
+Evidence={id,check_id,event_id,source,method,result,observed_at,invalidated_at?,synthetic:true}.
+Blocker={id,type,error_code,status:open|resolved,latest_check_id,recovery_actions[]}.
+KnowledgeDocument={id,title,content,version,synthetic:true}; ACL metadata не выдаётся клиенту.
 
-## Public: чат и SSE
+## Public: AI run, action preview/confirm
 
-| Метод и путь | Вход | Выход |
+| Метод /api/v2 + путь | Вход | Выход |
 |---|---|---|
-| POST /conversations/{id}/runs | {content:string} ИЛИ {retry_of:UUID} | 201 Run; user message сохраняется атомарно с run |
+| POST /conversations | {goal_id:null\|UUID,step_id:null\|string} | Свой Conversation; оба null для общего, иначе оба обязательны; 200 existing/201 new |
+| GET /conversations | — | Только свои Conversation[] |
+| GET /conversations/{id}/messages | — | Messages в created_at,id порядке; sources проверяются повторно |
+| POST /conversations/{id}/runs | {content} или {retry_of} | 201 Run; user message + queued run атомарно |
 | GET /runs/{id} | — | Run |
-| GET /runs/{id}/events | cookie; Accept:text/event-stream | SSE, запускает queued run ровно один раз |
-| POST /runs/{id}/cancel | — | Run в терминальном состоянии; идемпотентно |
+| GET /runs/{id}/events | Cookie, Accept:text/event-stream | Запустить queued ровно раз и подписаться |
+| POST /runs/{id}/cancel | — | Терминальный Run |
+| POST /actions | {conversation_id,goal_id,step_id,type,parameters} | 201 Action, только серверный validated preview |
 | GET /actions/{id} | — | Action |
-| POST /actions | ActionDraft | 201 Action; ручная эскалация/редактирование preview проходит ту же проверку |
-| POST /actions/{id}/confirm | пустое тело | 202 Action если executing/unknown, иначе 200 Action |
-| POST /actions/{id}/cancel | пустое тело | 200 Action |
+| POST /actions/{id}/confirm | {} | 202 executing/unknown, иначе 200 текущее состояние |
+| POST /actions/{id}/cancel | {} | 200 cancelled; 409 при недопустимом terminal |
 
-Run={id,conversation_id,user_message_id,assistant_message_id:UUID|null,status,error_code:string|null,
-action_ids:UUID[],created_at,updated_at}. Retry ссылается на run того же владельца и диалога.
-Не более одного active run на диалог, максимум 5 запусков/минуту на пользователя → 429.
-Отправка user message не меняет задачи и не исполняет tools.
+Conversation={id,goal_id,step_id,created_at}. Message={id,conversation_id,role:user|assistant,
+content,status:completed|failed|cancelled|interrupted,run_id?,sources:Source[],created_at}.
+Source={document_id,version,title,url,excerpt<=500}; URL только /api/v2/knowledge/{id},
+разрешённый текущим scope. Python строит эту относительную строку по document_id; Go
+проверяет равенство шаблону/ID/ACL и канонически пересобирает URL перед сохранением.
+Произвольная/внешняя ссылка → AI_SCHEMA_INVALID, без публикации source. Run={id,conversation_id,user_message_id,assistant_message_id?,
+status,error_code?,action_ids[],created_at,updated_at}. Один active на диалог, <=5 runs/min/user.
 
-SSE envelope одинаков у Python → Go и Go → frontend: event: <type>, id: <sequence>,
-data: <однострочный JSON>, пустая строка. sequence начинается с 1 в пределах run.
-Серверные заголовки Cache-Control:no-cache, X-Accel-Buffering:no.
+Action={id,type,goal_id,step_id,parameters,preview,expires_at,status,result?,error_code?,created_at}.
+Preview вычисляет Go из разрешённого snapshot, включает resource/recipient, не свободный текст AI.
+Поля actor/role/buddy/state не принимаются от LLM/браузера. Редактирование → cancel старого
+и новый action, TTL 10m. «Да» в чате не является confirm конкретного action.id.
 
-| event | data | Порядок |
+| Action type | Parameters | Result после успеха |
 |---|---|---|
-| run.started | {run_id} | Один раз первым |
-| message.delta | {run_id,text} | 0..N |
-| message.sources | {run_id,sources:Source[]} | 0..1 после текста |
-| action.proposed | {run_id,action:Action} | Только Go, 0..N после валидации и успешного конца upstream |
-| run.completed | {run_id,message_id} | Терминальное, после сохранения сообщения и actions |
-| run.failed | {run_id,code,message} | Терминальное; частичный ответ сохраняется |
-| run.cancelled | {run_id} | Терминальное при явной отмене |
+| create_access_request | {resource_id,requested_role,reason,additional_fields:{}} | {access_request_id}; requested_role в resource policy, intern только из сессии |
+| escalate_to_buddy | {question,diagnostic_snapshot} | {escalation_id}; snapshot rebuilt/validated Go, recipient из assignment |
 
-Heartbeat — комментарий `: ping`, не бизнес-событие. HTTP 401/404/409 до начала потока;
-после начала — run.failed. Disconnect не гарантирует доставку последнего события:
-GET /runs/{id} и /messages — источник истины. Обрыв не равен успешному завершению.
+В P0 дополнительных свободных полей нет: additional_fields пустой объект. Расширение
+обязательных полей ресурса требует синхронного schema update. Полный preview включает
+инициатора, добавленного Go из сессии; user_id/role/buddy_id во входном draft отклоняются.
+Контекстный safe check — явный POST кнопкой, без второго modal confirm; AI только предлагает
+эту кнопку. Проверка читает synthetic состояние и регистрирует результат, не выдаёт права.
 
-Пример:
-```text
-event: run.started
-id: 1
-data: {"run_id":"30000000-0000-4000-8000-000000000001"}
+## Public: access, buddy, feedback
 
-event: message.delta
-id: 2
-data: {"run_id":"30000000-0000-4000-8000-000000000001","text":"В учебной команде MR означает merge request."}
-
-```
-
-## Действия
-
-ActionDraft={conversation_id,task_id:UUID|null,type,parameters}; разрешены только типы ниже.
-Action добавляет id,status,preview,expires_at,created_at,result:object|null,error_code:string|null.
-preview формирует Go детерминированно из валидированных parameters; это точный снимок,
-который увидит пользователь. Для эскалации buddy_id и имя получателя добавляет Go.
-В type-specific result: access_request_id, escalation_id или Task соответственно.
-
-| type | parameters | Проверка |
+| Метод /api/v2 + путь | Вход | Выход / ACL |
 |---|---|---|
-| create_access_request | {resource,access_level:read|write,reason} | allowlist ресурсов; reason 1..1000 |
-| escalate_to_buddy | {question,summary,source_ids:UUID[]} | question 1..4000, summary 0..2000, источники разрешены |
-| update_task_status | {status,version} | task_id обязателен; задача своя, version актуальна |
+| GET /access-requests | — | Свои AccessRequest[] |
+| GET /access-requests/{id} | — | Своя заявка, last state + sync_status |
+| GET /approvals | — | AccessRequest[] только назначенных approver ресурсов |
+| POST /access-requests/{id}/decision | {decision:approved\|rejected,reason,expected_version} | Заявка; только scoped access_approver, не собственная |
+| GET /escalations | — | Свои / назначенные buddy Escalation[] |
+| GET /escalations/{id} | — | Snapshot после текущей ACL-проверки |
+| POST /escalations/{id}/reply | {answer,expected_version} | Атомарные answer + resolved, assigned buddy |
+| GET /friction-groups | — | Safe aggregate[] только documentation_owner scope |
+| GET /knowledge-gaps | — | Scoped Candidate[] |
+| GET /knowledge-gaps/{id} | — | Candidate, без участника/сырой диагностики |
+| POST /knowledge-gaps/{id}/review | {decision:under_review\|accepted\|rejected\|resolved,reason,expected_version,resolved_reference?} | Candidate по state machine; resolved_reference обязателен для resolved |
 
-Отредактированный snapshot создаётся через cancel старого и POST /actions нового.
-Go никогда не принимает от AI или браузера итоговый status, actor_id или buddy_id.
-Промпт не является подтверждением. Формулировка в чате «да» не исполняет действие:
-UI показывает отдельную кнопку подтверждения конкретного action_id.
+AccessRequest={id,goal_id,step_id,resource_id,requested_role,reason,mock_id,status:submitted|approved|rejected,
+grant_state:absent|pending|present|unknown,sync_status:ok|unavailable,version,created_at,updated_at}.
+DiagnosticSnapshot={goal:{id,title},step:{id,title},blocker:{id,type,error_code},checks:[safe Check],
+attempted_actions:[safe result],instruction_refs:[Source],hypotheses:[{text,confidence:low|medium|high}],question}.
+Escalation={id,goal_id,step_id,blocker_id,intern:{id,display_name},buddy:{id,display_name},
+diagnostic_snapshot,status:open|resolved,answer?,version,created_at,resolved_at?}.
+Candidate={id,journey_id,step_id,error_code,instruction_refs:[{document_id,version}],affected_count,
+hypothesis,proposed_fix,state:proposed|under_review|accepted|rejected|resolved,enrichment_status,
+version,resolved_reference?,created_at,updated_at}. Aggregate не возвращает user IDs/names/chat/logs.
+POST публичного создания friction/event/candidate из произвольного payload отсутствует:
+это внутренний Go pipeline, пользователь может только запросить check и review.
 
-## Public: заявки и buddy
+## AI SSE
 
-| Метод и путь | Вход | Выход |
+Envelope: event:<type>, id:<sequence>, data:<однострочный JSON>, пустая строка.
+Sequence с 1 на run; Cache-Control:no-cache, X-Accel-Buffering:no; heartbeat `: ping` 10s
+на обоих участках Python → Go и Go → React. Ping — SSE comment без sequence ID,
+не первый content token и не продление LLM/overall timeout.
+Публичные events: run.started {run_id}; message.delta {run_id,text}; message.sources
+{run_id,sources}; action.proposed {run_id,action}; run.completed {run_id,message_id};
+run.failed {run_id,code,message}; run.cancelled {run_id}. Ровно одно terminal event при
+живом соединении. Disconnect не гарантирует доставку: GET run/messages — истина.
+Источники идут после текста, proposals — только после успешного конца upstream и commit.
+Нет SSE replay; повтор GET не запускает run второй раз. Business events ниже не этот поток.
+
+## Internal: Go → Python /internal/v2
+
+Bearer service token, X-Request-ID, проверенная сеть. Все DTO закрыты к неизвестным полям.
+До начала SSE применяется общий JSON Error: token проверяется первым (401), затем
+обязательный UUID X-Request-ID (400 INVALID_REQUEST_ID), JSON (400 INVALID_JSON) и
+schema/scope (422 VALIDATION_ERROR). Неверный/отсутствующий ID заменяется новым UUID
+только в error response, запрос не исполняется. Валидный ID отражается в response header/body.
+После начала stream ошибки — run.failed, HTTP status больше не меняется.
+Полные правила/тестовые fixtures: [TL AI policy](ai-integration-policy.md).
+
+Служебный X-Mock-Scenario (normal/unavailable/timeout/slow_stream/invalid_tool) разрешён
+только authenticated local/test + LLM_MODE=mock + MOCK_FAULTS_ENABLED=true; иначе 403,
+неизвестное значение 422. Public browser header/текст не управляют faults: Go не пересылает
+их в AI. Go test transport или изолированная server-side AI_MOCK_SCENARIO выбирают сценарий;
+это тестовая конфигурация, а не новое поле GenerateRequest. Wiring ещё не реализован.
+POST /generate → SSE. Вход: {run_id,conversation_id,goal_context?,messages,access_scope,
+allowed_journeys,allowed_tools,action_results}. Goal context содержит разрешённые goal/step,
+dependencies, evidence, blockers, instruction refs и safe next actions из Go. Scope по
+[security](security.md), messages <=20/12000 chars, последние <=5 safe action_results.
+AI выводит run.started/message.delta/message.sources, не более одного tool.proposed
+{run_id,type,parameters,goal_id,step_id}, затем generation.completed {run_id} или run.failed.
+Go буферизует proposals, проверяет schema/ACL/context до публичного Action. Ошибка →
+TOOL_VALIDATION_ERROR/AI_SCHEMA_INVALID, без pending actions/исполнения.
+
+| POST internal operation | Вход в дополнение к access_scope | Структурированный ответ |
 |---|---|---|
-| GET /resources | — | {items:[{name,access_levels:[read,write]}]} |
-| GET /access-requests | — | {items:AccessRequest[]} только свои, синхронизация с mock |
-| GET /access-requests/{id} | — | AccessRequest |
-| GET /escalations | — | {items:Escalation[]} по роли/назначению |
-| GET /escalations/{id} | — | Escalation |
-| POST /escalations/{id}/reply | {answer:string} | Escalation resolved, answer 1..4000 |
+| /journey-selection | intent, allowed_journeys[] | {journey_id,version}; только из списка, либо clarification |
+| /access-request-draft | goal/step, permitted_resource, allowed_roles, reason/context | {resource_id,requested_role,reason,additional_fields:{}} либо missing_fields[] |
+| /classify-error | safe code + allowed_blocker_types | {blocker_type,explanation,confidence}; гипотеза, не evidence |
+| /diagnostic-summary | safe goal/checks/blocker/actions/refs | DiagnosticSnapshot, без добавленных секретов/истории |
+| /knowledge-gap-draft | aggregate safe context + permitted instruction refs | {hypothesis,proposed_fix,source_refs}; без IDs людей |
 
-AccessRequest={id,task_id:UUID|null,resource,access_level,reason,mock_id,status,
-sync_status:ok|unavailable,created_at,updated_at}.
-Escalation={id,intern:{id,display_name},buddy:{id,display_name},task_id:UUID|null,
-question,summary,source_ids,status:open|resolved,answer:string|null,created_at,resolved_at:string|null}.
-Ответ не записывается в KB автоматически. Список buddy не содержит иных данных стажёра.
+GET /knowledge/{id} и POST /knowledge/search получают access_scope через защищённый
+внутренний запрос (для GET — X-Access-Scope: base64url UTF-8 JSON access_scope, максимум
+8 KiB; для POST — поле body, никогда query из браузера), возвращают только разрешённый
+документ/Source[]. Scope header доступен только аутентифицированному Go; неизвестные
+поля/неверный encoding/отсутствие scope — отказ. Формальную AI schema пишет RP-CONTRACT-AI-01 с common definitions от RP-CONTRACT-BE-01. AI invalid output не исполняется: safe error,
+clarification либо deterministic fallback candidate. Новый schema/fixtures — RP-CONTRACT-01.
 
-## Internal: Go → Python
+## Internal: Go → mock /internal/v2
 
-Authorization: Bearer token, X-Request-ID обязателен. Префикс /internal/v1.
+| Операция | Правило |
+|---|---|
+| GET /resources | Safe synthetic policies, Go дополнительно фильтрует по субъекту |
+| POST /iam/access-checks | {check_id,subject_id,resource_id,requested_role} → correlated granted/absent result |
+| POST /access-requests | {operation_key,subject_id,resource_id,requested_role,reason}; Idempotency-Key=action.id → mock_id/submitted |
+| GET /access-requests/by-operation/{key} | Lookup неизвестного write; 404 не означает право создать с новым key |
+| GET /access-requests/{mock_id} | Последний status/grant_state, без автоматического решения |
+| POST /access-requests/{mock_id}/decision | {decision,approver_id,reason,operation_key}; проверка назначения Go + mock; отдельное обновление grant |
+| POST /db/connection-checks | {check_id,subject_id,resource_id,options:{ssl_mode}} → passed/DB_SSL_REQUIRED/ACCESS_DENIED/unavailable |
+| GET /checks/by-operation/{key} | Восстановление check без повторного внешнего эффекта |
 
-POST /generate, Accept:text/event-stream, вход GenerateRequest:
-{run_id,user:{id,team},conversation_id,task:{id,title,description,status}|null,
-messages:[{role:user|assistant,content}],allowed_tools:[...],action_results:ActionResult[],knowledge_scope:"demo_public"}.
-messages содержит текущий user message последним; история ограничена security.md.
-allowed_tools определяет Go; Python не расширяет его. Текущие статусы передаёт Go.
-ActionResult={action_id,type,status:succeeded|failed|unknown,result:object|null,error_code:string|null}.
-Go передаёт максимум 5 последних результатов текущего диалога; result формируется сервером
-и содержит только публичные поля результата. Пустой список допустим. Суммарные лимиты
-контекста проверяет Go, JSON Schema не проверяет сумму длин элементов массива.
+Mock возвращает event_id, check/operation correlation, synthetic:true, observed_at и safe
+outcome. Один key/body — тот же объект, другой body —409. Отсутствие approval не создаёт grant.
+Можно детерминированно симулировать задержку grant/сбой после approve для теста, но не
+скрытое одобрение. [Events](event-contracts.md) описывает trusted adapters и дедупликацию.
 
-Python выдаёт run.started, message.delta, message.sources, затем 0..N tool.proposed
-с {run_id,type,parameters,task_id}, затем generation.completed {run_id}.
-Либо run.failed {run_id,code,message}. Он не выдаёт публичный Action и message_id.
-Go буферизует proposals до generation.completed, валидирует, сохраняет assistant/actions
-и только затем выдаёт публичные action.proposed и run.completed. Невалидный tool →
-run.failed TOOL_VALIDATION_ERROR без исполнения и публикации pending actions.
-Инструмент может быть предложен один раз за run (MVP: максимум одно бизнес-действие).
-Для объяснения результата не запускается автономный следующий tool: новый user run получает
-последние action_results. После confirm UI показывает фактический результат Go сразу.
+## Health
 
-GET /knowledge/{id} → KnowledgeDocument, 404 при отсутствии/иной visibility.
-Индексация — offline CLI владельца AI; endpoint загрузки для пользователя не нужен.
+Текущие Go/AI/mock /healthz → {status:"ok",service} только liveness. Будущий /readyz проверяет
+свою DB/миграции; наличие health не означает готовность route/IAM/RAG/feedback loop.
 
-## Internal: Go → mock corporate
+## TL review текущего schema snapshot
 
-GET /internal/v1/resources → список allowlist: sandbox/backend и sandbox/restricted, уровни read/write.
-POST /internal/v1/access-requests, Idempotency-Key=action.id:
-{initiator_id,resource,access_level,reason} → 201 {mock_id,operation_key,status,created_at,updated_at}.
-Повтор того же payload/key → 200 с тем же объектом, несовпадение → 409 IDEMPOTENCY_CONFLICT.
-GET /internal/v1/access-requests/by-operation/{key} → тот же объект или 404.
-GET /internal/v1/access-requests/{mock_id} → тот же объект, с вычислением demo-статуса через 15s.
-Состояния и восстановление: state-machines.md. Не добавлять endpoint реальной выдачи доступа.
-
-## Health и готовность
-
-Go /healthz, AI/mock /healthz → {status:"ok",service}; liveness, без проверки зависимостей.
-В будущих DB-фичах /readyz должен проверять свою БД и версию миграций; не возвращать ready
-только по доступности процесса. Каркас пока /readyz не предоставляет.
+BE+AI schemas сведены в TL checkout; final consumer acceptance еще открыт.
+[TL решения](../team/tl-readiness.md) закрывают вопросы FE review 3.1–3.9 на уровне policy.
+Error.fields.name — top-level field (для options.ssl_mode имя options). Все lists — {items}.
+Optional поля отсутствуют, explicit null только у заявленных nullable полей.
+Run cancelled не содержит error_code, interrupted требует STREAM_NOT_OPENED/CLIENT_DISCONNECTED,
+completed требует assistant_message_id. Без первого токена assistant Message не создается.
+Action create/read возвращает HTTP Date; TTL UI рассчитывается от серверных часов, а
+confirm всегда повторно проверяется Go. StepActionList и дополнительные invalid null
+fixtures поставляет Backend; FE подтверждает новый typed parsing, gate до этого не DONE.

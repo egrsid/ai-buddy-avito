@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-slim AS runtime
 WORKDIR /workspace
 COPY pyproject.toml uv.lock ./
 RUN pip install --no-cache-dir uv==0.13.4 && uv sync --frozen --no-dev
@@ -7,7 +7,19 @@ COPY mock-services/ ./mock-services/
 COPY scripts/ ./scripts/
 COPY backend/migrations/ ./backend/migrations/
 COPY data/ ./data/
+COPY contracts/ ./contracts/
 RUN useradd --create-home app
 USER app
 ENV PATH="/workspace/.venv/bin:$PATH"
 CMD ["uvicorn", "app.main:app", "--app-dir", "ai-service", "--host", "0.0.0.0", "--port", "8000"]
+
+FROM runtime AS test
+USER root
+RUN uv sync --frozen
+COPY tests/ ./tests/
+RUN mkdir -p /workspace/ai-service/coverage /workspace/mock-services/coverage \
+    && chown app:app /workspace/ai-service/coverage /workspace/mock-services/coverage
+ENV PYTHONDONTWRITEBYTECODE=1 PYTEST_ADDOPTS="-p no:cacheprovider --basetemp=/tmp/pytest"
+USER app
+
+FROM runtime AS production
