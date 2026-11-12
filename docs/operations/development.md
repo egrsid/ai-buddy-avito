@@ -141,3 +141,40 @@ docs-only задача контейнеры не запускает и volume н
 Приёмка отдельно показывает: runtime schema доступна в image, ingest повторяем, default
 mock startup без provider calls, DB integration tests реально используют PostgreSQL и
 не читают чужие схемы, UTF-8 проверен. Успешный YAML parse/legacy make check этого не доказывает.
+
+## TL implementation · 2026-11-12
+
+Актуальный статус перекрывает исторические «еще не реализовано» выше:
+contracts COPY, отдельный test image, target Compose overlay/CI gate и explicit UTF-8
+уже подготовлены. [TL evidence](../team/tl-readiness.md). Base compose остается bootstrap;
+сам AI ingest и бизнес-readiness еще должен поставить AI Engineer.
+
+Bootstrap проверен отдельно от пользовательских данных: проект ai-buddy-tl-20261111,
+BACKEND_PORT=18080, FRONTEND_PORT=15173, APP_ORIGIN=http://localhost:15173. После проверки
+проект останавливается без удаления его pgdata volume; старые volumes не затрагиваются.
+
+После принятой поставки BE/AI/FE в единой integration папке:
+
+1. AI передает JSON argv команды ingest и DB tests; экспортировать их как
+   AI_INGEST_COMMAND/AI_DB_TEST_COMMAND перед make mvp-up (preflight не читает .env).
+   Команды выбирает AI; отсутствие CLI/test suite не заменять exit 0/пустым pytest.
+2. make check, make test; tests каждого компонента должны дать >80% lines.
+3. make mvp-up: compose.yaml + compose.mvp.yaml. Указать отдельный COMPOSE_PROJECT_NAME
+   и свободные BACKEND_PORT/FRONTEND_PORT/APP_ORIGIN при запуске рядом с другой БД.
+4. make ai-db-test: настоящий PostgreSQL/pgvector и ai_service без admin DSN, mock LLM.
+   Test image содержит dev deps и writable coverage dirs; production остается --no-dev.
+5. Повтор ingest/seed/migrate без потери прогресса, verify-db, browser A/B/C, security,
+   реальный restart и offline rehearsal. Хранить реальные outputs и версии dataset/template.
+
+MVP overlay намеренно использует /readyz: AI проверяет schema/index/migrations. Текущий
+/healthz-only bootstrap его не пройдет. Нельзя менять readiness обратно на liveness ради
+зеленого запуска. APP_ENV/LLM_MODE/fault flag/scenario передаются явно; runtime validation
+HTTP headers/таймеров/конфигурации остается задачей BE/AI, wrapper проверяет task runners.
+
+Workflow dispatch mvp_acceptance=true запускает opt-in AI DB portion после component
+поставок. Repository vars AI_INGEST_COMMAND/AI_DB_TEST_COMMAND — argv, не secrets;
+компонентные integration и полный browser E2E остаются обязательными отдельно.
+
+V2 seed пока не поставлен. Текущие seed/check_seed/verify-db используют legacy dataset и
+не должны объявляться v2-ready до согласованных IDs/layout от Backend/AI. Примененные
+001 не переписывать; schema checksum mismatch должен оставаться ошибкой.

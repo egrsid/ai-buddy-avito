@@ -1,6 +1,9 @@
 # AI design target v2
 
-Версия 2.0 · проектирование. Сейчас AI предоставляет только /healthz, не генерацию/RAG.
+Версия 2.0 · целевое проектирование. TL checkout пока содержит bootstrap AI;
+в AI-ветке 3f955322 уже реализованы offline HTTP/SSE, lexical ACL retrieval и диагностика.
+[Review 12 ноября](../team/ai-review-2026-11-12.md) фиксирует tests/evals и остаток:
+persistent kb/ingest/readiness, response validation/deadline defects и приемочный runner.
 [Contextual AI SDD](../features/contextual-ai-assistance/spec.md),
 [API](api-contracts.md), [security](security.md) задают границы; AI Engineer выбирает
 adapters/prompting/retrieval/структуру модулей и eval методику внутри этих контрактов. [Назначение AI](../team/assignments/ai-engineer.md)
