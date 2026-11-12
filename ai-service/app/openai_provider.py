@@ -10,6 +10,7 @@ ProviderUnavailable (в SSE это run.failed LLM_UNAVAILABLE) или EmbeddingE
 (поиск тогда только лексический). Интерфейс тот же, что у OllamaProvider/OllamaEmbedder.
 """
 
+import asyncio
 import json
 import logging
 from collections.abc import AsyncIterator
@@ -26,6 +27,8 @@ logger = logging.getLogger(__name__)
 CONNECT_TIMEOUT = 5.0
 # Ingest шлёт корпус пачками; удалённому API хватает с запасом.
 EMBED_READ_TIMEOUT = 60.0
+# Паузы перед повторами эмбеддингов: всего до 3 попыток, задержка ≤2.5 с (лимит токена 20 с).
+EMBED_RETRY_DELAYS = (0.5, 2.0)
 
 
 def make_client(settings: Settings, read_timeout: float, transport) -> httpx.AsyncClient:
@@ -89,7 +92,13 @@ class OpenAIProvider:
             yield text
 
     async def chat(self, body: dict, reservation: str) -> AsyncIterator[str]:
-        """Читает SSE: строки `data: {json}`, конец — `data: [DONE]`."""
+        """Читает SSE: строки `data: {json}`, конец — `data: [DONE]`.
+
+        Cloud.ru шлёт накопленный usage в каждом куске, OpenAI — только в последнем.
+        Поэтому факт записываем один раз, после конца потока, по последнему usage.
+        Поток оборван (отмена, ошибка) — до записи не доходим, резерв остаётся.
+        """
+        last_usage = None
         try:
             async with self.client.stream("POST", "/chat/completions", json=body) as response:
                 if response.status_code != 200:
@@ -115,11 +124,13 @@ class OpenAIProvider:
                                 self.settings.llm_max_output_tokens,
                             )
                     if chunk.get("usage"):
-                        self.settle(reservation, chunk["usage"])
+                        last_usage = chunk["usage"]
         except httpx.HTTPError as error:
             raise ProviderUnavailable(f"API недоступен: {type(error).__name__}") from error
         except ValueError as error:
             raise ProviderUnavailable("API прислал не JSON") from error
+        if last_usage is not None:
+            self.settle(reservation, last_usage)
 
     def settle(self, reservation: str, usage: dict) -> None:
         cost = self.actual_cost(usage)
@@ -144,10 +155,12 @@ class OpenAIEmbedder:
         settings: Settings,
         ledger: BudgetLedger | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
+        retry_delays: tuple[float, ...] = EMBED_RETRY_DELAYS,
     ):
         self.settings = settings
         self.ledger = ledger or make_ledger(settings)
         self.client = make_client(settings, EMBED_READ_TIMEOUT, transport)
+        self.retry_delays = retry_delays
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
         upper = cost_rub(upper_tokens(texts), self.settings.price_embedding_rub)
@@ -157,7 +170,7 @@ class OpenAIEmbedder:
             raise EmbeddingError(f"Платный вызов запрещён: {error}") from error
         body = {"model": self.settings.embedding_model, "input": texts}
         try:
-            response = await self.client.post("/embeddings", json=body)
+            response = await self.post_with_retries(body)
         except httpx.HTTPError as error:
             raise EmbeddingError(f"API недоступен: {type(error).__name__}") from error
         if response.status_code != 200:
@@ -178,6 +191,23 @@ class OpenAIEmbedder:
             if len(vector) != EMBEDDING_DIM:
                 raise EmbeddingError(f"размерность {len(vector)}, ожидалась {EMBEDDING_DIM}")
         return vectors
+
+    async def post_with_retries(self, body: dict) -> httpx.Response:
+        """Повтор при 5xx и обрыве связи: у Cloud.ru бывают разовые 500/503 на эмбеддингах.
+
+        Ошибки 4xx (ключ, модель, лимит) не повторяем — повтор их не исправит.
+        Последняя попытка возвращает ответ или исключение как есть.
+        """
+        for delay in self.retry_delays:
+            try:
+                response = await self.client.post("/embeddings", json=body)
+            except httpx.HTTPError:
+                await asyncio.sleep(delay)
+                continue
+            if response.status_code < 500:
+                return response
+            await asyncio.sleep(delay)
+        return await self.client.post("/embeddings", json=body)
 
     async def warm_up(self) -> None:
         """Удалённой модели прогрев не нужен."""
