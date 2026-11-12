@@ -1,8 +1,10 @@
 # Назначение: Backend
 
-Роль назначена пользователем; личный handle не указан. Планируемая ветка
-**feature/backend-mvp-v2 создана локально** от опубликованной feature/team-start-foundation
-и не отправлена на remote. Чужие ветки/каталоги не менять. [Ветки](../branches.md).
+
+Рабочая ветка **feature/backend-mvp-v2 существует на GitHub**. Проверенный head и
+состояние — в [inventory](../branches.md). Текущие TL решения/границы/приемка:
+[TL record](../tl-readiness.md). Первая contract поставка уже предъявлена; остаток
+consumer gate и дальнейшие RP-задачи сохраняются. Чужие ветки/каталоги не менять.
 
 ## Начать с RP-CONTRACT-BE-01
 

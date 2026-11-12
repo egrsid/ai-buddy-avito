@@ -1,7 +1,10 @@
 # Назначение: Frontend
 
-Планируемая ветка **feature/frontend-mvp-v2 ещё не создана**. Владелец готовит от актуальной
-foundation; роли/права не менять в browser state. [Ветки](../branches.md), [backlog](../backlog.md).
+
+Рабочая ветка **feature/frontend-mvp-v2 существует на GitHub**. Проверенный head и
+состояние — в [inventory](../branches.md). Текущие TL решения/границы/приемка:
+[TL record](../tl-readiness.md). Первая contract поставка уже предъявлена; остаток
+consumer gate и дальнейшие RP-задачи сохраняются. Чужие ветки/каталоги не менять.
 
 ## Первая работа и RP-CONTRACT-FE-01
 

@@ -6,16 +6,20 @@ Work on project files locally. You may create local Git commits. Do not list Cod
 
 Do not push to any remote, including feature branches and forks. Do not open or merge pull requests, invite collaborators, or change repository permissions. The repository owner handles publishing and access management.
 
-Use only the branch/worktree already assigned by the owner. Do not create or switch branches
-in the shared working tree. For RP-DOC-01 the only allowed branch is the current
-`feature/team-start-foundation`; do not check out other branches. Only project documentation
-may change in this task: no application code, JSON contracts/fixtures, SQL, seed data,
-runtime knowledge inputs, manifests, lockfiles, configuration or CI changes.
+## Current TL integration assignment · 2026-11-11
 
-For the current RP-TEAM-01 assignment, the user also prohibits local commits: no commit/push/PR
-while preparing role handoffs and the TL contract baseline. Read-only inspection of other
-branches through git show/compare or GitHub APIs is explicitly authorized; do not change
-their contents or refs. Proposed BE/AI/FE branches are not created by this task.
+The owner authorized TL implementation and a delivery plan for 2026-11-12 22:00 Europe/Moscow.
+Work in the assigned `feature/team-start-foundation`; a new owner branch is permitted only
+if needed. Never change BE/AI/FE/QA branches or refs. No push/PR or local commit in this run.
+The earlier RP-DOC-01/RP-TEAM-01 docs-only restriction was specific to those completed tasks.
+The current assignment permits TL-owned scripts/tests, Docker/Compose/CI/config and project
+documentation. Import the reviewed contract artifacts into the TL checkout with provenance;
+component authors retain ownership of schema changes, runtime code, migrations and seed.
+Do not implement teammates' business logic or report their missing acceptance as DONE.
+
+Current integration facts/decisions: docs/team/tl-readiness.md. The temporary team action
+file docs/team/MVP_UNBLOCK_DELETE_AFTER_RESOLUTION.md must be removed after all listed
+issues have evidence and permanent backlog/acceptance records are updated.
 
 ## Product direction
 
