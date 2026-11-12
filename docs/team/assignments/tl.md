@@ -37,8 +37,8 @@ RP-TEAM-01 отслеживает проверку/завершение этог
 | RP-DEMO-01 | Принятый P0 и требования сдачи | Чистая репетиция, README, PDF/video, обозначение mock/live |
 | RP-TL-02 | Оригинальные требования/сроки | Подтвердить coverage/формат сдачи; не придумывать отсутствующие источники |
 
-RP-HOST-01/RP-P1-01/RP-P2-01 только после/вне P0. Бюджет/key live согласуется отдельно,
-offline P0 не ждёт provider. Личные handles/права/публикация остаются у владельца.
+RP-HOST-01/RP-P1-01/RP-P2-01 только после/вне P0. RP-AI-02 — live-поставка MVP
+AI Engineer без approval TL на ключ/расходы/wiring; offline P0 не ждёт provider. Личные handles/права/публикация остаются у владельца.
 
 ## Зона и review
 
@@ -46,9 +46,12 @@ offline P0 не ждёт provider. Личные handles/права/публик�
 исключение: Backend обновляет scripts/check_repo.py только для v2 validation; предварительно
 согласовать момент, чтобы не править файл одновременно. Не писать за BE/AI/FE их бизнес-логику.
 Технический приёмочный gate TL закрывает после предъявленных файлов/проверок, не заранее.
-AI предоставляет commands/env/runtime deps и отчёт evals; TL принимает данные, меняет
-общие README/.env.example/pyproject.toml/uv.lock и CI только на их основе. Ключ/бюджет
-TL подтверждает до платного RP-AI-02, сейчас конкретные значения неизвестны.
+AI предоставляет commands/ingest/DB tests для общей offline-инфраструктуры TL.
+Для LLM-specific поставки AI Engineer сам выполняет env/deps/locks/Compose/CI wiring,
+интеграцию и оплату без approval TL. Выбрана ai-sage/GigaChat3.5-432B-A28B, live embedding
+BAAI/bge-m3, бюджет 1000/stop 800 ₽, durable ledger/cap по [AI strategy](../../AI_ENGINEERING_STRATEGY.md).
+TL не поставляет ключ/LLM-окружение и не утверждает каждую трату; сохраняет архитектурные
+границы и приёмку продукта. Реализация/key/оплата/срок пока не предъявлены.
 
 ## Проверки/передача
 

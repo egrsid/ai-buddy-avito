@@ -19,6 +19,16 @@ RAG поддерживает цель; термины вторичны. AI не 
 
 Данные: Conversation/Message/Run, Source, access_scope, goal_context, structured drafts/classification/summaries.
 
+Live-поставка MVP RP-AI-02: `ai-sage/GigaChat3.5-432B-A28B` без `-Reasoning`, Cloud.ru
+BAAI/bge-m3; AI Engineer обеспечивает оплату и всю LLM-specific интеграцию без approval TL.
+Бюджет 1000/stop 800 ₽, hard output cap и reserve-before-call с persistent ledger;
+unknown usage сохраняет резерв. Budget stop → LLM_UNAVAILABLE и явный offline retry,
+не скрытый mock ответ. Таймеры 20/25/85/90s неизменны. Ollama не обязательна.
+Response cache опционален только для чистого documentation QA с subject/full trusted
+scope/revisions/model/prompt/schema/question и ACL revalidation. Dynamic/actions/diagnostics/
+candidates не кэшируются. Index/query embedding profile совпадает, смена profile — reindex.
+Детальные правила/источники: [AI strategy §6/7/13](../../AI_ENGINEERING_STRATEGY.md).
+
 ## API, состояния и ошибки
 
 POST /api/v2/conversations/{id}/runs; GET /runs/{id}/events; internal /generate, /journey-selection, /access-request-draft, /classify-error, /diagnostic-summary, /knowledge-gap-draft.
@@ -39,6 +49,9 @@ Run queued/running/completed/failed/cancelled/interrupted; partial не озна
 - [ ] Draft, classification, handoff и candidate соответствуют schema; попытка изменить state/permission запрещена.
 - [ ] SSE/cancel/retry не дублируют message/action; после refresh сохранённый результат совпадает.
 - [ ] Полный offline P0 без сети/ключа; mock/live обозначены; safety evals и schema-invalid fixtures проходят.
+- [ ] Для live: budget guard проверен до вызова, parallel/restart/retry/unknown usage не обходят stop; ledger loss/corrupt fail closed, hard cap соблюдается.
+- [ ] Если включён QA cache: revoke/source/model revision и cross-user tests проходят, dynamic/actions не кэшируются, live eval cache-off.
+- [ ] Embedding index/query profile совпадает, несовместимая смена требует reindex; live smoke фиксирует usage/TTFT <=20s/timeout, без автоматической смены модели.
 - [ ] Релевантные component/integration проверки и coverage >80% выполнены; health/fixtures не считаются фичей.
 
 ## Зависимости и границы

@@ -16,21 +16,36 @@ LLM_MODE=mock — deterministic offline provider, без сети/ключа; п
 объяснение, draft заявки, safe классификацию, handoff и candidate draft. Это обязательный
 fallback для полного P0 demo, а не только fixtures для чат-ответа. UI/отчёт помечают
 режим mock/live. Он не является доказательством качества live LLM или pgvector RAG.
-LLM_MODE=live подключается после RP-AI-02: provider/model/key/budget/embeddings доступны
-и проверены. Платный ключ не нужен CI и не блокирует offline P0. При live-сбое не
-дописывать смесь live/mock токенов в начатый stream: завершить failed, дать явный retry
-в обозначенном offline режиме. Контекст action/права/confirm при смене provider не обходятся.
-OpenAI-совместимость — вариант adapter, не обязательное требование. Provider/model/русская
-embedding model и API/local embedding strategy предлагает AI Engineer в RP-AI-02. TL
-подтверждает доступ/бюджет до платного spike. Конкретные значения ещё не предоставлены.
+Основная live LLM MVP — Cloud.ru **`ai-sage/GigaChat3.5-432B-A28B`**, без
+`-Reasoning`; название «GigaChat 3.5 Pro» исправлено. Provider/key/access smoke, env/deps,
+расходы и вся LLM-specific интеграция (включая нужные Compose/CI/root locks) — AI Engineer,
+без ожидания подтверждения TL. Общая инфраструктура вне LLM и приёмка продукта — TL.
+Бюджет хакатона **1000 ₽**, начальный автоматический stop **800 ₽**, резерв **200 ₽**;
+это план, не доказательство пополнения счёта или готовности live.
 
-AI Engineer выбирает минимальный HTTP client/SDK и предоставляет runtime dependency
-предложение TL; root manifest/lock обновляет TL. Если production adapter использует httpx,
-он переносится в production dependencies: текущей dev-group для Docker --no-dev недостаточно.
-Сохраняются LLM_BASE_URL, LLM_MODEL, LLM_API_KEY, EMBEDDING_MODEL/DIM. Ключ только Python,
-.env.example без секретов; environment wiring ещё предстоит реализовать.
-Python ничего не меняет в app/corporate. Ни classification, ни confidence, ни generated
-summary не являются evidence. Обязательные маршруты/permissions/checks принадлежат Go.
+Live RP-AI-02 идёт для MVP отдельно от обязательного offline P0; mock CI остаётся без
+платного ключа/сети. Ollama — опциональный local experiment, не обязательная зависимость.
+При live-сбое/stop завершить failed с LLM_UNAVAILABLE/LLM_TIMEOUT и дать явный offline
+retry; не смешивать токены и не менять provider автоматически. Go candidate fallback сохраняется.
+GigaChat-3-Pro/прямой API Сбера — только резервные варианты, reasoning split chat/diagnostics
+не принят. A-Vibe — после MVP через тот же LLMProvider, без переписывания RAG/Go logic.
+
+[AI strategy §4/6/13](../AI_ENGINEERING_STRATEGY.md) задаёт проверенные API ID/цены,
+таймауты и требования к поставке: hard output cap (старт 1000), reserve-before-call с
+persistent/atomic ledger, учёт embeddings/retries/unknown usage; budget stop — существующий
+LLM_UNAVAILABLE. Лимитер/кэш/live embedding wiring пока не реализованы этим документом.
+Кэш опционален только для чистого documentation QA: subject + полный trusted scope/revision,
+index/content revision, provider/model/settings, prompt/schema и вопрос; ACL/refs повторно
+проверяются на hit. Dynamic/actions/diagnostics/candidates не кэшируются, live eval cache-off.
+
+Live embedding profile — Cloud.ru `BAAI/bge-m3`, тот же Foundation Models key после
+проверки permissions, один профиль для index/query. При смене embedding provider/profile
+нужен атомарный reindex и invalidation cache; смена только generation LLM/key — не причина
+reindex. Фактическая dimension/normalization фиксируется AI Engineer, несовместимость — not ready.
+AI Engineer сам обновляет нужные runtime deps/locks для live; production HTTP client должен
+быть production dependency. Сохраняются LLM_BASE_URL, LLM_MODEL, LLM_API_KEY и EMBEDDING_MODEL/DIM;
+имена новых budget-настроек поставляются с реальной реализацией. Ключ только Python/env,
+никаких секретов в Git/logs. Python не пишет app/corporate; AI-текст и confidence не evidence.
 
 ## Pipeline
 
@@ -75,7 +90,8 @@ cache; старый index не открывает отозванный доку�
 ANN только после измерения и отдельного решения. kb — физическая logical knowledge.
 
 AI Engineer предоставляет идемпотентный ingest CLI (команду/exit codes/настройки) и
-реальные kb integration tests. TL подключает one-shot после migrate/seed и до AI readiness:
+реальные kb integration tests. Общий offline one-shot после migrate/seed и до AI readiness — TL;
+live embedding/budget-specific wiring — AI Engineer:
 mock mode готовит разрешённые chunks/ACL/lexical index без API/model downloads; live mode
 явно использует настроенную model/dimension/budget и не подменяется mock молча. CLI
 работает напрямую со своей kb под ai_service, не ждёт готового AI HTTP и не делает DDL.

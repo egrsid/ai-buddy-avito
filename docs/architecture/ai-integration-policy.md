@@ -116,7 +116,7 @@ AI Engineer пишет producer/schema, Backend — validation/canonicalization;
 | Python CI без PostgreSQL | Fast unit/provider tests — fake storage; отдельный compose CI step запускает AI tests с настоящим PostgreSQL/pgvector и runtime ai_service ролью | AI Engineer пишет tests, TL подключает job/runner |
 | Чистый индекс | Утверждён one-shot ingest после migrate/seed и до readiness AI; CLI работает напрямую со своей kb, не ждёт поднятого AI HTTP | AI Engineer CLI; TL Compose orchestration |
 | Кириллица в скриптах | Все текстовые reads/writes общих seed/migrate/check utilities явно encoding="utf-8"; content_hash считается по UTF-8 bytes | TL в RP-DATA-TL-01; автор компонента в своих файлах |
-| README/.env.example/locks | AI предоставляет проверенные инструкции/минимальный dependency diff; общие root файлы и lock обновляет TL | TL после AI поставки |
+| README/.env.example/locks | Общие offline/DB настройки — TL; LLM/live embedding/budget-specific wiring/deps/locks — полностью AI Engineer по последнему поручению владельца | AI Engineer для RP-AI-02, TL вне этой области |
 
 Сейчас COPY contracts/, ingest service, AI DB test step и явный UTF-8 в seed ещё
 не реализованы; make check legacy не закрывает эти пункты. Ни Dockerfile, ни CI,
@@ -127,16 +127,33 @@ AI Engineer пишет producer/schema, Backend — validation/canonicalization;
 
 ## 6. Live зависимости, материалы и оценка
 
-OpenAI-совместимый HTTP API — вариант adapter, не обязательный протокол продукта.
-AI Engineer предлагает доступные provider/model/русскоязычную embedding model, выбирает
-API или local embeddings с измерением качества/latency/ресурсов; TL до любого платного
-spike подтверждает доступ, бюджет и механизм ограничения расходов. Дата/сумма/ключ
-не предоставлены и не выдуманы. Пока live не настроен, обязательный offline P0 продолжается.
+Для MVP выбран Cloud.ru `ai-sage/GigaChat3.5-432B-A28B` без `-Reasoning`,
+OpenAI-compatible adapter; live embeddings — `BAAI/bge-m3` тем же разрешённым key.
+API ID и ставки/источники: [AI strategy §4/13](../AI_ENGINEERING_STRATEGY.md).
+AI Engineer обеспечивает account/key/model access, оплату, env/runtime deps/locks и всю
+LLM-specific интеграцию с существующим Go API, включая нужные Compose/CI/config изменения.
+Это исключение из общего TL ownership: дополнительного approval TL на расходы/wiring нет;
+общая offline infra/ingest/DB runner и продуктовая приёмка остаются у TL.
 
-AI Engineer выбирает минимальный HTTP client или SDK, предъявляет нужные runtime deps,
-license/совместимость и fixed lock diff; TL вносит изменение в pyproject.toml/uv.lock.
-Если выбран httpx, используемый в production adapter, он должен быть production dependency,
-а не только dev-group. Выбор SDK сейчас не требуется для offline provider и не диктуется TL.
+Бюджет 1000 ₽, автоматический stop 800 ₽ и резерв 200 ₽. До платных generation/embedding
+вызовов AI резервирует верхнюю стоимость под lock в durable ledger на persistent volume;
+hard output cap, учёт parallel/retry/unknown usage и сверка биллинга обязательны (§13 strategy).
+Повреждение/утрата ledger после старта, неизвестный tariff или неисчислимый верхний расход —
+fail closed. Превышение budget до API call → LLM_UNAVAILABLE, не новый wire error;
+после SSE — run.failed, без скрытого mock completion. Далее явный offline retry.
+
+Первые 5–10 замеров входят в примерно 10 smoke-запросов: access/usage/TTFT/schema/SSE.
+Таймеры §2 (20/25/85/90s) сохраняются; heartbeat и reasoning frame не content. Не внедрять
+reasoning diagnostics или GigaChat-3-Pro fallback автоматически. Ollama не требуется CI/demo.
+Небольшой live eval в пределах бюджета — отдельно от обязательных offline tests.
+
+QA response cache — опционален, полная политика [security](security.md) и strategy §13:
+subject/trusted full scope/revision/index/model/prompt/schema/question, revalidation при hit,
+никаких dynamic/actions/handoff/candidates; cache-off live eval. На miss не обходить budget.
+Embedding index/query используют один provider/model/revision/dimension/preprocessing;
+смена profile → атомарный reindex/cache invalidation/not-ready до совместимости.
+Смена generation provider/key при том же embedding profile reindex не требует.
+Фактическое наличие ключа, оплаты и этих механизмов ещё должно быть предъявлено AI Engineer.
 
 Собственные synthetic DB/IAM/SSL/team/restricted/privacy документы разрешены, пометка
 «не регламент Авито» обязательна. SPT/ZBP/avito-cli/Shatality без подтверждённого источника —
@@ -158,7 +175,9 @@ allowed source в top-5. Test fixtures/ручное чтение не подме
   Frontend: consumer review; TL: финальное принятие после результатов, не заранее.
 - AI Engineer: конкретные provider/model/embeddings/client, ingest CLI и DB integration tests,
   synthetic corpus/evals/report; это внутренняя реализация и выборы его области.
-- TL: реальные доступы/бюджет и последующая реализация Docker/CI/UTF-8/root config wiring.
+- AI Engineer: ключ/model access, окружение самой LLM и live-подключение, ETA и оценка расходов.
+- TL: общая offline Docker/CI/UTF-8/root orchestration вне LLM-specific поставки; приёмка продукта.
+  AI Engineer: расходы в пределах 1000 ₽ и вся LLM-specific интеграция без approval TL.
   Этот docs-only этап фиксирует решения, не исполняет перечисленные изменения кода.
 - AI Engineer предлагает конкретные внешние материалы только при необходимости, TL
   проверяет разрешение использования; отсутствие Playbook не блокирует P0.

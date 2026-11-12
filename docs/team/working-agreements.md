@@ -30,11 +30,17 @@ Backend, AI Engineer, Frontend, Fullstack–QA–Integration — остальн�
 | frontend/ | Frontend | Кроме зарезервированного API test ниже |
 | frontend/e2e/onboarding.spec.ts и docs/testing/qa-01-m1.md (пока в QA-ветке) | Fullstack–QA–Integration | Backend + TL; Frontend не переписывает эти файлы |
 | frontend/e2e/ остальные browser scenarios | Frontend | TL, без дублирования QA smoke |
-| scripts/, compose.yaml, Dockerfiles, Makefile, .github/, root tooling | TL | Component owners; исключение scripts/check_repo.py только contract validation в RP-CONTRACT-BE-01 |
+| scripts/, compose.yaml, Dockerfiles, Makefile, .github/, root tooling | TL; LLM-specific исключение — ниже | Component owners; scripts/check_repo.py только contract validation в RP-CONTRACT-BE-01 |
 | tests/test_contracts_v2_backend.py, tests/contract_v2_support.py | Backend | TL; helper общий |
 | tests/test_contracts_v2_ai.py | AI Engineer | Backend; common helper не дублировать |
 | docs/team/, общий scope/architecture/testing policy | TL | Участники передают факт/замечания; не переписывают общий backlog параллельно |
 | SDD своей области | Владелец реализации | TL при смене scope/API/ownership |
+
+Исключение владельца для RP-AI-02: AI Engineer сам доводит LLM/live embedding/budget-specific
+интеграцию, включая нужные .env.example/pyproject.toml/uv.lock/Compose/CI/Docker настройки
+и tests. Не ждёт реализации или approval TL; предотвращает одновременные правки общих файлов
+через уведомление о файлах. Общая offline/DB orchestration остаётся у TL, Go/React business
+logic и публичные API не переходят AI. Git-контракт и чужие ветки это исключение не меняет.
 
 Фактически созданные contract/tooling пути перечислены в TL record; runtime пути остаются у авторов.
 Runtime owners app/kb/corporate не меняются: Go app, Python AI kb, отдельный mock corporate.
@@ -74,4 +80,9 @@ smoke, TL сводит общую интеграцию с реальным resta
 Ошибки исправляет владелец кода; QA не становится общей очередью разработки.
 
 Ежедневно результат/следующая задача/блокер в согласованном TL канале (канал не придуман).
-Оригиналы кейса/бюджет/ключи/площадка остаются внешними решениями; offline P0 независим от live.
+Ключ/model access, окружение, оплату и всю LLM-specific интеграцию обеспечивает AI Engineer
+самостоятельно, без подтверждения TL. Модель ai-sage/GigaChat3.5-432B-A28B; бюджет хакатона
+1000 ₽, начальный stop 800 ₽, reserve/usage ledger и cap по [AI strategy](../AI_ENGINEERING_STRATEGY.md).
+TL сохраняет scope/security/API/product acceptance и общую инфраструктуру вне LLM.
+Фактические ключ/оплата/готовность/срок ещё не подтверждены.
+Оригиналы кейса/площадка остаются внешними решениями; offline P0 независим от live.

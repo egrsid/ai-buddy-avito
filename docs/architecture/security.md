@@ -65,8 +65,18 @@ explicit ACL policy приведены в [contract-baseline](contract-baseline.
 
 Prompt injection в документе/чате считается данными. System prompt не заменяет ACL.
 Python не может расширить tools, изменить business state или разрешить роль. Фильтрация
-применяется в mock retrieval так же, как в live vector search. Кэш ключуется scope/revision,
-документом/версией, не переиспользуется между командами.
+применяется в mock retrieval так же, как в live vector search.
+
+Опциональный response cache допускается только для чистого documentation QA без
+истории/PII/динамического goal state и без action proposal. Ключ включает server-derived
+subject, полный scope fingerprint, policy/ACL revision, index/content revision,
+generation provider/model/settings, prompt/schema version и вопрос. Не делиться между
+пользователями/командами, не использовать только role/team/question. Перед hit повторно
+проверить текущий scope и все source refs/версии; revoked/stale/непроверяемая ACL — miss/deny
+без выдачи старого текста. Partial/error не сохранять, TTL/size ограничены, cache keys/text
+не логировать. Dynamic goal/step, IAM/checks/verified, заявки/diagnostics/handoff/candidate/review
+не кэшируются. Cache hit помечается; для live eval кэш выключен. [AI strategy §13](../AI_ENGINEERING_STRATEGY.md).
+Cache не обходит авторизацию, trusted evidence, confirmation или budget guard.
 
 ## Diagnostic handoff и privacy
 

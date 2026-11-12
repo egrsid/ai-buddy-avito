@@ -25,7 +25,7 @@ prompting/retrieval вместо AI Engineer.
 | Privacy | Role + team + resource + document ACL + ownership, deny by default; Go scope → Python filtering до LLM, titles/metadata/citations включены |
 | Trusted input | Только correlated Go policy и mock adapters; business events и AI SSE различаются; browser/LLM не post evidence |
 | Feedback | journey_id + step_id + error_code, distinct intern>=2, unique candidate; один team-scoped journey/version в P0; accepted не публикует документ |
-| Offline | Полный P0 без LLM key/сети после установки образов; режим mock явно виден; live provider P1, не gate старта |
+| Offline | Полный P0 без LLM key/сети после установки образов; mock явно виден. Live MVP RP-AI-02 отдельно: ai-sage/GigaChat3.5-432B-A28B, не gate offline старта; расходы/LLM-specific wiring AI Engineer без approval TL по AI strategy |
 | Retention | Только synthetic local data до explicit reset владельцем; реальные/публичные данные не допускаются без отдельного решения |
 | Quality | Closed JSON Schema, positive/negative fixtures, all safety pass; >80% line coverage каждого business component; bootstrap не готовый продукт |
 
