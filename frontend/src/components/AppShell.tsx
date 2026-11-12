@@ -52,6 +52,8 @@ export function AppShell({
   view,
   onUserChange,
   onViewChange,
+  mode = 'fixtures',
+  onModeChange,
   children,
   sidebar,
 }: {
@@ -60,6 +62,8 @@ export function AppShell({
   view: ViewState;
   onUserChange: (account: string) => void;
   onViewChange: (view: ViewState) => void;
+  mode?: 'fixtures' | 'live';
+  onModeChange?: (mode: 'fixtures' | 'live') => void;
   children: ReactNode;
   sidebar?: ReactNode;
 }) {
@@ -124,23 +128,44 @@ export function AppShell({
       </div>
 
       <div className="mt-4 px-2">
-        <span className="mb-1 block text-xs text-text-secondary">Состояние экрана (демо)</span>
-        <div className="flex flex-wrap gap-1" role="group" aria-label="Демо-состояние данных">
-          {(Object.keys(viewLabels) as ViewState[]).map((v) => (
+        <span className="mb-1 block text-xs text-text-secondary">Источник данных</span>
+        <div className="flex flex-wrap gap-1" role="group" aria-label="Источник данных">
+          {(['fixtures', 'live'] as const).map((m) => (
             <button
-              key={v}
+              key={m}
               type="button"
-              onClick={() => onViewChange(v)}
-              aria-pressed={view === v}
+              onClick={() => onModeChange?.(m)}
+              aria-pressed={mode === m}
               className={`rounded-lg px-2 py-1 text-xs font-medium ${
-                view === v ? 'bg-primary text-white' : 'bg-surface-muted text-text-secondary hover:bg-border'
+                mode === m ? 'bg-primary text-white' : 'bg-surface-muted text-text-secondary hover:bg-border'
               }`}
             >
-              {viewLabels[v]}
+              {m === 'fixtures' ? 'Fixtures' : 'Live API'}
             </button>
           ))}
         </div>
       </div>
+
+      {mode === 'fixtures' && (
+        <div className="mt-4 px-2">
+          <span className="mb-1 block text-xs text-text-secondary">Состояние экрана (демо)</span>
+          <div className="flex flex-wrap gap-1" role="group" aria-label="Демо-состояние данных">
+            {(Object.keys(viewLabels) as ViewState[]).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => onViewChange(v)}
+                aria-pressed={view === v}
+                className={`rounded-lg px-2 py-1 text-xs font-medium ${
+                  view === v ? 'bg-primary text-white' : 'bg-surface-muted text-text-secondary hover:bg-border'
+                }`}
+              >
+                {viewLabels[v]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 

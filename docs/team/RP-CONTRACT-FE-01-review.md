@@ -87,3 +87,20 @@ api-contracts.md для `GET /journeys` пишет «JourneySummary[]», тог�
 ## 6. Итог
 
 **Замечаний-блокеров нет; baseline со стороны FE принимается условно** — при условии, что п. 3.1 (fixtures всех состояний) и ответы на вопросы 3.2–3.4 попадут в финальный TL review до старта RP-FE-01. Остальные пункты — уточнения документации/дополнительные invalid-кейсы, не останавливающие проектирование UI.
+
+---
+
+## 7. Повторный FE review (2026-11-12, после поставки BE StepActionList + optional-null negatives)
+
+Проведён consumer re-check на обновлённом наборе Backend (требование TL, tl-readiness п. 1 и 6–7).
+
+**Результат: 188 проверок контрактов зелёные (`src/contracts/contracts.test.ts`), всего 368 тестов FE.**
+
+- **3.1 fixtures всех состояний** — принято ранее; новая версия набора по-прежнему парсится typed-биндингами без исключений.
+- **3.6 list-формат** — подтверждено решением TL п. 5: все list API `{items:[...]}`, GoalList содержит полные Goal со steps в P0. FE рассчитывает на это в экранах целей.
+- **3.7 StepActionList** — закрыт поставкой BE: схема, example (`items: [retry_check, create_access_request]`) и invalid (`public-step-actions-unknown`, `grant_admin` отклоняется по enum). FE-биндинг добавлен: `StepActionList = { items: RecoveryAction[] }`, strict, maxItems 3, uniqueItems. Замечание снято.
+- **3.8 optional null** — negative fixtures Backend отклоняются typed-биндингами (absent, не null; исключения `User.buddy_id` и `Conversation.goal_id/step_id` — nullable по решению TL п. 7). Замечание снято; финальная проверка `omitempty` — на runtime-тестах Backend (RP-AUTH-01/RP-ACCESS-01), не на JSON Schema.
+- **3.5 fields.name** — принято решение TL п. 4 (верхнеуровневое имя поля, без dotted paths). FE показывает safe code, не сырой путь.
+- **3.9 TTL** — принято решение TL п. 9: серверное время из HTTP Date, таймер UI справочный, право confirm проверяет сервер. FE при интеграции (RP-FE-02) не будет полагаться на клиентские часы.
+
+**Итог повторного review: открытых замечаний со стороны FE нет.** Со стороны FE условия для RP-CONTRACT-REVIEW-01 выполнены; финальное acceptance — за TL (обновление BASELINE.sha256 и запись acceptance в contract-handoff).

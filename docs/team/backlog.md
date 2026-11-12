@@ -58,7 +58,7 @@ acceptance остаются у соответствующих авторов. Н
 | RP-BUDDY-01 | 4–5 | Backend | IN_PROGRESS | RP-BLOCKER-01, RP-CHAT-01, RP-AI-DIAG-01 | Exact diagnostic preview/confirm, scoped queue, atomic reply+resolved; ответ не verified | [спецификация](../features/buddy-escalation/spec.md) |
 | RP-REVERSE-01 | 5 | Backend | IN_PROGRESS | RP-BLOCKER-01, RP-AI-DIAG-01 | Distinct>=2, unique candidate, safe enrichment/fallback, scoped review; accepted не publish | [спецификация](../features/reverse-onboarding/spec.md) |
 | RP-FE-01 | 2 | Frontend | IN_PROGRESS | RP-CONTRACT-01 | Goal-first reference layout и states на agreed DTO fixtures (явно mock); component tests/responsiveness | [спецификация](../features/onboarding-journey/spec.md) |
-| RP-FE-02 | 3–4 | Frontend | TODO | RP-FE-01; по поставке RP-JOURNEY-01, RP-CHAT-01, RP-ACCESS-01, RP-VERIFY-01, RP-BLOCKER-01 | Go integration goal/chat/preview/requests/approvals/checks, refresh; принимать API поставки поэтапно | [спецификация](../features/access-request/spec.md) |
+| RP-FE-02 | 3–4 | Frontend | IN_PROGRESS | RP-FE-01; по поставке RP-JOURNEY-01, RP-CHAT-01, RP-ACCESS-01, RP-VERIFY-01, RP-BLOCKER-01 | Go integration goal/chat/preview/requests/approvals/checks, refresh; принимать API поставки поэтапно | [спецификация](../features/access-request/spec.md) |
 | RP-FE-03 | 4–5 | Frontend | TODO | RP-FE-02, RP-BUDDY-01, RP-REVERSE-01 | Buddy и documentation-owner UI, safe snapshot/count/hypothesis/review; no hidden fixture runtime | [спецификация](../features/reverse-onboarding/spec.md) |
 | RP-E2E-01 | 2–6 | Frontend | TODO | RP-CONTRACT-01; полный прогон после RP-FE-03 | Браузерный A/B/C путь и UI/security assertions, reload; реальный backend restart с TL, без route interception | [спецификация](../testing/strategy.md) |
 | RP-QA-01 | 2–3 | Fullstack–QA–Integration | IN_PROGRESS | Обновлённая QA-ветка владельцем, RP-CONTRACT-01; запуск после RP-AUTH-01, RP-JOURNEY-01 | Только два имеющихся API-теста: v2 goal ownership/reread и 401/CSRF; один отчёт. Legacy подготовка есть, v2 ещё нет | [спецификация](assignments/fullstack-qa-integration.md) |
@@ -157,6 +157,32 @@ RP-INTEGRATION-01/RP-DEMO-01 нельзя закрыть до настоящег
 
 Оперативная передача к 12 ноября 22:00: [временный checklist](MVP_UNBLOCK_DELETE_AFTER_RESOLUTION.md).
 Удалить файл/ссылку после выполнения его условий; постоянный evidence остается в TL record.
+
+## Фактическая FE поставка · 2026-11-12 (вечер)
+
+RP-CONTRACT-FE-01: bindings синхронизированы с BE v2 (добавлен StepActionList в
+`frontend/src/contracts/public.ts`), повторный FE review без замечаний —
+[review](RP-CONTRACT-FE-01-review.md), раздел 7. Условия для RP-CONTRACT-REVIEW-01
+со стороны FE выполнены; сам gate закрывает TL.
+
+RP-FE-01: goal-first layout, все состояния (data/loading/error/empty) на typed
+fixtures, явный mock-режим. Vitest 467 passed, coverage: lines 94.47%, branch 87.36%
+(порог владельца 85% выполнен); `tsc --noEmit` и `vite build` чистые. К компонентной
+приёмке готово, статус DONE не выставляем самостоятельно.
+
+RP-FE-02 → IN_PROGRESS. Поставлено: typed API-клиент (`lib/api.ts`: cookie-сессия,
+X-CSRF-Token на не-GET, Idempotency-Key на создания, Error-конверт → ApiError,
+HTTP Date → serverNow), typed endpoints с zod-парсингом входа/выхода (`lib/endpoints.ts`),
+SSE-клиент `lib/sse.ts` (fetch+ReadableStream, typed события run.*, heartbeat),
+режим данных fixtures|live (`lib/dataMode.tsx`, demo-login при смене аккаунта в live),
+live-варианты всех страниц (onboarding/step/requests/approvals/chat/buddy/knowledge-gaps)
+и переключатель «Источник данных» в AppShell. Эскалация со step: createConversation →
+createAction с diagnostic snapshot; confirm/cancel + опрос getAction до терминала.
+Live-интеграция покрыта unit-тестами на моках fetch/endpoint-слоя. Остаток до DONE:
+live-smoke и browser E2E (RP-E2E-01) против поднятого стека — на окружении с Docker
+(локально Docker-демон не запущен, живой прогон не выполнялся). RP-FE-03 частично
+покрыт live-страницами buddy/docs-owner (list/reply/review), формальный старт — после
+RP-FE-02 smoke.
 
 Для DATA gate BE/AI передают layout/IDs/минимальные seed test inputs вместе с миграциями,
 не ожидая mock HTTP/AI CORE. Иначе ожидание TL полного RP-MOCK-01 создало бы цикл
