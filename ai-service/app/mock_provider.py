@@ -129,3 +129,9 @@ class MockProvider:
             if scenario == "slow_stream":
                 await asyncio.sleep(self.slow_stream_delay)
             yield chunk
+
+    async def warm_up(self) -> None:
+        """Прогревать нечего: метод нужен, чтобы api вызывал его у любого провайдера."""
+
+    async def aclose(self) -> None:
+        """Закрывать нечего (у live-провайдера здесь закрывается HTTP-клиент)."""
