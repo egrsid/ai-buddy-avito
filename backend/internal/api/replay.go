@@ -1,0 +1,80 @@
+package api
+
+// Idempotency preserves the operation result, never the caller's historical permissions.
+func (q *request) authorizeReplay(pattern string, value any) error {
+	v := obj(value)
+	switch pattern {
+	case "POST /api/v2/goals/{goal}/steps/{step}/checks":
+		_, e := q.goal(str(v["goal_id"]))
+		return e
+	case "POST /api/v2/goals":
+		_, e := q.goal(str(v["id"]))
+		return e
+	case "POST /api/v2/conversations":
+		_, e := q.conversation(str(v["id"]))
+		return e
+	case "POST /api/v2/conversations/{id}/runs":
+		_, e := q.run(str(v["id"]))
+		return e
+	case "POST /api/v2/actions":
+		a, e := q.actionRow(str(v["id"]))
+		if e != nil {
+			return e
+		}
+		if _, e = q.goal(str(a["goal_id"])); e != nil {
+			return e
+		}
+		scope, e := q.scope(q.user)
+		if e != nil {
+			return e
+		}
+		if a["scope_hash"] != scope["policy_revision"] {
+			return fail(404, "NOT_FOUND")
+		}
+		if a["type"] == "escalate_to_buddy" {
+			if a["recipient_id"] != q.user["buddy_id"] {
+				return fail(404, "NOT_FOUND")
+			}
+			buddy, e := q.one(userSQL, a["recipient_id"])
+			if e != nil {
+				return e
+			}
+			if !has(buddy["roles"], "buddy") || buddy["team_id"] != q.user["team_id"] {
+				return fail(404, "NOT_FOUND")
+			}
+			for _, item := range list(obj(obj(a["preview"])["diagnostic_snapshot"])["instruction_refs"]) {
+				yes, e := q.canRead(str(obj(item)["document_id"]), buddy)
+				if e != nil {
+					return e
+				}
+				if !yes {
+					return fail(404, "NOT_FOUND")
+				}
+			}
+		}
+		return nil
+	case "POST /api/v2/access-requests/{id}/decision":
+		a, e := q.allowedRequest(q.r.PathValue("id"))
+		if e != nil {
+			return e
+		}
+		if a["intern_id"] == q.user["id"] {
+			return fail(403, "FORBIDDEN")
+		}
+		return nil
+	case "POST /api/v2/escalations/{id}/reply":
+		current, e := q.escalation(q.r.PathValue("id"))
+		if e != nil {
+			return e
+		}
+		if obj(current["buddy"])["id"] != q.user["id"] || digest(encode(current)) != digest(encode(v)) {
+			return fail(404, "NOT_FOUND")
+		}
+		return nil
+	case "POST /api/v2/knowledge-gaps/{id}/review":
+		_, e := q.candidate(q.r.PathValue("id"))
+		return e
+	default:
+		return fail(403, "FORBIDDEN")
+	}
+}

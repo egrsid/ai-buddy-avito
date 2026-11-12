@@ -120,6 +120,9 @@ def check_shared_definitions() -> None:
         ]
         if owners != ["common"]:
             raise AssertionError(f"{definition} defined in {owners}")
+        ai_schema = V2 / "ai.schema.json"
+        if ai_schema.exists() and definition in load_json(ai_schema).get("$defs", {}):
+            raise AssertionError(f"AI schema redefined {definition}")
 
 
 def check_event_types(records: list[dict]) -> None:
