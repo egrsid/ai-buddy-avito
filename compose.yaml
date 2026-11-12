@@ -57,6 +57,21 @@ services:
       LLM_API_KEY: ${LLM_API_KEY:-}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
       EMBEDDING_DIM: ${EMBEDDING_DIM:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      LLM_NUM_CTX: ${LLM_NUM_CTX:-}
+      LLM_MAX_OUTPUT_TOKENS: ${LLM_MAX_OUTPUT_TOKENS:-}
+      LLM_KEEP_ALIVE: ${LLM_KEEP_ALIVE:-}
+      LLM_REASONING_EFFORT: ${LLM_REASONING_EFFORT:-}
+      LLM_BUDGET_LEDGER_PATH: /var/lib/ai-budget/budget.sqlite
+      LLM_BUDGET_STOP_RUB: ${LLM_BUDGET_STOP_RUB:-}
+      LLM_PRICE_INPUT_RUB: ${LLM_PRICE_INPUT_RUB:-}
+      LLM_PRICE_OUTPUT_RUB: ${LLM_PRICE_OUTPUT_RUB:-}
+      EMBEDDING_PRICE_RUB: ${EMBEDDING_PRICE_RUB:-}
+    # Журнал расходов платного LLM: том переживает рестарт, иначе бюджет обнулится.
+    volumes:
+      - ai-budget:/var/lib/ai-budget
+    # Локальная Ollama на хосте; на Linux имя без этой строки не резолвится.
+    extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on:
       seed: {condition: service_completed_successfully}
     healthcheck:
@@ -123,3 +138,4 @@ services:
 
 volumes:
   pgdata:
+  ai-budget:

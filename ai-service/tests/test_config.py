@@ -154,3 +154,12 @@ def test_bad_tariff_or_stop_stops_startup(value):
 
 def test_ollama_does_not_need_paid_settings():
     assert load_settings({**LIVE, "LLM_PROVIDER": "ollama"}).llm_api_key == ""
+
+
+def test_empty_compose_values_mean_defaults():
+    env = {**LIVE, "LLM_PROVIDER": "", "LLM_NUM_CTX": "", "LLM_MAX_OUTPUT_TOKENS": ""}
+    settings = load_settings({**env, "LLM_KEEP_ALIVE": "", "LLM_BUDGET_STOP_RUB": ""})
+    assert settings.llm_provider == "ollama"
+    assert settings.llm_num_ctx == 16384
+    assert settings.llm_max_output_tokens == 400
+    assert settings.llm_keep_alive == "30m"

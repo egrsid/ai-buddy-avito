@@ -63,7 +63,7 @@ migrate → seed → сервисы; сборка загружает образ�
 образов offline demo не должен требовать LLM/корпоративной сети; это отдельная приёмка.
 
 .env.example содержит только local demo values, .env в Git ignore. LLM_MODE=mock не требует
-ключа; mock provider и live adapter пока не реализованы. Healthcheck — только liveness.
+ключа; live LLM подключается по разделу [LLM и ключ](#llm-и-ключ). Healthcheck — только liveness.
 Предыдущая INF-01 не закрыта: после исправления bootstrap COPY в Dockerfile.postgres
 bootstrap up/migrate/seed/verify-db/smoke подтверждены TL, target v2 требует отдельной RP-INF-01 приемки. TL теперь подтвердил bootstrap в отдельном проекте, повтор migrate/seed, role isolation и
 liveness; target P0 еще не проверен. Существующие volumes не удалялись.
@@ -78,6 +78,33 @@ make down
 `make reset CONFIRM=delete-local-data` удаляет ВСЕ local данные; выполнять только по явному решению
 владельца. Bootstrap выполняется только на новом volume; изменение .env не меняет
 существующие DB-роли/пароли. Восстановление после bootstrap error: [development](docs/operations/development.md).
+
+## LLM и ключ
+
+По умолчанию `LLM_MODE=mock`: детерминированные ответы без сети и ключа, на нём работают
+тесты, CI и offline demo. Live-режим (`LLM_MODE=live`) подключает модель через один из адаптеров:
+
+| | Платный API (основной для demo) | Локально (разработка) |
+|---|---|---|
+| Сервис | Cloud.ru Evolution Foundation Models | Ollama на хосте |
+| `LLM_PROVIDER` | `openai` (OpenAI-совместимый `/v1`) | `ollama` (нативный `/api/chat`) |
+| `LLM_BASE_URL` | `https://foundation-models.api.cloud.ru/v1` (сверить в консоли) | `http://host.docker.internal:11434` |
+| `LLM_MODEL` | `ai-sage/GigaChat3.5-432B-A28B` | `qwen3.5:9b` |
+| `EMBEDDING_MODEL` | `BAAI/bge-m3` | `bge-m3` |
+| Ключ | `LLM_API_KEY` | не нужен |
+
+Подключить свой ключ: в `.env` задать `LLM_MODE=live`, `LLM_PROVIDER=openai`, адрес, модели и
+`LLM_API_KEY`, затем `make up`. Подойдёт любой OpenAI-совместимый провайдер: тогда замените
+адрес, модели и тарифы. Ключ хранится только в `.env` (он в Git ignore) и не пишется в логи.
+После смены эмбеддинг-провайдера или модели индекс знаний пересобирается через ingest, иначе
+сервис не готов. Смена только модели чата или ключа пересборки не требует.
+
+Расходы платного API ограничены: перед каждым вызовом верхняя оценка цены резервируется в
+журнале `/var/lib/ai-budget/budget.sqlite` (Docker-том `ai-budget`), после ответа
+записывается фактическая цена по usage. На `LLM_BUDGET_STOP_RUB` (по умолчанию 800 ₽) вызовы
+прекращаются, и ответ приходит с `LLM_UNAVAILABLE`. Тарифы (`LLM_PRICE_*`) обязательны.
+Посмотреть расход:
+`docker compose exec -w /workspace/ai-service ai-service python -m app.budget status`.
 
 ## Локальная разработка
 

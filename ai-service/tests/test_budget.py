@@ -8,6 +8,7 @@ from app.budget import (
     BudgetLedger,
     BudgetUnavailable,
     cost_rub,
+    ensure_ledger,
     init_ledger,
     main,
     upper_tokens,
@@ -135,3 +136,14 @@ def test_cli_bad_usage(argv):
 
 def test_cli_status_of_broken_ledger(tmp_path):
     assert main(["status", str(tmp_path / "none.sqlite")]) == 1
+
+
+def test_ensure_creates_once_and_never_resets(tmp_path, caplog):
+    path = str(tmp_path / "volume" / "budget.sqlite")
+    with caplog.at_level("WARNING", logger="app.budget"):
+        assert ensure_ledger(path) is True
+    assert "постоянный том" in caplog.text
+    BudgetLedger(path, 800).reserve("chat", 3.0)
+    # Рестарт: журнал уже есть — расходы сохраняются.
+    assert ensure_ledger(path) is False
+    assert BudgetLedger(path, 800).status()["spent_rub"] == 3.0
