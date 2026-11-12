@@ -18,7 +18,7 @@ offline retrieval/provider и structured операции; 184 tests/99.90%, 29/
 | RP-AI-DIAG-01 | Classification/handoff/candidate draft, полный набор >=20 evals | Fallback закрывает диагностику, all safety pass |
 | RP-CHAT-01 | Go history/run/SSE и validation | Disconnect/cancel/retry/invalid output корректны и persistent |
 | RP-FE-02 | Контекстный чат и action previews | Ожидание/partial/error/source drawer работают через Go |
-| RP-AI-02 | Live provider/embeddings spike | Отдельный отчёт качества/cost, не блокирует offline P0 |
+| RP-AI-02 | AI Engineer: вся LLM-specific интеграция/оплата без approval TL; ai-sage/GigaChat3.5-432B-A28B, BAAI/bge-m3, бюджет 1000/stop 800 ₽ | Persistent reserve/usage guard, hard cap, 5–10 замеров/20s first content, optional safe QA cache, profile/reindex tests и отдельный live report по [strategy](../../AI_ENGINEERING_STRATEGY.md); не блокирует offline P0 |
 
 - [ ] Подтвердить общие target DTO/events и границы до реализации; не использовать legacy v1 как новый контракт.
 - [ ] Реализовать согласованные happy/error/security состояния в назначенных директориях.

@@ -111,11 +111,81 @@ MVP preflight ожидаемо BLOCKED: runtime v2/migrations/CLI/browser tests 
 
 До получения оригиналов внутренний release gate — Product Spec/SDD/testing strategy:
 offline local P0, четыре прикладные роли, >80% каждого компонента, A/B/C и negative tests.
-Соответствие неизвестным правилам организаторов не утверждается. Live provider/embeddings,
-public hosting, второй journey и P1/P2 не добавляются в дедлайн. Ключ/бюджет P0 не требует.
+Соответствие неизвестным правилам организаторов не утверждается. Ключ/бюджет обязательному
+offline P0 не нужен; public hosting/второй journey/P1/P2 не добавляются в дедлайн.
+Live LLM/embeddings RP-AI-02 уточнены последним поручением ниже как отдельная MVP-поставка
+AI Engineer; их готовность не выводится из offline gate.
 Публикация/доставка локального результата в рабочие ветки еще не выполнялась; чужие ветки
 обновляет их автор/владелец по Git-контракту. Перед обновлением сверить текущие heads.
 
 Изолированный проект после проверки остановлен командой compose down **без --volumes**;
 его ai-buddy-tl-20261111_pgdata сохранен. Docker Desktop остается запущенным. Контейнеры
 и volumes других проектов не менялись.
+
+
+## Ответ на три вопроса AI Engineer о стратегии · 2026-11-12 · предыдущий проход
+
+Локальное TL-решение по сообщению владельца; только документация в текущей ветке.
+
+1. [AI Engineering Strategy](../AI_ENGINEERING_STRATEGY.md) приведена к
+   [Product Spec](../product/specification.md): S3 — синтетическая тестовая БД,
+   `DB_SSL_REQUIRED`, отдельные confirm/approval/grant recheck и trusted DB check.
+   Отсутствующая AVITO_AI_BUDDY_PRODUCT_SPEC.md больше не является источником требований.
+2. В scope, примеры, план и DoD стратегии добавлено обязательное продолжение:
+   friction → два distinct intern → один Knowledge Gap Candidate → scoped human review.
+   AI предлагает безопасную гипотезу; Go хранит/дедуплицирует/ведёт review, accepted не publish.
+3. Cloud.ru остаётся подключением внутри OpenAI-совместимого адаптера openai после проверки
+   AI Engineer; смена архитектуры не требуется. **AI Engineer сам ищет/получает ключ и
+   model access, готовит окружение самой LLM и подключает провайдера.** Он передаёт ETA,
+   блокеры, env/deps и фактические расходы. Уточнено следующим поручением владельца:
+   расходы и вся LLM-specific интеграция переданы AI Engineer без approval TL; бюджет
+   1000/stop 800 ₽. RP-AI-02 — live-поставка MVP отдельно от обязательного offline P0.
+   Фактические ключ/пополнение счёта/live-готовность не подтверждены.
+
+Продуктовая спецификация и Reverse Onboarding SDD уже содержали нужный P0 и не переписаны.
+Код/контракты/DDL/seed/конфигурация не менялись. AI-R1–R4, FE/BE/QA/contract/integration
+конфликты этой задачей не исправлялись и их приёмка не закрыта. Чужие ветки/refs не менялись;
+commit/push/PR/merge/checkout не выполнялись. Исследовательские цены/модели не проверялись:
+их проверка относится к AI Engineer в RP-AI-02, не к этой продуктовой правке.
+
+Проверка этой правки: `UV_CACHE_DIR=/tmp/ai-buddy-uv-cache make check` — успешно,
+**50 passed**, docs links/v1/v2/schema/SQL/YAML/lint/format пройдены.
+`git diff --check` — успешно; изменены только 10 Markdown-файлов, refs/ветка сохранены.
+Component/E2E/live API tests не запускались: код и поведение не менялись.
+
+
+## Решение по предложениям AI Engineer: модель/бюджет/cache · 2026-11-12
+
+[AI strategy](../AI_ENGINEERING_STRATEGY.md), policy/design, SDD, ownership/backlog,
+operations и testing согласованы в текущей ветке; это требования, не runtime-поставка.
+
+- Исправлено имя: `ai-sage/GigaChat3.5-432B-A28B` — официальный ID без `-Reasoning`.
+  Предположение о скрытых reasoning-токенах/множителе 2–5 не относится автоматически к нему.
+  Тариф каталога 96,22/288,60 ₽ даёт 0,77934 ₽ за 6000/700 tokens; вместимость бюджета
+  теоретическая, actual usage/billing/TTFT проверяет AI Engineer.
+- Бюджет 1000 ₽, начальный stop 800 ₽/резерв 200 ₽; AI обеспечивает расходы и всю
+  LLM-specific интеграцию самостоятельно, без подтверждения TL. Общая offline/DB infra — TL.
+- Limiter принят с reserve-before-call, atomic/durable ledger, shared lock/persistent volume,
+  cap и tests concurrency/restart/retry/unknown usage. Это больше, чем log-cost counter;
+  stop → LLM_UNAVAILABLE и явный offline retry. Реализация AI Engineer ещё требуется.
+- 20/25/85/90s неизменны, первые 5–10 замеров входят в ~10 smoke; Ollama опциональна.
+  Reasoning diagnostics/GigaChat-3-Pro auto routing не добавлены.
+- QA cache опционален после guard/safety, только stateless documentation answers;
+  subject/full scope/revisions/model/prompt/schema/question и ACL revalidation на hit.
+  Dynamic/actions/diagnostics/candidates исключены, live eval cache-off.
+- Live embeddings — Cloud.ru BAAI/bge-m3 одним разрешённым key и единым index/query profile;
+  несовместимая смена provider/profile → reindex. Generation/key смена сама по себе — нет.
+  A-Vibe после MVP; Сбер freemium — резерв без нового адаптера; условия/оплату своего
+  Cloud.ru аккаунта проверяет AI Engineer, регистрация/покупка здесь не выполнялись.
+
+S1–S4, DB_SSL_REQUIRED, evidence/approval/feedback/privacy сохранены. AI-R1–R4 и прочие
+component/integration findings не закрыты. Новых документов, кода/схем/config/DDL нет;
+чужие ветки/refs, commit/push/PR не затрагиваются. Проверки этого прохода — ниже.
+
+Проверки текущего прохода: `UV_CACHE_DIR=/tmp/ai-buddy-uv-cache make check` — успешно,
+**50 passed**, lint/format/docs/schema/SQL/YAML пройдены. `git diff --check` — успешно.
+Дополнительно сверены 21 раздел стратегии, S1–S4/security/модель/budget policy и отсутствие
+старых TL approval gates. По хэшам изменены только 16 существующих Markdown-файлов;
+исполняемые файлы/config/contracts/DDL, Git refs/ветка и untracked inventory неизменны.
+Новых документов/коммитов нет, live API/оплата/регистрация/component/E2E не выполнялись;
+это не подтверждение реализации guard/cache или расхода средств.

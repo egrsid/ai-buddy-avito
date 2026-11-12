@@ -17,6 +17,20 @@ POST /api/v2/conversations/{id}/runs; GET /runs/{id}/events; internal /generate,
 задают общую семантику. Legacy JSON/DDL/seed не обновлены этой документационной задачей;
 до реализации RP-CONTRACT-01 фиксирует executable schemas, RP-DATA-01 — новые миграции.
 
+## Live cost/cache/embedding policy
+
+AI Engineer владеет всей LLM-specific поставкой/расходами без approval TL; основная модель
+ai-sage/GigaChat3.5-432B-A28B, embedding BAAI/bge-m3. [Strategy §13](../../AI_ENGINEERING_STRATEGY.md)
+определяет 1000 ₽ budget/800 ₽ stop, durable locked reservation ledger и hard cap до paid call;
+unknown usage/timeout не обнуляют резерв. Ledger не в app/corporate и не в Git; общий
+persistent storage для всех участвующих AI workers. Код этой документацией не реализован.
+QA cache ограничен stateless documentation answers, ключ subject/scope/revisions/index/
+provider/model/settings/prompt/schema/question, повторная ACL/source validation при hit;
+никаких динамических состояний/actions/handoff/candidates. Live eval cache-off.
+Index/query используют один embedding profile; смена provider/profile → atomic reindex/
+readiness/cache invalidation, смена generation/key при том же profile — без reindex.
+Go business state/contracts и 20/25/85/90s timers сохраняются. A-Vibe после MVP.
+
 ## Отказы, безопасность и UI
 
 AI_SCHEMA_INVALID/TOOL_VALIDATION_ERROR без pending action; LLM_TIMEOUT/UNAVAILABLE; SSE disconnect → interrupted и REST recovery.

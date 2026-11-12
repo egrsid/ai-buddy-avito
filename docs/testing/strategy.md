@@ -51,6 +51,9 @@ end position column=1 не включает последнюю строку. М�
 | Auth | Unit/integration: cookie absent/expired/revoked, role/assignment из БД, Origin/CSRF/login/logout |
 | Authorization | Go/AI integration: owner/team/resource/document ACL, ограниченная роль, self-approval запрещён, закрытые UUID одинаково 404 |
 | Secure RAG | Provider-input spy: чужие chunks/title/metadata/PII не поступают LLM; output/citation/drawer повторная ACL, revoked scope/cache, injection не меняет rights/tools |
+| Live budget, RP-AI-02 | AI tests с fake provider/usage: reserve до call, порог 800 при общем 1000 ₽, parallel/retry/embedding calls, restart/persist, duplicate settle, missing/corrupt ledger, timeout/cancel/unknown usage; hard output cap, stop LLM_UNAVAILABLE без вызова API |
+| QA response cache (опционально) | Subject/full scope/policy/index/source/model/prompt/schema revision isolation; revoke на hit запрещает старый текст; dynamic/actions/diagnostics/candidates/partial/errors не кэшируются, live eval cache-off |
+| Embedding profile | Cloud.ru BAAI/bge-m3: index/query provider/model/revision/dimension/preprocessing совпадают; mismatch not ready, смена profile — atomic reindex/cache invalidation, generation/key смена не заставляет reindex |
 | Journey | Template unit: duplicate/missing IDs, cyclic/unknown dependencies, unknown method/action, refs/version/permissions; один valid JSON, immutable goal version |
 | Goal/Step | Unit/integration: unverified/ready/blocked/waiting_external/verified, dependencies, прогресс, no manual done/AI verified, evidence invalidation, optimistic conflict |
 | Access draft | Schema/AI eval: недостающие поля, лишний actor/role/resource, разрешённая requested_role, exact immutable preview |
@@ -69,6 +72,13 @@ end position column=1 не включает последнюю строку. М�
 
 AI live evals отдельно от unit tests/coverage; >=20 новых кейсов и all safety pass, retrieval
 baseline >=80% expected allowed doc in top-5. CI без платного ключа; legacy 10 кейсов не новый отчёт.
+Live smoke выбранной ai-sage/GigaChat3.5-432B-A28B: первые 5–10 замеров входят в примерно
+10 вызовов, usage/cost сверены с биллингом, TTFT/timeout и полная latency записаны; 20s
+first content, 25s idle, 85s pipeline/90s Go не продлеваются. Это не устойчивый p95 и не
+доказательство offline gate. Guard/cache tests входят в обычный CI с fake provider, без
+платных вызовов/Ollama. Live/embedding tests запускает AI Engineer явно в пределах
+1000/stop 800 ₽; расходы и LLM-specific test wiring — AI Engineer, без approval TL.
+[План/источники](../AI_ENGINEERING_STRATEGY.md). A-Vibe/прямой Сбер не требуются для MVP.
 AI Engineer делает deterministic assertions и ручное чтение всех ответов набора; платный
 LLM judge не обязателен. Backend проверяет safety/tool boundary, TL принимает отчёт.
 

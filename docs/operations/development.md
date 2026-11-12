@@ -134,9 +134,15 @@ docs-only задача контейнеры не запускает и volume н
 6. **UTF-8, RP-DATA-TL-01.** Seed/migrate/check текстовые reads/writes задают encoding="utf-8",
    включая scripts/seed.py. Добавить non-ASCII fixture roundtrip/hash test без зависимости
    от locale; текущие неявные read_text ещё не исправлены этой документацией.
-7. **Общие инструкции/config/deps.** AI предоставляет проверенные команды ingest, env names,
-   provider adapter dependency/lock diff и test commands. TL меняет README/.env.example,
-   pyproject.toml/uv.lock и CI wiring после этих входов. Значения ключей/бюджета не придумывать.
+7. **Общие инструкции/config/deps.** Offline ingest/DB orchestration — TL по CLI/tests AI.
+   Для RP-AI-02 AI Engineer сам выполняет LLM/live embedding-specific env/deps/locks/Compose/CI
+   wiring и интеграцию, без approval TL. Модель ai-sage/GigaChat3.5-432B-A28B; embedding
+   BAAI/bge-m3, один профиль index/query. Ledger расходов — persistent writable volume
+   вне Git, общий для всех управляемых paid calls/воркеров, без обнуления при restart;
+   не временная файловая система контейнера. Бюджет 1000/stop 800 ₽, hard output cap,
+   неизвестный usage не ноль. [Требования/приёмка](../AI_ENGINEERING_STRATEGY.md).
+   Ollama необязательна; организаторам для live достаточно проверенного key/config/index,
+   default CI/mock startup по-прежнему не требуют ключа/сети. Это target, не готовый wiring.
 
 Приёмка отдельно показывает: runtime schema доступна в image, ingest повторяем, default
 mock startup без provider calls, DB integration tests реально используют PostgreSQL и

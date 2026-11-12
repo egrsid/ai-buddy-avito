@@ -65,12 +65,12 @@ Backend имеет наибольшую реализацию; TL снимает 
 AI обеспечивает оба AI этапа, Frontend владеет browser E2E. Это минимальный scope Fullstack,
 а не переименование большого интеграционного пакета в одну задачу.
 
-## Внешние решения и P1/P2
+## Внешние решения и live MVP / P1 / P2
 
 | ID | Приоритет | Ответственный | Статус / зависимость | Результат |
 |---|---|---|---|---|
 | RP-TL-02 | P0 | TL | EXTERNAL: оригиналы кейса/сроки/формат | Сверить требования/coverage/PDF/video; не блокировать независимый offline development |
-| RP-AI-02 | P1 | AI Engineer | EXTERNAL: provider/key/budget от TL; RP-AI-01 | AI предлагает provider/model/embeddings/client/deps; TL подтверждает key/budget до spike. Live report отдельный, offline не блокируется |
+| RP-AI-02 | MVP/live, отдельно от offline P0 | AI Engineer | EXTERNAL: key/оплата; подготовка/smoke возможны сейчас, полная приёмка после RP-AI-01 | ai-sage/GigaChat3.5-432B-A28B без Reasoning, BAAI/bge-m3; AI сам выполняет всю LLM-specific интеграцию/env/deps/locks/Compose/CI и расходы без approval TL. Бюджет 1000/stop 800 ₽; persistent reserve/usage guard, output cap, TTFT 20s, optional QA cache/ACL и embedding profile/reindex tests. Ключ/оплата/реализация не подтверждены; [детали приёмки](../AI_ENGINEERING_STRATEGY.md) |
 | RP-HOST-01 | P2 | TL | EXTERNAL: площадка/auth/HTTPS | Public demo только отдельным решением владельца |
 | RP-P1-01 | P1 | TL | TODO после стабильного P0 | Назначить расширения graph/second journey/review history по Product Spec, не раздавать заранее |
 | RP-P2-01 | P2 | TL | TODO после хакатона | Отдельный scope реальных интеграций/MR/IDE/Radar/HR/workflow builder |
@@ -114,7 +114,7 @@ P0 ACL/confirm/evidence/error/feedback/offline и не расширяет мол
 | BE-02 | RP-JOURNEY-01/RP-VERIFY-01; ручной task PATCH/done отменён |
 | FE-01, FE-02 | RP-FE-01/02; иерархия goal/evidence вместо checklist |
 | QA-01 | RP-QA-01 у Fullstack: адаптация двух уже написанных API-тестов в feature/qa-01-m1; browser/restart отдельно RP-E2E-01 |
-| AI-01, AI-03 | RP-AI-02 (live P1), scoped offline P0 в RP-AI-01 |
+| AI-01, AI-03 | RP-AI-02 (теперь live MVP по поручению владельца), scoped offline P0 в RP-AI-01 |
 | AI-02 | RP-AI-01: все structured операции, не только mock chat |
 | BE-03, FE-03 | RP-CHAT-01/RP-FE-02: goal/step context и SSE |
 | BE-04, BE-05 | RP-MOCK-01/02/03, RP-ACCESS-01; repo/15s auto-approval заменены DB/manual approval |

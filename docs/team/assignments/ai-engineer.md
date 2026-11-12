@@ -40,7 +40,7 @@ TL — security границы. До общего contract gate runtime DTO не
 | RP-DATA-AI-01 | Contract gate | Kb ACL migrations, synthetic team/restricted/PII knowledge fixtures, версии/IDs с Backend; физическая schema kb сохраняется |
 | RP-AI-CORE-01 | Contract gate + DATA-AI | Offline generate/retrieval/route/draft, internal Error/ID/таймеры/faults/SSE; предоставить idempotent ingest CLI и реальные kb integration tests TL |
 | RP-AI-DIAG-01 | AI CORE | Error classification, safe buddy summary, candidate hypothesis/fix, invalid/unavailable fixtures; весь набор >=20 evals |
-| RP-AI-02 | P1, provider/key/budget + RP-AI-01 | Live/embeddings adapter и отдельный quality/latency/cost report |
+| RP-AI-02 | Live MVP; доступ/оплата, smoke сейчас, полная приёмка после RP-AI-01 | Вся LLM-specific интеграция и расходы самостоятельно без approval TL; модель/бюджет/guard/cache/embeddings и tests по уточнению ниже |
 
 RP-AI-01 — milestone CORE+DIAG, не блокировать ранний chat/access до всего diagnostic
 пакета. DIAG работает по согласованным fixtures, не ждёт готового Go blocker/candidate
@@ -55,8 +55,9 @@ Python не выставляет verified, не меняет route/permissions, 
 негативные проверки обязательны. Hypothesis/confidence не evidence; handoff без сырого чата/
 секретов; candidate input — safe aggregate без IDs людей. Все structured outputs валидируются.
 
-AI поставляет TL команды/exit codes ingest и DB integration tests, env/runtime dependency
-предложение; Docker/CI/UTF-8/root manifest wiring делает TL отдельно. Для небольшого
+AI поставляет TL команды/exit codes ingest и DB integration tests для общей offline infra.
+LLM-specific env/runtime dependencies/locks/Compose/CI wiring выполняет AI Engineer сам;
+общее DB/UTF-8/orchestration wiring остаётся у TL. Для небольшого
 набора evals AI читает все ответы вручную вместе с deterministic assertions; Backend
 проверяет safety/tool границы, TL принимает отчёт, paid LLM judge не обязателен.
 
@@ -64,3 +65,41 @@ make check, AI component checks/coverage >80%, >=20 evals и all safety pass; of
 не вызывает сеть/не требует key. Lexical mock не выдаётся за live pgvector. Report model/mode/
 dataset/quality/cost отдельно от coverage. Backend получает fixtures/совместимые DTO,
 TL — команды, результат, ограничения. Никакого внешнего LLM key в Git/logs/fixtures.
+
+
+## Ответ TL на вопросы о стратегии · 12 ноября
+
+[AI Engineering Strategy](../../AI_ENGINEERING_STRATEGY.md) исправлена по
+[Product Spec](../../product/specification.md). S3 — тестовая БД, `DB_SSL_REQUIRED`,
+отдельный approver, IAM grant recheck и trusted DB check. Обязательное продолжение —
+friction двух distinct intern, один Knowledge Gap Candidate и review documentation_owner;
+accepted не публикует документ. Репозиторный сценарий не заменяет этот P0.
+
+Cloud.ru подключается через адаптер `openai`; модель **ai-sage/GigaChat3.5-432B-A28B**
+без `-Reasoning`, не «3.5 Pro». **Ключ, окружение, оплата и вся LLM-specific интеграция —
+AI Engineer, без ожидания подтверждения TL.** Общие файлы разрешены только в этой области
+по [working agreements](../working-agreements.md); Go/React business logic остаётся у авторов.
+Бюджет хакатона 1000 ₽, автоматический stop 800 ₽, резерв 200 ₽; это план, не оплаченный счёт.
+
+Следующая live-поставка RP-AI-02 по [strategy §4/6/7/13](../../AI_ENGINEERING_STRATEGY.md):
+
+- До платных вызовов durable budget ledger с atomic reserve/settle, блокировкой всех workers,
+  persistent volume, учётом retries/embeddings/unknown usage; hard output cap (старт 1000).
+  Stop/corrupt ledger/неизвестная верхняя цена → LLM_UNAVAILABLE до provider call.
+- Первые 5–10 замеров внутри примерно 10 smoke: доступ ID, usage/billing, TTFT <=20s,
+  streaming/cancel/schema/tools. Не увеличивать 20/25/85/90s таймеры и не добавлять Reasoning
+  диагностику автоматически. Unknown usage остаётся зарезервированным, timeout не бесплатен.
+- Live BAAI/bge-m3 тем же разрешённым key, один index/query embedding profile; изменение
+  embedding provider/profile → reindex/not-ready/cache invalidation. Generation/key смена
+  сама по себе reindex не требует. Dimension измерить, новый DDL — только миграцией владельца.
+- Cache — опционально после budget/safety, только чистый documentation QA, subject/full
+  scope/revision/index/model/prompt/schema/question и повторная ACL/ref validation на hit.
+  Никаких dynamic goal/checks/actions/diagnostics/candidates; cache-off live eval.
+- Prompt/fixture отладка — deterministic offline, Ollama по желанию; CI/организаторам она
+  не требуется. Платные расходы: smoke, 2–3 ограниченных eval-прогона, embeddings, demo.
+- Budget concurrency/restart/duplicate settlement/unknown usage/corrupt ledger, cache revoke/
+  isolation/source revision и reindex tests + report usage/cost/TTFT/лимиты/ETA/блокеры.
+
+Прямой API Сбера и GigaChat-3-Pro — только запасные варианты, новый адаптер сейчас не нужен.
+A-Vibe — после MVP. Live и offline отчёты отдельны; AI-R1–R4 и остальные integration gates
+этим документом не закрываются, guard/cache/live RAG не считаются уже реализованными.
