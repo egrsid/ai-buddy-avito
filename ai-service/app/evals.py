@@ -11,6 +11,7 @@
 import asyncio
 import json
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -51,6 +52,9 @@ class Outcome:
     answer: str
     retrieved: list[str] = field(default_factory=list)
     provider_messages: list[dict] = field(default_factory=list)
+    # Замеры live-прогона, секунды от начала запроса: первый кусок ответа и весь поток.
+    first_token: float | None = None
+    total: float | None = None
 
 
 @dataclass
@@ -141,19 +145,44 @@ def parse_events(stream_text: str) -> list[tuple[str, dict]]:
     return events
 
 
-def run_generate_case(case: dict, scope: dict, knowledge: KnowledgeBase) -> Outcome:
+def run_generate_case(
+    case: dict,
+    scope: dict,
+    knowledge: KnowledgeBase,
+    settings: Settings | None = None,
+    make_provider=None,
+    make_embedder=None,
+) -> Outcome:
+    """По умолчанию — mock. Live-прогон передаёт фабрики провайдера и эмбеддера: клиенты
+    создаются внутри цикла событий кейса и закрываются в нём же."""
     request = generate_request(case["input"], scope)
     if not is_valid("GenerateRequest", request):
         raise ValueError(f"{case['id']}: собранный GenerateRequest не по схеме")
-    spy = SpyProvider(MockProvider(0.0))
-    stream = run_generate(
-        request, spy, knowledge, Settings(internal_api_token="eval"), case.get("scenario", "normal")
-    )
+    if settings is None:
+        settings = Settings(internal_api_token="eval")
+    spy = None
+    timings = {}
 
     async def read_all() -> str:
+        nonlocal spy
+        provider = make_provider() if make_provider else MockProvider(0.0)
+        embedder = make_embedder() if make_embedder else None
+        spy = SpyProvider(provider)
+        stream = run_generate(
+            request, spy, knowledge, settings, case.get("scenario", "normal"), embedder=embedder
+        )
         parts = []
-        async for part in stream:
-            parts.append(part)
+        started = time.monotonic()
+        try:
+            async for part in stream:
+                if part.startswith("event: message.delta") and "first" not in timings:
+                    timings["first"] = time.monotonic() - started
+                parts.append(part)
+        finally:
+            timings["total"] = time.monotonic() - started
+            await provider.aclose()
+            if embedder is not None:
+                await embedder.aclose()
         return "".join(parts)
 
     events = parse_events(asyncio.run(read_all()))
@@ -174,7 +203,9 @@ def run_generate_case(case: dict, scope: dict, knowledge: KnowledgeBase) -> Outc
         ensure_ascii=False,
     )
     answer = result["text"] + " " + json.dumps(result["tool"], ensure_ascii=False)
-    return Outcome(result, output, answer, retrieved, messages)
+    return Outcome(
+        result, output, answer, retrieved, messages, timings.get("first"), timings.get("total")
+    )
 
 
 def structured_body(case: dict, scope: dict) -> dict:
@@ -273,7 +304,11 @@ def schema_failures(case: dict, outcome: Outcome) -> list[str]:
     return []
 
 
-def check_case(case: dict, scope: dict, outcome: Outcome, knowledge: KnowledgeBase) -> list[str]:
+def check_case(
+    case: dict, scope: dict, outcome: Outcome, knowledge: KnowledgeBase, live: bool = False
+) -> list[str]:
+    """live=True: дословные фразы mock (required_text) заменяются проверкой по смыслу
+    live_required_any — в каждой группе ответ должен содержать хотя бы один вариант."""
     expect = case["expect"]
     result = outcome.result
     failures = schema_failures(case, outcome)
@@ -291,9 +326,14 @@ def check_case(case: dict, scope: dict, outcome: Outcome, knowledge: KnowledgeBa
     for text in expect.get("forbidden_output", []):
         if text.lower() in outcome.answer.lower():
             failures.append(f"запрещённый текст в ответе: {text}")
-    for text in expect.get("required_text", []):
-        if text not in outcome.output:
-            failures.append(f"нет обязательного текста: {text}")
+    if live and "live_required_any" in expect:
+        for group in expect["live_required_any"]:
+            if not any(variant.lower() in outcome.answer.lower() for variant in group):
+                failures.append(f"в ответе нет ни одного из: {', '.join(group)}")
+    else:
+        for text in expect.get("required_text", []):
+            if text not in outcome.output:
+                failures.append(f"нет обязательного текста: {text}")
     for document_id in expect.get("expected_sources", []):
         if document_id not in outcome.retrieved[:5]:
             failures.append(f"нужный документ не в top-5: {document_id}")
