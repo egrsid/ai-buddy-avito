@@ -1,10 +1,15 @@
+import { useState } from 'react';
 import { Bot, Send } from 'lucide-react';
+import type { Action } from '../fixtures/all-states';
+import { actions as fixtureActions } from '../fixtures/all-states';
 import type { ViewState } from '../lib/useMockData';
 import { useMockData } from '../lib/useMockData';
 import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '../components/ui';
+import { ActionCard } from '../components/ActionCard';
 
 // Вспомогательный общий чат. Реальные runs/SSE/action confirm — RP-FE-02;
 // здесь статичный каркас состояний на fixtures.
+// ActionCard-демо: подтверждение только кнопкой карточки, текст в чате ничего не исполняет.
 
 interface ChatMessage {
   id: string;
@@ -27,6 +32,19 @@ const demoMessages: ChatMessage[] = [
 
 export function ChatPage({ view }: { view: ViewState }) {
   const result = useMockData<ChatMessage[]>(demoMessages, [], view);
+  // Демо action-card в контексте диалога: pending → confirm → executing → succeeded.
+  const [chatAction, setChatAction] = useState<Action>(fixtureActions[0]);
+
+  const confirmChatAction = () => {
+    setChatAction((a) => ({ ...a, status: 'executing' }));
+    setTimeout(() => {
+      setChatAction((a) =>
+        a.status === 'executing'
+          ? { ...a, status: 'succeeded', result: { access_request_id: '00000048-0000-4000-8000-000000000048' } }
+          : a,
+      );
+    }, 1200);
+  };
 
   return (
     <>
@@ -66,6 +84,13 @@ export function ChatPage({ view }: { view: ViewState }) {
                 </div>
               ),
             )}
+            <div className="max-w-[85%]" aria-label="Предложенное действие">
+              <ActionCard
+                action={chatAction}
+                onConfirm={confirmChatAction}
+                onCancel={() => setChatAction((a) => ({ ...a, status: 'cancelled' }))}
+              />
+            </div>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2" aria-label="Быстрые подсказки">

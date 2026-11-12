@@ -51,6 +51,11 @@ describe('draft all-states fixtures conform to v2 schemas', () => {
     }
   });
 
+  it('KnowledgeDocument and pending escalation action', () => {
+    expect(pub.KnowledgeDocument.safeParse(fx.knowledgeDoc).success).toBe(true);
+    expect(pub.Action.safeParse(fx.escalationPendingAction).success).toBe(true);
+  });
+
   it('empty lists are valid payloads', () => {
     expect(pub.GoalList.safeParse({ items: fx.emptyGoals }).success).toBe(true);
     expect(pub.AccessRequestList.safeParse({ items: fx.emptyAccessRequests }).success).toBe(true);
