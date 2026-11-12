@@ -132,7 +132,8 @@ def load_settings(env: Mapping[str, str]) -> Settings:
     if faults and app_env not in ("local", "test"):
         raise ConfigError("MOCK_FAULTS_ENABLED=true разрешён только при APP_ENV=local или test")
 
-    provider = env.get("LLM_PROVIDER", "ollama")
+    # compose передаёт незаданные переменные пустой строкой: пусто = дефолт.
+    provider = env.get("LLM_PROVIDER") or "ollama"
     if provider not in LLM_PROVIDERS:
         raise ConfigError(f"LLM_PROVIDER должен быть одним из {LLM_PROVIDERS}")
     base_url = env.get("LLM_BASE_URL", "").rstrip("/")
@@ -140,18 +141,17 @@ def load_settings(env: Mapping[str, str]) -> Settings:
     if llm_mode == "live" and (not base_url or not model):
         raise ConfigError("Для LLM_MODE=live нужны LLM_BASE_URL и LLM_MODEL")
 
-    num_ctx = parse_positive_int("LLM_NUM_CTX", env.get("LLM_NUM_CTX", str(DEFAULT_NUM_CTX)))
+    num_ctx = parse_positive_int("LLM_NUM_CTX", env.get("LLM_NUM_CTX") or str(DEFAULT_NUM_CTX))
     if num_ctx < MIN_NUM_CTX:
         raise ConfigError(f"LLM_NUM_CTX должен быть не меньше {MIN_NUM_CTX}")
     max_output = parse_positive_int(
-        "LLM_MAX_OUTPUT_TOKENS", env.get("LLM_MAX_OUTPUT_TOKENS", str(DEFAULT_MAX_OUTPUT_TOKENS))
+        "LLM_MAX_OUTPUT_TOKENS", env.get("LLM_MAX_OUTPUT_TOKENS") or str(DEFAULT_MAX_OUTPUT_TOKENS)
     )
     if max_output >= num_ctx // 2:
         raise ConfigError("LLM_MAX_OUTPUT_TOKENS должен быть меньше половины LLM_NUM_CTX")
     if max_output > MAX_OUTPUT_CAP:
         raise ConfigError(f"LLM_MAX_OUTPUT_TOKENS должен быть не больше {MAX_OUTPUT_CAP}")
 
-    # compose передаёт незаданные переменные пустой строкой: пусто = дефолт.
     embedding_model = env.get("EMBEDDING_MODEL") or "bge-m3"
     dimensions = env.get("EMBEDDING_DIM") or str(EMBEDDING_DIM)
     if dimensions != str(EMBEDDING_DIM):
@@ -174,7 +174,7 @@ def load_settings(env: Mapping[str, str]) -> Settings:
         llm_model=model,
         llm_num_ctx=num_ctx,
         llm_max_output_tokens=max_output,
-        llm_keep_alive=env.get("LLM_KEEP_ALIVE", "30m"),
+        llm_keep_alive=env.get("LLM_KEEP_ALIVE") or "30m",
         embedding_model=embedding_model,
         knowledge_source=knowledge_source,
         **paid,

@@ -16,7 +16,7 @@ from collections.abc import AsyncIterator
 
 import httpx
 
-from app.budget import BudgetLedger, BudgetUnavailable, cost_rub, upper_tokens
+from app.budget import BudgetLedger, BudgetUnavailable, cost_rub, ensure_ledger, upper_tokens
 from app.config import EMBEDDING_DIM, Settings
 from app.mock_provider import ProviderUnavailable
 from app.prompt import LlmInput
@@ -40,6 +40,8 @@ def make_client(settings: Settings, read_timeout: float, transport) -> httpx.Asy
 
 
 def make_ledger(settings: Settings) -> BudgetLedger:
+    """Журнал расходов на старте сервиса/ingest; при первом запуске он создаётся."""
+    ensure_ledger(settings.budget_ledger_path)
     return BudgetLedger(settings.budget_ledger_path, settings.budget_stop_rub)
 
 

@@ -301,3 +301,9 @@ def test_factories_pick_paid_api_by_provider(tmp_path):
     settings = make_settings(**PAID, budget_ledger_path=str(tmp_path / "b.sqlite"))
     assert isinstance(make_provider(settings), OpenAIProvider)
     assert isinstance(make_embedder(settings), OpenAIEmbedder)
+
+
+def test_factory_creates_ledger_on_first_start(tmp_path):
+    path = tmp_path / "volume" / "budget.sqlite"
+    make_provider(make_settings(**PAID, budget_ledger_path=str(path)))
+    assert path.exists()
