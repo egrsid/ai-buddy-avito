@@ -8,14 +8,26 @@ Do not push to any remote, including feature branches and forks. Do not open or 
 
 ## Current TL integration assignment · 2026-11-11
 
+Latest owner instruction · 2026-11-12: implement the necessary Backend work as well as TL
+integration. The owner explicitly permits modifying files only in the existing TL branch
+`feature/team-start-foundation` and Backend branch `feature/backend-mvp-v2`. This supersedes
+the earlier restriction on Backend business implementation for this assignment. Automatic
+approval review separately required confirmation for fetching/updating the Backend ref
+and creating/switching its local tracking branch; the owner explicitly confirmed all three
+operations on 2026-11-12. Backend implementation against the reviewed v2 artifacts is now
+authorized; final consumer/integration acceptance remains open. AI/FE/QA refs stay read-only.
+Do not push, open/merge PRs, or create local commits in this run. Preserve existing work.
+
 The owner authorized TL implementation and a delivery plan for 2026-11-12 22:00 Europe/Moscow.
 Work in the assigned `feature/team-start-foundation`; a new owner branch is permitted only
-if needed. Never change BE/AI/FE/QA branches or refs. No push/PR or local commit in this run.
+if needed under the earlier assignment; the latest instruction above now limits work to
+the two named existing branches. Never change AI/FE/QA branches or refs. No push/PR or local commit in this run.
 The earlier RP-DOC-01/RP-TEAM-01 docs-only restriction was specific to those completed tasks.
 The current assignment permits TL-owned scripts/tests, Docker/Compose/CI/config and project
 documentation. Import the reviewed contract artifacts into the TL checkout with provenance;
 component authors retain ownership of schema changes, runtime code, migrations and seed.
-Do not implement teammates' business logic or report their missing acceptance as DONE.
+The latest owner instruction authorizes Backend runtime/migrations/seed/mock implementation;
+AI/Frontend runtime remains with its authors. Do not report missing acceptance as DONE.
 
 Current integration facts/decisions: docs/team/tl-readiness.md. The temporary team action
 file docs/team/MVP_UNBLOCK_DELETE_AFTER_RESOLUTION.md must be removed after all listed

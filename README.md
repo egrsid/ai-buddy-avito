@@ -12,14 +12,13 @@
 ## Состояние и перепланирование
 
 Документация и P0-план обновлены по [CODEX_PROJECT_REPLAN.md](CODEX_PROJECT_REPLAN.md).
-**Новый MVP еще не готов.** В TL checkout сведены executable v2 schemas BE+AI, подготовлены
-общие tooling/Docker/Compose/CI; runtime и dataset пока bootstrap/legacy. В отдельной
-FE-ветке есть fixture UI. Consumer gate и продуктовая реализация еще открыты.
-Фактические commits, TL решения/проверки и остаток: [TL readiness](docs/team/tl-readiness.md).
-Новая AI-поставка 3f955322 содержит offline API/SSE/ACL/diagnostics и семь документов:
-184 tests, 99.90% coverage, evals 29/29. Она пока не импортирована в этот checkout;
-[повторный review](docs/team/ai-review-2026-11-12.md) содержит четыре открытых замечания,
-включая отсутствие persistent kb/ingest/readiness. Это не готовность полного MVP.
+**Полный MVP еще не принят.** В текущей `feature/backend-mvp-v2` локально реализованы
+Go v2 API, persistent corporate mock, новые app/corporate migrations и явный v2 seed.
+Проверен настоящий API-путь двух стажёров до human-reviewed candidate с безопасным
+AI fallback, а также сохранение состояния после restart Go. AI и FE runtime из их
+рабочих веток в этот checkout не импортированы. Consumer gate, общая AI/FE интеграция
+и браузерная A/B/C приёмка остаются открытыми.
+Фактические результаты и границы: [TL readiness](docs/team/tl-readiness.md).
 Срок владельца — **12 ноября 2026, 22:00 МСК**; он не заменяет приемку P0.
 
 Стек сохранён: React/TypeScript/Tailwind/TanStack Query/Zod → Go REST/SSE → Python/FastAPI
@@ -41,8 +40,8 @@ FE-ветке есть fixture UI. Consumer gate и продуктовая ре�
    Вся RP-CONTRACT-01 ещё не DONE; после неё — RP-DATA-01. [Статус schemas](contracts/README.md) отделяет проверенный snapshot от final acceptance.
 4. Команда берёт задачи [backlog](docs/team/backlog.md): семь дней от спецификаций до demo.
    Первый продуктовый checkpoint — разрешённый JSON journey и фактический IAM access state.
-5. Агенты работают локально только в назначенной текущей ветке, без создания/переключения
-   веток. Публикацию, PR и права выполняет владелец репозитория.
+5. По последнему разрешению владельца этот проход меняет только TL/Backend; текущая
+   ветка — Backend. AI/FE/QA доступны только для чтения. Commit/push/PR не выполняются.
 
 ## Запуск существующего каркаса через Docker
 
@@ -63,7 +62,8 @@ migrate → seed → сервисы; сборка загружает образ�
 образов offline demo не должен требовать LLM/корпоративной сети; это отдельная приёмка.
 
 .env.example содержит только local demo values, .env в Git ignore. LLM_MODE=mock не требует
-ключа; mock provider и live adapter пока не реализованы. Healthcheck — только liveness.
+ключа; реализация AI берётся из ветки AI Engineer при интеграции. `/healthz` — liveness,
+Go `/readyz` дополнительно требует v2 tables/seed.
 Предыдущая INF-01 не закрыта: после исправления bootstrap COPY в Dockerfile.postgres
 bootstrap up/migrate/seed/verify-db/smoke подтверждены TL, target v2 требует отдельной RP-INF-01 приемки. TL теперь подтвердил bootstrap в отдельном проекте, повтор migrate/seed, role isolation и
 liveness; target P0 еще не проверен. Существующие volumes не удалялись.

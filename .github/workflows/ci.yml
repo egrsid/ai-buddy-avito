@@ -23,6 +23,23 @@ jobs:
       - run: make check
   python:
     runs-on: ubuntu-latest
+    services:
+      test-postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test_admin
+          POSTGRES_DB: buddy_test_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d buddy_test_ci"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:test_admin@127.0.0.1:5432/buddy_test_ci
+      TEST_APP_PASSWORD: test_app
+      TEST_MOCK_PASSWORD: test_mock
+      MOCK_TEST_DSN: postgresql://mock_service:test_mock@127.0.0.1:5432/buddy_test_ci
+      MOCK_TEST_ADMIN_DSN: postgresql://postgres:test_admin@127.0.0.1:5432/buddy_test_ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -31,6 +48,7 @@ jobs:
         with: {version: '0.13.4'}
       - run: uv sync --frozen
       - run: uv run --frozen python -m scripts.check_components ai
+      - run: uv run --frozen python -m scripts.backend_test_db
       - run: uv run --frozen python -m scripts.check_components mock
       - uses: actions/upload-artifact@v4
         if: always()
@@ -59,13 +77,34 @@ jobs:
         with: {name: frontend-coverage, path: frontend/coverage/, if-no-files-found: ignore}
   backend:
     runs-on: ubuntu-latest
+    services:
+      test-postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test_admin
+          POSTGRES_DB: buddy_test_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d buddy_test_ci"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:test_admin@127.0.0.1:5432/buddy_test_ci
+      TEST_APP_PASSWORD: test_app
+      TEST_MOCK_PASSWORD: test_mock
+      MOCK_TEST_DSN: postgresql://mock_service:test_mock@127.0.0.1:5432/buddy_test_ci
+      MOCK_TEST_ADMIN_DSN: postgresql://postgres:test_admin@127.0.0.1:5432/buddy_test_ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with: {go-version-file: backend/go.mod, cache: false}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - run: python -m scripts.check_components backend
+      - uses: astral-sh/setup-uv@v6
+        with: {version: '0.13.4'}
+      - run: uv sync --frozen
+      - run: uv run --frozen python -m scripts.backend_test_db
+      - run: uv run --frozen python -m scripts.check_components backend
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: go-coverage, path: backend/coverage.coverprofile, if-no-files-found: ignore}

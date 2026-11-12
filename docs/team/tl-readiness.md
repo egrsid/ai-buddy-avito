@@ -1,5 +1,86 @@
 # TL readiness и решения по интеграции
 
+## Текущая локальная Backend-поставка · 2026-11-12
+
+Владелец разрешил TL реализацию в Backend и отдельно подтвердил fetch, создание tracking
+ветки и switch. Текущая ветка `feature/backend-mvp-v2`, HEAD
+4813d7caa4a586a6ac26749f523406602962e24d. Изменения runtime/tests/документации находятся
+в working tree, без commit/push/PR. TL ref c0659195 сохранён; AI/FE/QA файлы и refs не менялись.
+Разрешение на реализацию не является consumer acknowledgement или финальной приёмкой MVP.
+
+### Что реализовано
+
+- Go `/api/v2`: sessions/Origin/CSRF/fresh ACL, resources, immutable validated journey,
+  goals/steps/checks, conversations/messages/runs/SSE, actions/access requests/decisions,
+  knowledge proxy, buddy queue/reply, friction/candidates/review.
+- Corporate mock — отдельный persistent Python service: internal auth/request ID/schema,
+  resource policy, request/scoped decision, отдельный IAM grant/read и safe SSL checks.
+  Submitted/approved/present/verified различаются; approval и buddy reply не выполняют verification.
+- App/corporate migrations 003 и app 004 добавлены после существующих 001/002, с owner/goal/
+  step/check correlations и unique open blockers. Применённые SQL не переписаны.
+- Explicit `SEED_DATASET=v2`: семь synthetic users, a+b team-a и c team-b, approved template,
+  resource/document permissions. Повтор не стирает progress/grants и не восстанавливает
+  отозванные ACL/roles/approvers. Конфликт старого intern-b требует свежей v2 DB.
+- Durable executing перед corporate write, stable operation key, unknown/restart reconcile,
+  immutable preview/TTL/повторная авторизация и запрет эквивалентной неизвестной/поданной заявки.
+- Trusted checks/events/evidence, stale/correlation guard, optimistic versions, downstream
+  invalidation. Polling может инвалидировать отозванный grant, но не повышает blocked шаг
+  до verified и не меняет версии при здоровом IAM. Unavailable не закрывает исходный blocker.
+- SSE single terminal/cancel/disconnect/retry, queued timeout, общий hard deadline независимо
+  от heartbeat, buffering sources/tools до validation+commit. Отозванные источники убираются
+  из истории/следующего prompt; старые AI hypotheses скрываются при потере доступа к refs.
+- Idempotent replay заново проверяет domain ACL, scope и назначение; старый ключ не
+  раскрывает action/review/buddy response после отзыва прав. Позитивные повторы сохраняют результат.
+- Distinct-intern grouping с lock/unique candidate, safe AI aggregate/enrichment/fallback,
+  human review/version и новая проверенная reference для resolved; никаких автоматических KB writes.
+- CI backend/python jobs получили отдельный PostgreSQL и setup; image содержит v2 schemas,
+  выполняется под app. AI/FE/QA business code и shared schemas не менялись.
+
+### Фактически выполненные проверки
+
+| Проверка | Результат |
+|---|---|
+| make check | Docs/schema/SQL/Compose/lint/format + 53 shared tests pass |
+| Go 1.27.3 container | go test -race, go vet, go build pass; line coverage **1490/1840 = 80.9783%** |
+| Corporate component runner | 6 tests pass; coverage **98.05%** |
+| Clean migrate/seed | Новая DB, повтор migrations и seed; checksum protection, конфликт legacy assignments/revoked ACL regression |
+| Настоящий API P0 | Go → corporate → PostgreSQL: два intern, confirm, scoped approval, IAM recheck, SSL blocker, buddy/recheck, один SSL candidate, under_review → accepted |
+| Restart | Go restart, затем PostgreSQL+Go restart; verified progress, resolved buddy replies и accepted candidate сохранены; повтор seed не стирает состояние |
+| Docker image | Сборка backend/Dockerfile, uid=1000(app), встроенные schemas читаются, /readyz=200 |
+| Изоляция области | Нет diff в contracts/, ai-service/, frontend/, data/knowledge/; чужие refs не менялись |
+
+Go line metric вычислен тем же scripts/go_coverage.py, что использует component runner;
+statement coverage выводится отдельно. На хосте нет Go, поэтому Go-команды выполнены
+закреплённым контейнером с C compiler для -race. API acceptance воспроизводится через
+scripts/backend_acceptance.py только на свежем выделенном v2 dataset; проверки не
+перехватывают бизнес-API и не подменяют evidence/approval прямыми SQL-правками.
+В negative/component tests используются test-only fault fixtures; они не объявлены demo.
+
+### Что остаётся открытым
+
+- Consumer acceptance BE↔AI↔FE на единой базе; текущий Go AI contract harness не является
+  запуском настоящего AI runtime/provider. Полный FE browser A/B/C, refresh/security/offline
+  и общий AI/FE restart ещё не выполнены. Исторические AI review ниже — не новый аудит его head.
+- AI Engineer подключает собственный runtime/KB ingest/index и выполняет provider-input,
+  retrieval/diagnostics/live eval acceptance. Ключ, окружение, оплата/расходы, лимиты и вся
+  интеграция LLM — полностью AI Engineer, без ожидания подтверждения TL.
+  Основная модель по решению владельца — ai-sage/GigaChat3.5-432B-A28B, без reasoning.
+- Frontend подключает реальные Go API/SSE/DTO вместо fixtures; QA запускает только свои
+  два API smoke. TL проводит общую интеграцию/репетицию после этих входов.
+- make verify-db пока относится к legacy dataset; v2 KB/roles acceptance требует сведённой
+  AI-поставки и отдельного запуска, а не объявления legacy smoke продуктовой приёмкой.
+- Backend задачи в backlog — IN_PROGRESS с фактической поставкой, не авансовый DONE.
+  Публикацию/commit/push и распространение working tree выполняет владелец.
+
+Финальный backend/Dockerfile image также прошёл полный свежий API acceptance и restart
+PostgreSQL+Go. Проверочные контейнеры/host mock процессы этого прохода остановлены;
+выделенный ai-buddy-be-v2-test и его данные сохранены, volumes не удалялись.
+
+## Предыдущая TL-поставка — исторический snapshot
+
+Следующие разделы сохранены как provenance прежней TL задачи. Утверждения «только docs»,
+«bootstrap» и старые SHA относятся к тому проходу; текущий Backend результат указан выше.
+
 2026-11-12. Владелец поручил выполнить TL-часть в `feature/team-start-foundation`.
 Дедлайн владельца: **2026-11-12 22:00 Europe/Moscow**. Это срок, не утверждение готовности.
 Ни чужие ветки, ни refs, ни remote не изменены. Новая ветка не потребовалась; commit/push/PR нет.

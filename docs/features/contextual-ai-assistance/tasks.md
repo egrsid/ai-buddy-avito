@@ -25,3 +25,11 @@ offline retrieval/provider и structured операции; 184 tests/99.90%, 29/
 - [ ] Выполнить приёмку spec, make check и релевантные component checks; coverage строго >80% с первой бизнес-фичи.
 - [ ] На integration checkpoint проверить путь в Compose, refresh/restart и отрицательные доступы.
 - [ ] Обновить backlog и SDD по фактическому результату, записать команды/ограничения; публикация только владельцем.
+
+## Локальный Backend результат · 2026-11-12
+
+Persistent conversations/runs, SSE schema/correlation, cancel/retry/partial, sources/tools после validation+commit; AI boundary проверена contract harness.
+Реализация и component/API проверки находятся в Backend working tree;
+[команды, покрытие и ограничения](../../team/tl-readiness.md). Задачи Backend IN_PROGRESS,
+не DONE: final consumer acceptance, настоящая AI-интеграция и FE browser A/B/C еще нужны.
+Knowledge/provider реализацию и UI этой поставкой не заменяли.

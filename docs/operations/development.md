@@ -175,6 +175,42 @@ Workflow dispatch mvp_acceptance=true запускает opt-in AI DB portion п
 поставок. Repository vars AI_INGEST_COMMAND/AI_DB_TEST_COMMAND — argv, не secrets;
 компонентные integration и полный browser E2E остаются обязательными отдельно.
 
-V2 seed пока не поставлен. Текущие seed/check_seed/verify-db используют legacy dataset и
-не должны объявляться v2-ready до согласованных IDs/layout от Backend/AI. Примененные
-001 не переписывать; schema checksum mismatch должен оставаться ошибкой.
+V2 app/corporate seed поставлен как отдельный `SEED_DATASET=v2`; default остаётся legacy.
+Target overlay выбирает v2 явно. Существующего intern-b из legacy team-b seed не
+переназначает: при конфликте требуется отдельная свежая v2 DB/Compose project.
+KB наполняет AI Engineer через свой ingest. Применённые 001/002 не переписаны;
+новые app 003/004 и corporate 003 проходят checksum-protected migrate.
+`make verify-db` пока проверяет legacy dataset и не является v2 acceptance.
+
+## Backend component и API acceptance
+
+Нужна отдельная disposable PostgreSQL, admin DSN только у test setup; runtime использует
+app_service/mock_service. Не использовать приложение/существующий demo volume как test DB.
+CI jobs backend/python поднимают отдельный postgres:17 и автоматически готовят schemas/seed.
+Локальный setup принимает только DB с именем buddy_test_*:
+
+```sh
+export TEST_DATABASE_URL=postgresql://postgres:test_admin@127.0.0.1:5432/buddy_test_local
+export TEST_APP_PASSWORD=test_app TEST_MOCK_PASSWORD=test_mock
+export MOCK_TEST_DSN=postgresql://mock_service:test_mock@127.0.0.1:5432/buddy_test_local
+export MOCK_TEST_ADMIN_DSN="$TEST_DATABASE_URL"
+uv run --frozen python -m scripts.backend_test_db
+uv run --frozen python -m scripts.check_components backend
+uv run --frozen python -m scripts.check_components mock
+```
+
+Go требует закреплённый toolchain и C compiler для -race. Runtime tests очищают только
+выделенную test DB; Go HTTP client contract harness не выдаётся за настоящий AI provider.
+В отдельном свежем v2 окружении с Go + corporate выполнить:
+
+```sh
+BACKEND_ACCEPTANCE_URL=http://127.0.0.1:18080 APP_ORIGIN=http://localhost:5173 \
+  uv run --frozen python -m scripts.backend_acceptance
+```
+
+Это настоящий Go → corporate → PostgreSQL API-путь: две заявки/одобрения/IAM/SSL,
+buddy/recheck, distinct friction и human review. При недоступном AI используются явные
+безопасные fallback; browser/RAG/live LLM приёмку эта команда не подтверждает.
+Повторный полный acceptance требует свежих тестовых данных; существующие результаты
+проверяются чтением после restart. LLM key/env/расходы и полное подключение — AI Engineer,
+без ожидания подтверждения TL. [Фактический прогон](../team/tl-readiness.md).

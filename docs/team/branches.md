@@ -1,13 +1,14 @@
 # Ветки и текущая база команды
 
-Read-only GitHub snapshot · 2026-11-12. Текущий checkout — feature/team-start-foundation.
+Исторический GitHub snapshot · 2026-11-12; строки других ролей ниже не являются новым аудитом.
+Текущий checkout — feature/backend-mvp-v2, tracking origin/feature/backend-mvp-v2.
 [TL integration record](tl-readiness.md) фиксирует импорт контрактов и результаты.
 
 | Ветка | Head GitHub | Состояние |
 |---|---|---|
 | main | 30c5d08908aace5d10318adc429bbaa837b1a929 | Legacy bootstrap |
 | feature/team-start-foundation | fe870967d98ba6cc93f679a8fb5ca6bea03641ab | TL; прежняя инфраструктура уже в head, текущий повторный review/план локально без commit/push |
-| feature/backend-mvp-v2 | 69fea38237068149a7aa07c840f98e1b280d5ca9 | BE contract package и расширенные fixtures |
+| feature/backend-mvp-v2 | 4813d7caa4a586a6ac26749f523406602962e24d | Последний fetch; поверх head локальный незакоммиченный Go/corporate P0 runtime и tests |
 | feature/ai-mvp-v2 | 3f955322eabd2874d5952e160ce1cf5c3898cb0d | Contract package + offline API/retrieval/diagnostics/corpus/evals; kb/ingest/readiness еще нет |
 | feature/frontend-mvp-v2 | 676b81dd0cb1636a3b578459cd6404298f769335 | FE review/bindings/fixture UI |
 | feature/qa-01-m1 | 1d47f6b2d58ded0eacd8e7588270b009663c9388 | Два legacy API-теста, QA-план |
@@ -31,3 +32,8 @@ TL импортировал BE+AI contract artifacts в свою рабочую 
 lock. Ни чужие refs/ветки, ни remote в этом поручении не меняются. Владелец/авторы
 распространяют одну согласованную базу после review, сохраняя собственную работу.
 Никакого reset/force-push чужих веток для этого не требуется.
+
+По отдельному разрешению владельца выполнены fetch только Backend, создание локальной
+tracking-ветки и switch в неё. TL ref c0659195c4879a6eedbf70014fb5a6879bb08e63 сохранён;
+AI/FE/QA refs и файлы не менялись. Текущая реализация — working tree, не новый GitHub commit.
+Результаты [Backend-проверок](tl-readiness.md) не меняют исторические consumer acknowledgements.

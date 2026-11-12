@@ -38,7 +38,9 @@ services:
 
   seed:
     <<: *python
-    environment: *admin-env
+    environment:
+      <<: *admin-env
+      SEED_DATASET: ${SEED_DATASET:-legacy}
     command: [python, -m, scripts.seed]
     depends_on:
       migrate: {condition: service_completed_successfully}

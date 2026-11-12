@@ -2,7 +2,8 @@
 
 Версия 2.0 · 2026-11-11 · целевая архитектура Engineering Onboarding & Feedback Loop.
 [Product Spec](docs/product/specification.md), [основание](CODEX_PROJECT_REPLAN.md).
-Runtime/DDL/seed остаются bootstrap/legacy. BE+AI executable v2 contracts сведены в TL
+В Backend working tree реализованы Go/corporate runtime, аддитивные DDL и explicit v2 seed;
+AI/FE интеграция и общая продуктовая приёмка еще не выполнены. BE+AI executable v2 contracts сведены в TL
 checkout; final consumer acceptance еще открыт. См. [TL record](docs/team/tl-readiness.md).
 Переход выполняется отдельными задачами: [TL baseline](docs/architecture/contract-baseline.md)
 подготовлен, исполняемые schemas и consumer/final review ещё требуются. Эта редакция меняет документацию.
