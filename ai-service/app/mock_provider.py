@@ -10,7 +10,7 @@ import asyncio
 import re
 from collections.abc import AsyncIterator
 
-from app.prompt import LlmInput, last_user_message
+from app.prompt import LlmInput, goal_summary, last_user_message
 from app.redaction import redact
 
 WORDS_PER_CHUNK = 3
@@ -35,8 +35,13 @@ def current_step(goal_context: dict) -> dict | None:
 
 
 def unknown_terms(llm_input: LlmInput) -> list[str]:
-    """Латинские термины из вопроса, которых нет ни в одном разрешённом фрагменте."""
-    known_text = " ".join(hit.chunk.text.lower() for hit in llm_input.hits)
+    """Латинские термины из вопроса, которых нет ни в разрешённых фрагментах, ни в контексте
+    цели (коды блокеров, шаги, действия, ресурс — их система знает, это не выдумка)."""
+    known_parts = [hit.chunk.text.lower() for hit in llm_input.hits]
+    goal_context = llm_input.request.get("goal_context")
+    if goal_context is not None:
+        known_parts.append(goal_summary(goal_context).lower())
+    known_text = " ".join(known_parts)
     # Сначала вычищаем секреты и убираем ссылки/DSN: их нельзя повторять в ответе.
     question = re.sub(r"\S+://\S+", " ", redact(last_user_message(llm_input.request)))
     terms = []

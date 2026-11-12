@@ -323,6 +323,9 @@
      [
       "заявк"
      ]
+    ],
+    "forbidden_output": [
+     "не знаю, что такое ACCESS_MISSING"
     ]
    }
   },
