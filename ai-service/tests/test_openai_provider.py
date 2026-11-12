@@ -118,6 +118,41 @@ def test_usage_replaces_reservation_with_actual_cost(ledger):
     assert math.isclose(status["spent_rub"], 0.77934)
 
 
+def test_cumulative_usage_in_every_chunk_settles_once_by_last(ledger):
+    # Так шлёт Cloud.ru: usage растёт с каждым куском, первый — с нулевым выходом.
+    chunks = [
+        {**delta("Под"), "usage": {"prompt_tokens": 6000, "completion_tokens": 0}},
+        {**delta("ключение"), "usage": {"prompt_tokens": 6000, "completion_tokens": 350}},
+        usage_chunk(),
+        "[DONE]",
+    ]
+    texts = read_stream(provider_with(answer_with(*chunks), ledger))
+    assert texts == ["Под", "ключение"]
+    status = ledger.status()
+    assert status["unsettled"] == 0
+    assert math.isclose(status["spent_rub"], 0.77934)
+
+
+def test_cancelled_stream_keeps_reservation_despite_usage_seen(ledger):
+    chunks = [
+        {**delta("Под"), "usage": {"prompt_tokens": 6000, "completion_tokens": 1}},
+        delta("ключение"),
+        usage_chunk(),
+        "[DONE]",
+    ]
+    provider = provider_with(answer_with(*chunks), ledger)
+    llm_input = LlmInput([{"role": "user", "content": "привет"}], generate_request(), [])
+
+    async def read_first_and_cancel():
+        stream = provider.stream(llm_input, "normal")
+        first = await anext(stream)
+        await stream.aclose()
+        return first
+
+    assert asyncio.run(read_first_and_cancel()) == "Под"
+    assert ledger.status()["unsettled"] == 1
+
+
 def test_missing_usage_keeps_reservation(ledger):
     read_stream(provider_with(answer_with(delta("Ок"), "[DONE]"), ledger))
     status = ledger.status()
@@ -230,7 +265,52 @@ def embeddings_reply(*items, usage: dict | None = None, status: int = 200, seen=
 
 
 def embedder_with(handler, ledger: BudgetLedger) -> OpenAIEmbedder:
-    return OpenAIEmbedder(make_settings(**PAID), ledger, httpx.MockTransport(handler))
+    transport = httpx.MockTransport(handler)
+    return OpenAIEmbedder(make_settings(**PAID), ledger, transport, retry_delays=(0, 0))
+
+
+def replies_in_turn(*handlers):
+    """Каждый следующий запрос получает ответ следующего handler."""
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return handlers[min(len(calls), len(handlers)) - 1](request)
+
+    return handler, calls
+
+
+OK_REPLY = embeddings_reply(
+    {"index": 0, "embedding": vector(0.1)}, usage={"prompt_tokens": 10, "total_tokens": 10}
+)
+
+
+def test_embeddings_retry_temporary_server_errors(ledger):
+    handler, calls = replies_in_turn(embeddings_reply(status=503), refuse_connection, OK_REPLY)
+    vectors = embed(embedder_with(handler, ledger), ["текст"])
+    assert len(vectors) == 1
+    assert len(calls) == 3
+    assert ledger.status()["unsettled"] == 0
+
+
+def test_embeddings_give_up_after_three_attempts(ledger):
+    handler, calls = replies_in_turn(embeddings_reply(status=500))
+    with pytest.raises(EmbeddingError):
+        embed(embedder_with(handler, ledger), ["текст"])
+    assert len(calls) == 3
+    assert ledger.status()["unsettled"] == 1
+
+
+def test_embeddings_do_not_retry_client_errors(ledger):
+    handler, calls = replies_in_turn(embeddings_reply(status=401), OK_REPLY)
+    with pytest.raises(EmbeddingError):
+        embed(embedder_with(handler, ledger), ["текст"])
+    assert len(calls) == 1
+
+
+def test_embedder_default_retry_delays_fit_first_token_limit(ledger):
+    embedder = OpenAIEmbedder(make_settings(**PAID), ledger, httpx.MockTransport(OK_REPLY))
+    assert sum(embedder.retry_delays) < 5
 
 
 def embed(embedder: OpenAIEmbedder, texts: list[str]) -> list[list[float]]:
