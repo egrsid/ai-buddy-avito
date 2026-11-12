@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 from psycopg.types.json import Jsonb
@@ -12,7 +13,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main() -> None:
-    data = json.loads((ROOT / "data/seed/demo.json").read_text())
+    if os.environ.get("SEED_DATASET", "legacy") == "v2":
+        from scripts.seed_v2 import seed
+
+        with connect() as connection:
+            seed(connection)
+        return
+    if os.environ.get("SEED_DATASET", "legacy") != "legacy":
+        raise ValueError("SEED_DATASET must be legacy or v2")
+    data = json.loads((ROOT / "data/seed/demo.json").read_text(encoding="utf-8"))
     with connect() as connection:
         connection.execute("SET LOCAL ROLE app_owner")
         for user in sorted(data["users"], key=lambda u: u["role"] != "buddy"):
@@ -39,7 +48,7 @@ def main() -> None:
         connection.execute("RESET ROLE")
         connection.execute("SET LOCAL ROLE kb_owner")
         for doc in data["documents"]:
-            content = (ROOT / doc["path"]).read_text()
+            content = (ROOT / doc["path"]).read_text(encoding="utf-8")
             connection.execute(
                 "INSERT INTO kb.documents "
                 "(id,title,content,version,content_hash,visibility,synthetic) "
@@ -49,7 +58,7 @@ def main() -> None:
                     doc["title"],
                     content,
                     doc["version"],
-                    hashlib.sha256(content.encode()).hexdigest(),
+                    hashlib.sha256(content.encode("utf-8")).hexdigest(),
                     doc["visibility"],
                     doc["synthetic"],
                 ),

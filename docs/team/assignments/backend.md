@@ -1,8 +1,23 @@
 # Назначение: Backend
 
-Роль назначена пользователем; личный handle не указан. Планируемая ветка
-**feature/backend-mvp-v2 создана локально** от опубликованной feature/team-start-foundation
-и не отправлена на remote. Чужие ветки/каталоги не менять. [Ветки](../branches.md).
+
+Рабочая ветка **feature/backend-mvp-v2 существует на GitHub**. Проверенный head и
+состояние — в [inventory](../branches.md). Текущие TL решения/границы/приемка:
+[TL record](../tl-readiness.md). Первая contract поставка уже предъявлена; остаток
+consumer gate и дальнейшие RP-задачи сохраняются. Чужие ветки/каталоги не менять.
+
+## Текущее разрешение и поставка · 2026-11-12
+
+Владелец прямо разрешил TL менять Backend и реализовать его часть P0. Это разрешение
+перекрывает прежний запрет runtime до общего gate; сам consumer gate остаётся открытым.
+Локально поставлены Go v2 API/SSE, corporate mock, migrations 003/004, explicit v2 seed,
+component tests и настоящий API acceptance. [Результат и остаток](../tl-readiness.md).
+Остальные ветки не изменялись; commit/push/PR не выполнялись.
+
+Go использует только AI_BASE_URL и INTERNAL_API_TOKEN. Ключ, окружение, расходы/оплата,
+лимиты и полная интеграция самой LLM — ответственность AI Engineer. Он получает доступ,
+подключает `ai-sage/GigaChat3.5-432B-A28B` через Cloud.ru без reasoning и выполняет свою
+часть без ожидания подтверждения TL. В Go Cloud.ru credential не передаётся.
 
 ## Начать с RP-CONTRACT-BE-01
 

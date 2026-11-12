@@ -1,6 +1,8 @@
 # Feature Specifications — target v2
 
-Статус всех восьми фич: спроектированы, продуктовая реализация не выполнена.
+Статус восьми фич: Backend runtime и component/API evidence поставлены локально;
+сквозная AI/FE продуктовая приёмка не выполнена.
+AI-часть частично реализована в 3f955322: [review и остаток](../team/ai-review-2026-11-12.md).
 Каждая папка содержит spec.md (поведение/приёмка), design.md (данные/API/границы)
 и tasks.md (задачи с зависимостями). Единственный план приоритетов/владельцев —
 [backlog](../team/backlog.md), продукт — [Product Spec](../product/specification.md).

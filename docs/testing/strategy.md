@@ -141,3 +141,21 @@ HEAD/refs. Только Markdown; no commit/push/checkout/merge/изменени
 SDD/DTO соответствуют результату, security/error/happy states реализованы и проверены,
 новые migrations/seed повторяемы, tests/coverage >80%, команды/фактические ограничения
 записаны. Для FE — визуальная/адаптивная проверка; публикация/PR остаются за владельцем.
+
+## Текущий TL integration gate · 2026-11-12
+
+[TL record](../team/tl-readiness.md) фиксирует import BE+AI snapshot и source SHA.
+make check теперь проверяет hash lock, v1 отдельно, v2 BE/AI fixtures и regression tests
+общих runners. Это не auth/ACL/timeout/feedback behavior acceptance. Test image дополнительно
+запускает 11 v2 contract tests от app; production dev deps не получает.
+
+make mvp-preflight завершается nonzero на bootstrap. Структурный успех preflight тоже
+не доказывает P0: после него обязательны make test, AI DB runner, настоящий browser A/B/C,
+negative ACL/provider-input spy, offline и restart. Target CI job включается явно после
+CLI/runtime поставок, поэтому skipped/not run job не является acceptance.
+
+AI tasks получают JSON argv (без shell), только runtime DSN; tests проверяют unsafe
+fault config, отсутствие admin credentials, сохранение nonzero exit и порядок seed/ingest.
+UTF-8 regression проверяет кириллицу/emoji/hash независимо от default locale.
+Legacy startup/migrate/seed/isolation/liveness проверены в новом отдельном volume;
+существующие данные не сбрасывались. Final FE >80%, typed retest и P0 evidence еще нужны.

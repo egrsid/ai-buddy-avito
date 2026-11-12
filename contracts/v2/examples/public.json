@@ -2190,5 +2190,15 @@
       "stale": false,
       "observed_at": "2026-11-11T09:00:00Z"
     }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "StepActionList",
+    "payload": {
+      "items": [
+        "retry_check",
+        "create_access_request"
+      ]
+    }
   }
 ]

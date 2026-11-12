@@ -1,10 +1,5 @@
-"""Development liveness only; corporate operations are assigned to BE-04."""
+"""Wire the separate corporate service using its restricted PostgreSQL role."""
 
-from fastapi import FastAPI
+from corporate.service import create_app
 
-app = FastAPI(title="AI-buddy corporate mock", docs_url=None, redoc_url=None)
-
-
-@app.get("/healthz")
-def health() -> dict[str, str]:
-    return {"status": "ok", "service": "mock-services"}
+app = create_app()
