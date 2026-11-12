@@ -70,6 +70,23 @@ def test_known_terms_are_not_reported_unknown():
     assert unknown_terms(llm_input) == []
 
 
+def test_blocker_code_from_goal_is_not_unknown():
+    # Замечание ручного чтения evals: mock писал «не знаю, что такое ACCESS_MISSING»,
+    # хотя это код блокера на текущем шаге.
+    request = generate_request()
+    request["access_scope"] = intern_a_scope()
+    step = request["goal_context"]["steps"][0]
+    request["goal_context"]["current_step_id"] = step["id"]
+    step["blockers"] = [
+        {"type": "access_missing", "error_code": "ACCESS_MISSING", "status": "open"}
+    ]
+    request["messages"] = [{"role": "user", "content": "Упало с ACCESS_MISSING, что делать?"}]
+    llm_input = make_input(request, "что делать")
+    assert unknown_terms(llm_input) == []
+    assert "не знаю" not in mock_answer(llm_input)
+    assert "ACCESS_MISSING" in mock_answer(llm_input)
+
+
 def test_chunks_join_back_to_text():
     text = "один два три четыре пять шесть семь"
     chunks = split_into_chunks(text)
