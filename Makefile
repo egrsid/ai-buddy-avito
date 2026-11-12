@@ -1,4 +1,6 @@
-.PHONY: install check test up down migrate seed smoke verify-db reset
+.PHONY: install check test up down migrate seed smoke verify-db reset mvp-preflight mvp-up ai-db-test
+
+MVP_COMPOSE = docker compose -f compose.yaml -f compose.mvp.yaml
 
 install:
 	uv sync --frozen
@@ -33,6 +35,15 @@ smoke:
 
 verify-db:
 	docker compose run --rm migrate python -m scripts.verify_db
+
+mvp-preflight:
+	uv run --frozen python -m scripts.mvp_preflight
+
+mvp-up: mvp-preflight
+	$(MVP_COMPOSE) up --build -d --wait
+
+ai-db-test:
+	$(MVP_COMPOSE) --profile acceptance run --build --rm ai-db-tests
 
 reset:
 	@echo 'Удалит ВСЕ локальные данные AI-buddy. Продолжить: make reset CONFIRM=delete-local-data'
