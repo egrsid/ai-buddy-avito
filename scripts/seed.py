@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 from psycopg.types.json import Jsonb
@@ -12,6 +13,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main() -> None:
+    if os.environ.get("SEED_DATASET", "legacy") == "v2":
+        from scripts.seed_v2 import seed
+
+        with connect() as connection:
+            seed(connection)
+        return
+    if os.environ.get("SEED_DATASET", "legacy") != "legacy":
+        raise ValueError("SEED_DATASET must be legacy or v2")
     data = json.loads((ROOT / "data/seed/demo.json").read_text(encoding="utf-8"))
     with connect() as connection:
         connection.execute("SET LOCAL ROLE app_owner")

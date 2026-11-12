@@ -1,5 +1,9 @@
 # Opt-in target acceptance. Requires real AI CLI/tests; never silently skips them.
 services:
+  seed:
+    environment:
+      SEED_DATASET: v2
+
   ai-ingest:
     build:
       context: .

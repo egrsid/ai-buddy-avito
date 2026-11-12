@@ -1,0 +1,79 @@
+{
+  "journey_id": "db-access-team-a",
+  "version": 1,
+  "title": "Доступ к БД команды A",
+  "description": "Синтетический маршрут db-access-team-a.",
+  "team_id": "team-a",
+  "resource_id": "db-team-a-test",
+  "target_roles": [
+    "db_reader"
+  ],
+  "approved_by": "10000000-0000-4000-8000-000000000006",
+  "steps": [
+    {
+      "id": "select_resource",
+      "title": "Выбрать ресурс",
+      "description": "Только разрешённый синтетический ресурс.",
+      "dependencies": [],
+      "required_permissions": [
+        "resource.view"
+      ],
+      "instruction_reference": {
+        "document_id": "0000000a-0000-4000-8000-00000000000a",
+        "version": 1
+      },
+      "available_actions": [
+        "retry_check"
+      ],
+      "verification_method": "resource_policy_match"
+    },
+    {
+      "id": "check_access",
+      "title": "Проверить доступ",
+      "description": "Наличие grant не требуется, чтобы запросить db_reader.",
+      "dependencies": [
+        {
+          "step_id": "select_resource",
+          "condition": "verified"
+        }
+      ],
+      "required_permissions": [
+        "access.request",
+        "access.check"
+      ],
+      "instruction_reference": {
+        "document_id": "0000000a-0000-4000-8000-00000000000a",
+        "version": 1
+      },
+      "available_actions": [
+        "create_access_request",
+        "retry_check"
+      ],
+      "verification_method": "iam_permission_present"
+    },
+    {
+      "id": "check_connection",
+      "title": "Проверить подключение",
+      "description": "Безопасная проверка SSL без SQL и DSN.",
+      "dependencies": [
+        {
+          "step_id": "check_access",
+          "condition": "verified"
+        }
+      ],
+      "required_permissions": [
+        "db.check"
+      ],
+      "instruction_reference": {
+        "document_id": "0000000a-0000-4000-8000-00000000000a",
+        "version": 1
+      },
+      "available_actions": [
+        "retry_check",
+        "escalate_to_buddy"
+      ],
+      "verification_method": "mock_db_connection"
+    }
+  ],
+  "content_hash": "55dc5adeefc0fbdc35e527e101afb6809a94aa5ef823373deb03bc4a90d8fc25"
+}
