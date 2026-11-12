@@ -99,6 +99,19 @@ def test_weak_vector_similarity_is_ignored():
     assert knowledge.search(intern_a_scope(), query, query_vector=weak) == []
 
 
+def test_borderline_vector_noise_does_not_reorder_lexical_result():
+    # Регресс gen-iam-absent: косинус 0.502 у всех фрагментов — это шум, а не «про то».
+    # С порогом 0.5 такой вектор переставлял документы; теперь выдача чисто лексическая.
+    query = "Проверка доступа упала с ACCESS_MISSING, что делать?"
+    noise = [0.502, math.sqrt(1 - 0.502**2)] + [0.0] * 6
+    knowledge = KnowledgeBase(DOCUMENTS, {key: axis(0) for key in HYBRID.vectors})
+    assert 0.5 < cosine(noise, axis(0)) < VECTOR_MIN_SCORE
+    hybrid = knowledge.search(intern_a_scope(), query, top_k=3, query_vector=noise)
+    lexical = LEXICAL.search(intern_a_scope(), query, top_k=3)
+    assert ids(hybrid) == ids(lexical)
+    assert DOC_A_REQUEST in ids(hybrid)
+
+
 def test_chunks_without_vectors_are_found_only_lexically():
     partial = {key: value for key, value in HYBRID.vectors.items() if key[0] != DOC_A}
     knowledge = KnowledgeBase(DOCUMENTS, partial)
