@@ -7,12 +7,12 @@ source SHA, checksum lock, решения по всем замечаниям FE 
 Обновление: AI отдельно поставил runtime 3f955322; schema JSON в семи новых commits
 не менялись. [Повторный review](ai-review-2026-11-12.md): 184 AI tests проходят также
 на TL schemas; это техническая проверка, не BE↔AI approval. AI-R2/R3 требуют runtime
-исправлений, прежние StepActionList/optional-null/FE замечания остаются открытыми.
+исправлений. StepActionList и optional-null negatives добавлены Backend; повторный FE review ещё открыт.
 
 | ID | Автор | Фактическое состояние / остаток |
 |---|---|---|
 | RP-CONTRACT-TL-01 | TL | DONE: baseline/policy/ownership; дополнительные ответы на FE review зафиксированы |
-| RP-CONTRACT-BE-01 | Backend | IN_PROGRESS: пять schemas/180 positive/34 invalid готовы; добавить StepActionList и optional-null negatives |
+| RP-CONTRACT-BE-01 | Backend | IN_PROGRESS: schemas, all-state fixtures, StepActionList и optional-null negatives готовы; final TL acceptance ещё нет |
 | RP-CONTRACT-AI-01 | AI Engineer | IN_PROGRESS: AI schema/47 positive/42 invalid готовы; подтвердить boundary с Backend на общем snapshot |
 | RP-CONTRACT-FE-01 | Frontend | IN_PROGRESS: review/bindings предъявлены; последняя BE версия дает 4/181 failures, нужен повторный review |
 | RP-CONTRACT-REVIEW-01 | TL | IN_PROGRESS: общий offline/schema image check пройден; финал после consumer исправлений/подтверждений |
@@ -30,10 +30,11 @@ Common определения и helper не дублируются. `$id`/`$ref
 - [x] TL policy и source revisions записаны; все существующие BE+AI fixtures валидны.
 - [x] Schemas доступны непривилегированному app в собранном test image; 11 tests pass.
 - [x] TL ответил на FE 3.1–3.9; см. tl-readiness.md и api-contracts.md.
-- [ ] BE добавил StepActionList={items:RecoveryAction[]} для GET step/actions и fixtures.
-- [ ] BE добавил optional-null negatives; Go omitempty/Date header включены в implementation tests.
+- [x] BE добавил StepActionList={items:RecoveryAction[]} для GET step/actions и fixtures.
+- [x] BE добавил optional-null negatives. Go omitempty и HTTP Date остаются на runtime-тестах RP-AUTH-01/RP-ACCESS-01, не на JSON Schema.
 - [ ] FE обновил CLIENT_DISCONNECTED/ResourceAccess/Run refinements, parsing на всем общем наборе зеленый.
-- [ ] BE и AI явно подтвердили scopes/structured/SSE/source/error границы; runtime race tests остаются их задачами.
+- [x] Backend подтвердил по `contracts/v2/ai.schema.json`: AccessScope, Source, State и ErrorCode определены только в common; GenerateRequest, tool.proposed, generation.completed, draft/handoff/candidate и internal Error ссылаются на них. Source.url остаётся `/api/v2/knowledge/{id}`. Подтверждение AI и runtime race tests ещё открыты.
+- [x] Backend принимает семь document UUID версии 1 из AI review для будущего seed и не вводит второй набор: connection A `0000000a-0000-4000-8000-00000000000a`, request A `0000000b-0000-4000-8000-00000000000b`, public `0000000c-0000-4000-8000-00000000000c`, team B `0000000d-0000-4000-8000-00000000000d`, restricted `0000000e-0000-4000-8000-00000000000e`, private `0000000f-0000-4000-8000-00000000000f`, injection `00000010-0000-4000-8000-000000000010`. Старый intern-b из seed v1 не переназначается этим файлом.
 - [ ] TL обновил BASELINE.sha256 после этой поставки и записал окончательное acceptance.
 - [ ] Одна принятая база доставлена в рабочие папки авторами/владельцем, QA работа сохранена.
 

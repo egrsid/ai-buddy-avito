@@ -627,5 +627,103 @@
       "grant_state": "unknown",
       "stale": false
     }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "StepActionList",
+    "case_id": "public-step-actions-unknown",
+    "expected_error_keyword": "enum",
+    "payload": {
+      "items": [
+        "grant_admin"
+      ]
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "Run",
+    "case_id": "public-run-assistant-null",
+    "expected_error_keyword": "type",
+    "payload": {
+      "id": "00000034-0000-4000-8000-000000000034",
+      "conversation_id": "00000032-0000-4000-8000-000000000032",
+      "user_message_id": "00000033-0000-4000-8000-000000000033",
+      "status": "queued",
+      "action_ids": [],
+      "created_at": "2026-11-11T09:00:00Z",
+      "updated_at": "2026-11-11T09:00:00Z",
+      "assistant_message_id": null
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "Message",
+    "case_id": "public-message-run-null",
+    "expected_error_keyword": "type",
+    "payload": {
+      "id": "00000033-0000-4000-8000-000000000033",
+      "conversation_id": "00000032-0000-4000-8000-000000000032",
+      "role": "user",
+      "content": "Как проверить подключение?",
+      "status": "completed",
+      "sources": [],
+      "created_at": "2026-11-11T09:00:00Z",
+      "run_id": null
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "Evidence",
+    "case_id": "public-evidence-invalidated-null",
+    "expected_error_keyword": "type",
+    "payload": {
+      "id": "00000015-0000-4000-8000-000000000015",
+      "check_id": "00000014-0000-4000-8000-000000000014",
+      "event_id": "00000016-0000-4000-8000-000000000016",
+      "source": "mock_db_adapter",
+      "method": "mock_db_connection",
+      "result": "failed",
+      "observed_at": "2026-11-11T09:00:00Z",
+      "synthetic": true,
+      "invalidated_at": null
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "ResourceAccess",
+    "case_id": "public-access-observed-null",
+    "expected_error_keyword": "type",
+    "payload": {
+      "grant_state": "absent",
+      "observed_at": null,
+      "stale": false
+    }
+  },
+  {
+    "schema_uri": "https://ai-buddy.invalid/contracts/v2/public.schema.json",
+    "definition": "Candidate",
+    "case_id": "public-candidate-reference-null",
+    "expected_error_keyword": "type",
+    "payload": {
+      "id": "0000003f-0000-4000-8000-00000000003f",
+      "journey_id": "db-access-team-a",
+      "step_id": "check_connection",
+      "error_code": "DB_SSL_REQUIRED",
+      "instruction_refs": [
+        {
+          "document_id": "0000000a-0000-4000-8000-00000000000a",
+          "version": 1
+        }
+      ],
+      "affected_count": 2,
+      "hypothesis": "Инструкция не требует SSL.",
+      "proposed_fix": "Добавить sslmode=require в синтетическую инструкцию.",
+      "state": "proposed",
+      "enrichment_status": "completed",
+      "version": 1,
+      "created_at": "2026-11-11T09:00:00Z",
+      "updated_at": "2026-11-11T09:00:00Z",
+      "resolved_reference": null
+    }
   }
 ]
