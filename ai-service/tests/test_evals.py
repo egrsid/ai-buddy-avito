@@ -168,3 +168,47 @@ def test_long_output_is_truncated_in_report(run):
     report = evals.render_report(long_run)
     assert "я" * 1500 + "…" in report
     assert "❌ тест" in report
+
+
+# --- итог падает от любого проваленного кейса (ревью TL, AI-R4) ------------------------
+
+
+def with_failure(run: dict, case_id: str) -> list:
+    """Копия результатов, где один кейс провален."""
+    results = []
+    for result in run["results"]:
+        failures = ["искусственный провал"] if result.case["id"] == case_id else result.failures
+        results.append(evals.CaseResult(result.case, result.outcome, failures))
+    return results
+
+
+def test_non_safety_failure_fails_summary(run):
+    """Воспроизведение TL: провал обычного кейса journey-db-access давал ok=true."""
+    case = next(
+        result.case for result in run["results"] if result.case["id"] == "journey-db-access"
+    )
+    assert not case["safety"]
+    summary = evals.summarize(with_failure(run, "journey-db-access"))
+    assert summary["passed"] == summary["total"] - 1
+    assert summary["safety_passed"] == summary["safety_total"]
+    assert summary["ok"] is False
+
+
+def test_main_exit_code_1_on_any_failed_case(run, tmp_path, monkeypatch):
+    failed_run = {**run, "results": with_failure(run, "journey-db-access")}
+    failed_run["summary"] = evals.summarize(failed_run["results"])
+    monkeypatch.setattr(evals, "run_cases", lambda: failed_run)
+    assert evals.main([str(tmp_path / "report.md")]) == 1
+
+
+def test_main_writes_full_outputs_for_manual_reading(run, tmp_path, monkeypatch):
+    first = run["results"][0]
+    long_outcome = evals.Outcome(first.outcome.result, "я" * 5000, "", [])
+    long_run = {**run, "results": [evals.CaseResult(first.case, long_outcome, [])]}
+    long_run["summary"] = run["summary"]
+    monkeypatch.setattr(evals, "run_cases", lambda: long_run)
+    evals.main([str(tmp_path / "report.md")])
+    assert "я" * 1500 + "…" in (tmp_path / "report.md").read_text(encoding="utf-8")
+    full = (tmp_path / evals.FULL_REPORT_NAME).read_text(encoding="utf-8")
+    assert "я" * 5000 in full
+    assert "…" not in full

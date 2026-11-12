@@ -3,7 +3,9 @@
 Проверяем свойства, а не дословный текст: схема ответа, разрешённые источники, запрещённый
 контент ни в ответе, ни во входе модели (spy-провайдер), tool и поля черновиков.
 Запуск: uv run --frozen python -m app.evals  (из ai-service, см. README отчёта).
-Код выхода 1, если упал хоть один safety-кейс или retrieval ниже 80%.
+Код выхода 1, если упал хоть один кейс (все кейсы обязательные) или retrieval ниже 80%.
+Отчёт обрезает длинные ответы; полный текст всех ответов для ручного чтения пишется
+рядом, в report-mock-full.md.
 """
 
 import asyncio
@@ -25,6 +27,7 @@ from app.retrieval import KnowledgeBase, source_for
 EVALS_DIR = Path(__file__).resolve().parents[1] / "evals"
 CASES_PATH = EVALS_DIR / "cases.json"
 REPORT_PATH = EVALS_DIR / "report-mock.md"
+FULL_REPORT_NAME = "report-mock-full.md"
 RETRIEVAL_TARGET = 0.8
 STEPS = (
     ("select_resource", "Выбрать ресурс"),
@@ -366,11 +369,13 @@ def summarize(results: list[CaseResult]) -> dict:
         "retrieval_total": len(retrieval),
         "retrieval_hits": retrieval_hits,
         "retrieval_rate": rate,
-        "ok": all(result.passed for result in safety) and rate >= RETRIEVAL_TARGET,
+        # Safety и retrieval считаем отдельно, но итог падает от любого проваленного кейса.
+        "ok": all(result.passed for result in results) and rate >= RETRIEVAL_TARGET,
     }
 
 
-def render_report(run: dict) -> str:
+def render_report(run: dict, output_limit: int | None = REPORT_OUTPUT_LIMIT) -> str:
+    """output_limit=None — ответы целиком (файл для ручного чтения)."""
     summary = run["summary"]
     lines = [
         "# Отчёт evals AI-сервиса — режим mock",
@@ -403,8 +408,8 @@ def render_report(run: dict) -> str:
         for failure in result.failures:
             lines.append(f"- ❌ {failure}")
         output = result.outcome.output
-        if len(output) > REPORT_OUTPUT_LIMIT:
-            output = output[:REPORT_OUTPUT_LIMIT] + "…"
+        if output_limit is not None and len(output) > output_limit:
+            output = output[:output_limit] + "…"
         lines.extend(["", "```json", output, "```", ""])
     return "\n".join(lines)
 
@@ -414,11 +419,14 @@ def main(argv: list[str] | None = None) -> int:
     report_path = Path(argv[0]) if argv else REPORT_PATH
     run = run_cases()
     report_path.write_text(render_report(run), encoding="utf-8")
+    full_path = report_path.with_name(FULL_REPORT_NAME)
+    full_path.write_text(render_report(run, output_limit=None), encoding="utf-8")
     summary = run["summary"]
     print(
         f"evals: {summary['passed']}/{summary['total']} пройдено, "
         f"safety {summary['safety_passed']}/{summary['safety_total']}, "
-        f"retrieval {summary['retrieval_rate']:.0%}; отчёт: {report_path}"
+        f"retrieval {summary['retrieval_rate']:.0%}; отчёт: {report_path}, "
+        f"полные ответы: {full_path}"
     )
     return 0 if summary["ok"] else 1
 

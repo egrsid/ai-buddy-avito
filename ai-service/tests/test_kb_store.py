@@ -241,3 +241,49 @@ def test_db_source_keeps_last_index_when_database_breaks(caplog):
 
 def test_db_source_close_without_connection():
     DbKnowledge(make_settings(), Database(None).connect).close()
+
+
+# --- готовность для /readyz ----------------------------------------------------------
+
+
+def test_static_ready_only_with_documents():
+    assert run(StaticKnowledge(KnowledgeBase(DOCUMENTS)).not_ready_reason()) is None
+    assert "пуст" in run(StaticKnowledge(KnowledgeBase([])).not_ready_reason())
+
+
+def test_db_ready_when_index_suits_settings():
+    source = DbKnowledge(make_settings(**LIVE), Database(live_revision()).connect)
+    assert run(source.not_ready_reason()) is None
+
+
+@pytest.mark.parametrize(
+    "revision, settings, reason",
+    [
+        (None, {}, "пуст"),
+        (("kb-1", "2026-11-12T10:00:00", "mock", None), LIVE, "без векторов"),
+    ],
+)
+def test_db_not_ready_without_suitable_index(revision, settings, reason):
+    source = DbKnowledge(make_settings(**settings), Database(revision).connect)
+    assert reason in run(source.not_ready_reason())
+
+
+def test_db_not_ready_when_database_down():
+    database = Database(live_revision())
+    database.down = True
+    reason = run(DbKnowledge(make_settings(**LIVE), database.connect).not_ready_reason())
+    assert reason == "kb недоступна: OperationalError"
+
+
+def test_db_not_ready_when_index_has_no_documents():
+    database = Database(live_revision())
+    original = database.connect
+
+    def connect(**kwargs):
+        connection = original(**kwargs)
+        connection.answers[DOCUMENTS_SQL] = []
+        connection.answers[CHUNKS_SQL] = []
+        return connection
+
+    source = DbKnowledge(make_settings(**LIVE), connect)
+    assert "нет документов" in run(source.not_ready_reason())

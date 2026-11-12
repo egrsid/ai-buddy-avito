@@ -2,7 +2,14 @@
 
 import asyncio
 
-from ai_test_support import collect, events, generate_request, knowledge, make_settings
+from ai_test_support import (
+    collect,
+    events,
+    generate_request,
+    intern_a_scope,
+    knowledge,
+    make_settings,
+)
 from app.contracts import is_valid
 from app.generate import run_generate
 from app.mock_provider import MockProvider
@@ -151,3 +158,117 @@ def test_disconnect_while_waiting_cancels_provider():
 
     asyncio.run(read_until_ping())
     assert provider.closed
+
+
+# --- общий дедлайн 85 с перед финальными событиями (ревью TL, AI-R3) ---------------
+
+
+class FakeClock:
+    """Часы теста: время меняет только сам тест или его fake-объекты."""
+
+    def __init__(self):
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
+class LateEofProvider:
+    """Отдаёт текст, а к концу потока (EOF) часы уже за дедлайном."""
+
+    def __init__(self, clock, eof_at: float):
+        self.clock = clock
+        self.eof_at = eof_at
+        self.closed = False
+
+    async def stream(self, request, scenario):
+        try:
+            yield "ok"
+            self.clock.now = self.eof_at
+        finally:
+            self.closed = True
+
+
+class SlowKnowledge:
+    """Знания, на которых время «уходит» при сборке источников (после первой проверки)."""
+
+    def __init__(self, clock, jump_to: float):
+        self.base = knowledge()
+        self.vectors = self.base.vectors
+        self.clock = clock
+        self.jump_to = jump_to
+
+    def search(self, *args):
+        return self.base.search(*args)
+
+    def get(self, scope, document_id):
+        self.clock.now = self.jump_to
+        return self.base.get(scope, document_id)
+
+
+def run_with_clock(request, provider, knowledge_source, clock, **settings):
+    values = {"pipeline_timeout": 85.0, "first_token_timeout": 20.0, "stream_idle_timeout": 25.0}
+    values.update(settings)
+    stream = run_generate(
+        request, provider, knowledge_source, make_settings(**values), "normal", clock=clock
+    )
+    return collect(stream)
+
+
+def test_eof_after_deadline_fails_without_late_events():
+    clock = FakeClock()
+    provider = LateEofProvider(clock, eof_at=86.0)
+    items = run_with_clock(generate_request(), provider, knowledge(), clock)
+    assert names(items) == ["run.started", "message.delta", "run.failed"]
+    assert events(items)[-1]["data"]["code"] == "LLM_TIMEOUT"
+    assert provider.closed
+
+
+def test_eof_just_before_deadline_completes():
+    clock = FakeClock()
+    items = run_with_clock(generate_request(), LateEofProvider(clock, 84.9), knowledge(), clock)
+    assert names(items)[-1] == "generation.completed"
+
+
+def test_deadline_passed_while_sending_sources_blocks_completed():
+    clock = FakeClock()
+    slow = SlowKnowledge(clock, jump_to=86.0)
+    items = run_with_clock(generate_request(), MockProvider(0.0), slow, clock)
+    order = names(items)
+    assert order[-2:] == ["message.sources", "run.failed"]
+    assert "generation.completed" not in order
+    assert order.count("run.failed") == 1
+
+
+def test_deadline_passed_before_tool_blocks_tool_and_completed():
+    request = generate_request()
+    request["access_scope"] = intern_a_scope()
+    request["allowed_tools"] = ["create_access_request"]
+    request["goal_context"]["current_step_id"] = "check_access"
+    request["goal_context"]["next_actions"] = ["create_access_request"]
+    request["action_results"] = []
+    clock = FakeClock()
+    items = run_with_clock(request, MockProvider(0.0), SlowKnowledge(clock, 86.0), clock)
+    order = names(items)
+    assert order[-2:] == ["message.sources", "run.failed"]
+    assert "tool.proposed" not in order
+    assert "generation.completed" not in order
+
+
+def test_pipeline_counts_from_request_acceptance():
+    """Время до потока (чтение запроса, индекс) тоже из бюджета: старт уже за дедлайном."""
+    clock = FakeClock()
+    clock.now = 100.0
+    provider = ScriptedProvider([(0, "ответ")])
+    stream = run_generate(
+        generate_request(),
+        provider,
+        knowledge(),
+        make_settings(pipeline_timeout=85.0),
+        "normal",
+        clock=clock,
+        accepted=10.0,
+    )
+    items = collect(stream)
+    assert names(items) == ["run.started", "run.failed"]
+    assert events(items)[-1]["data"]["code"] == "LLM_TIMEOUT"

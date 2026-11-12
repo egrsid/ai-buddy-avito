@@ -46,6 +46,12 @@ class StaticKnowledge:
     async def current(self) -> KnowledgeBase:
         return self.knowledge
 
+    async def not_ready_reason(self) -> str | None:
+        """None — можно отвечать; иначе короткая причина для /readyz."""
+        if not self.knowledge.documents:
+            return "корпус знаний пуст"
+        return None
+
     def close(self) -> None:
         """Закрывать нечего: метод нужен, чтобы api закрывал любой источник одинаково."""
 
@@ -158,6 +164,18 @@ class DbKnowledge:
             # Отвечаем по последнему загруженному индексу: права всё равно из scope запроса.
             logger.warning("Не удалось сверить индекс kb, используем загруженный")
         return self.knowledge
+
+    async def not_ready_reason(self) -> str | None:
+        """Сверяет индекс в kb прямо сейчас: база доступна, индекс есть и подходит к режиму."""
+        try:
+            await asyncio.to_thread(self.reload)
+        except psycopg.Error as error:
+            return f"kb недоступна: {type(error).__name__}"
+        except IndexNotReady as error:
+            return str(error)
+        if self.knowledge is None or not self.knowledge.documents:
+            return "в индексе kb нет документов"
+        return None
 
     def close(self) -> None:
         with self.lock:

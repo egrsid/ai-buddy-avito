@@ -1,5 +1,6 @@
 """HTTP-уровень knowledge и структурированных операций."""
 
+import asyncio
 import base64
 import json
 
@@ -14,6 +15,7 @@ from ai_test_support import (
     greedy_scope,
     intern_a_scope,
     intern_c_scope,
+    knowledge,
     make_settings,
     parse_sse,
 )
@@ -272,3 +274,104 @@ def test_generate_stream_has_permitted_sources_and_access_tool(client):
     }
     assert is_valid("MessageSourcesEvent", items[-3]["data"])
     assert is_valid("ToolProposedEvent", items[-2]["data"])
+
+
+# --- ответы по схеме и бюджет 85 с (ревью TL, AI-R2/AI-R3) ---------------------------
+
+
+def max_journeys(count: int) -> list[dict]:
+    """Максимальные названия маршрутов: 200 кириллических символов."""
+    return [
+        {"journey_id": f"journey-{index}", "version": 1, "title": "Ж" * 200}
+        for index in range(count)
+    ]
+
+
+@pytest.mark.parametrize("count", [5, 10])
+def test_clarification_fits_limit_on_max_titles(client, count):
+    """Воспроизведение TL: intent «???», длинные названия -> раньше 1051 символ при лимите 1000."""
+    body = {
+        "access_scope": intern_a_scope(),
+        "intent": "???",
+        "allowed_journeys": max_journeys(count),
+    }
+    response = post(client, "/journey-selection", body)
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert is_valid("JourneySelectionResponse", result), result
+    assert len(result["clarification"]) <= 1000
+
+
+MAX_INPUTS = [
+    (OPERATIONS[0], {"intent": "я" * 4000, "allowed_journeys": max_journeys(10)}),
+    (OPERATIONS[1], {"context": "я" * 4000}),
+    (OPERATIONS[3], {"intern_question": "я" * 4000}),
+    (
+        OPERATIONS[3],
+        {
+            "goal": {"id": "0000001e-0000-4000-8000-00000000001e", "title": "Ц" * 200},
+            "step": {"id": "check_connection", "title": "Ш" * 200},
+        },
+    ),
+    (OPERATIONS[4], {"affected_count": 100, "journey_id": "j" * 64, "step_id": "s" * 64}),
+    (
+        ("/knowledge/search", {"access_scope": None}, "KnowledgeSearchResponse"),
+        {"query": "подключение " * 83, "top_k": 5},
+    ),
+]
+
+
+@pytest.mark.parametrize("operation, overrides", MAX_INPUTS)
+def test_max_allowed_inputs_give_valid_responses(client, operation, overrides):
+    path, body, response_definition = operation
+    request = {**with_scope(body), **overrides}
+    response = post(client, path, request)
+    assert response.status_code == 200, response.text
+    assert is_valid(response_definition, response.json())
+
+
+def test_handler_result_outside_schema_is_not_returned(client, monkeypatch):
+    def broken(body):
+        return {"blocker_type": "db_ssl_required", "explanation": "x" * 2001, "confidence": "high"}
+
+    monkeypatch.setattr("app.operations.classify_error", broken)
+    path, body, _ = OPERATIONS[2]
+    error = assert_error(post(client, path, with_scope(body)), 503, "LLM_UNAVAILABLE")
+    assert "x" * 10 not in error["message"]
+
+
+class SlowSource:
+    """Источник знаний, который отвечает дольше бюджета."""
+
+    def __init__(self, delay: float):
+        self.delay = delay
+
+    async def start(self):
+        pass
+
+    async def current(self):
+        await asyncio.sleep(self.delay)
+        return knowledge()
+
+    def close(self):
+        pass
+
+
+def test_structured_operation_over_budget_is_504():
+    app = create_app(make_settings(pipeline_timeout=0.05), source=SlowSource(1.0))
+    path, body, _ = OPERATIONS[3]
+    response = post(TestClient(app), path, with_scope(body))
+    assert_error(response, 504, "LLM_TIMEOUT")
+
+
+def test_document_get_over_budget_is_504():
+    app = create_app(make_settings(pipeline_timeout=0.05), source=SlowSource(1.0))
+    response = get_document(TestClient(app), DOC_A, encode_scope(intern_a_scope()))
+    assert_error(response, 504, "LLM_TIMEOUT")
+
+
+def test_budget_spent_before_handler_is_504():
+    """Бюджет считается от приёма запроса: если он уже исчерпан, handler не запускается."""
+    app = create_app(make_settings(pipeline_timeout=0.0))
+    path, body, _ = OPERATIONS[2]
+    assert_error(post(TestClient(app), path, with_scope(body)), 504, "LLM_TIMEOUT")
