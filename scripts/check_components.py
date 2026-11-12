@@ -41,7 +41,9 @@ def main() -> None:
             ["go", "tool", "cover", "-func=coverage.coverprofile"], cwd=directory, text=True
         )
         print(report)
-        covered, total = line_coverage((directory / "coverage.coverprofile").read_text())
+        covered, total = line_coverage(
+            (directory / "coverage.coverprofile").read_text(encoding="utf-8")
+        )
         print(f"Go line coverage: {covered}/{total}")
         if total == 0 or covered * 100 <= total * 80:
             raise SystemExit("Go line coverage must be strictly >80%")

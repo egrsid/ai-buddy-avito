@@ -1,0 +1,65 @@
+# Opt-in target acceptance. Requires real AI CLI/tests; never silently skips them.
+services:
+  ai-ingest:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+      target: production
+    command: [python, -m, scripts.ai_tasks, ingest]
+    environment: &ai-runtime
+      PGHOST: postgres
+      PGDATABASE: ${POSTGRES_DB:-buddy}
+      PGUSER: ai_service
+      PGPASSWORD: ${AI_DB_PASSWORD:?set AI_DB_PASSWORD}
+      APP_ENV: ${APP_ENV:-local}
+      LLM_MODE: ${LLM_MODE:-mock}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?set INTERNAL_API_TOKEN}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-}
+      MOCK_FAULTS_ENABLED: ${MOCK_FAULTS_ENABLED:-false}
+      AI_MOCK_SCENARIO: ${AI_MOCK_SCENARIO:-normal}
+      AI_INGEST_COMMAND: ${AI_INGEST_COMMAND:-}
+    depends_on:
+      seed: {condition: service_completed_successfully}
+
+  ai-service:
+    environment: *ai-runtime
+    depends_on:
+      ai-ingest: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz',timeout=3)"]
+
+  backend:
+    environment:
+      LLM_MODE: ${LLM_MODE:-mock}
+      MOCK_FAULTS_ENABLED: ${MOCK_FAULTS_ENABLED:-false}
+      AI_MOCK_SCENARIO: ${AI_MOCK_SCENARIO:-normal}
+
+  ai-db-tests:
+    profiles: [acceptance]
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+      target: test
+    command: [python, -m, scripts.ai_tasks, db-test]
+    environment:
+      <<: *ai-runtime
+      APP_ENV: test
+      LLM_MODE: mock
+      LLM_API_KEY: ''
+      MOCK_FAULTS_ENABLED: 'false'
+      AI_MOCK_SCENARIO: normal
+      AI_DB_TEST_COMMAND: ${AI_DB_TEST_COMMAND:-}
+    depends_on:
+      ai-ingest: {condition: service_completed_successfully}
+
+  contract-image-tests:
+    profiles: [acceptance]
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+      target: test
+    command: [python, -m, pytest, tests/test_contracts_v2_backend.py, tests/test_contracts_v2_ai.py, -q, -p, 'no:cacheprovider']
