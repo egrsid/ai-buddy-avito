@@ -1,5 +1,14 @@
 # Назначение: Tech Lead
 
+## Следующая работа — v3
+
+Ваши задачи: V3-TL-01, V3-CONTRACT-01, V3-INTEGRATION-01. Читать [Product/SDD](../../v3/README.md),
+[единый handoff и зависимости](../../v3/delivery.md), [acceptance](../../v3/testing.md).
+Общая база main b6f940d + принятая документация docs/v3-planning. Новые v3 branches пока
+не созданы. Старые задания ниже относятся к v2; не возобновлять internal buddy workflow.
+В текущем поручении разрешено только проектирование/документация, runtime tasks TODO.
+
+
 Участник: владелец проекта. Ветка: **feature/team-start-foundation**, существует.
 [Backlog](../backlog.md), [ветки](../branches.md), [общие правила](../working-agreements.md).
 

@@ -1,5 +1,10 @@
 # Contextual AI Assistance — tasks
 
+**Для новой разработки v3:** [Product/SDD](../../v3/README.md),
+[границы и переход](../../v3/architecture.md), [задачи](../../v3/delivery.md).
+Ниже сохранён baseline v2. Внутренний escalate_to_buddy/inbox/reply заменён Telegram;
+добавлены versioned ТЗ и отдельные отчёты понятности, без изменения прав/verified.
+
 RP-DEMO-UX-01: readable guidance/citation drawer и recovery UI по текущему Go allowlist
 проверены component/browser tests; [evidence](../../team/tl-readiness.md).
 

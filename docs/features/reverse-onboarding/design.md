@@ -1,5 +1,9 @@
 # Reverse Onboarding — design
 
+**V3:** этот documentation-owner loop сохраняется. Отчёт о понятности ТЗ — отдельная
+фича [mentor-task-feedback](../mentor-task-feedback/spec.md) со своим ключом/ACL/получателем.
+Не отправлять каждый технический blocker наставнику как доказанную ошибку постановки.
+
 Целевое проектирование v2, implementation pending. [Поведение и приёмка](spec.md).
 
 ## Компоненты и поток

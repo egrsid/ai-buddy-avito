@@ -1,18 +1,15 @@
 # Ветки и текущая база команды
 
-Read-only GitHub snapshot · 2026-11-13. Текущий checkout — feature/team-start-foundation.
-[TL integration record](tl-readiness.md) фиксирует импорт контрактов и результаты.
+Актуальный remote audit: [13 ноября, перед v3](repository-audit-2026-11-13.md).
+main b6f940d опубликован, совпадает с локальным main, latest CI success.
+AI 9b54700, BE ea2cfbe, FE c814283, QA f88228c, TL b0e5529 не обновились.
+Текущая локальная docs ветка — docs/v3-planning от main; код и remote refs не меняются.
 
-| Ветка | Source SHA на 13 ноября | Проверенное состояние |
-|---|---|---|
-| main | 30c5d08908aace5d10318adc429bbaa837b1a929 | Локальный legacy ref, remote повторно не проверялся |
-| feature/team-start-foundation | 61b6add | База владельца с прошлой TL/AI поставкой; текущие demo integration/QA fixes локально без commit |
-| feature/backend-mvp-v2 | ea2cfbe35abb027c921c7e38882f43469e0fdadc | Runtime/migrations/v2 seed; source импортирован в TL |
-| feature/ai-mvp-v2 | aa6ff38d6dbb77ec427991913152cd6b10e311bf | Persistent kb/live adapters/budget/evals; source импортирован, citations/failover delta только в TL |
-| feature/frontend-mvp-v2 | 1f96778b5da0f5d6d2194d3d79d6fd1a56fce224 | request/SSL поставка импортирована; TL integration fixes, 474 tests и browser 4 PASS |
-| feature/qa-01-m1 | f88228cb5b1d669f05958c706e2c236c8cc7834f | Два адаптированных API tests; в TL 2 PASS |
+Следующая работа: [V3 delivery и proposed branches](../v3/delivery.md).
+Новые компонентные v3 branches пока не созданы. Старые branches не сливать вслепую;
+main содержит принятые snapshots, граф ancestry отличается от содержимого файлов.
 
-Текущий source manifest: [integration-sources.json](integration-sources.json). Чужие refs не менялись.
+Ниже — история интеграции v2, не состояние текущего checkout и не новый backlog.
 
 ## Каноническая локальная ветка — main · 13 ноября
 

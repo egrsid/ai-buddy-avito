@@ -63,3 +63,20 @@ step_id нельзя переиспользовать для другого см
 notice/прямое обращение к наставнику обязательны в самом чате. Degraded run не предлагает
 action; общий ledger/ACL/deadlines/Go validation сохраняются. Реализация и ограничения:
 [AI design](ai-design.md), [TL evidence](../team/tl-readiness.md).
+
+## ADR-027 · 2026-11-13 · Telegram contact replaces internal escalations in v3
+
+Product decision from owner: personal Telegram dialogue replaces internal send/inbox/reply.
+Retain scoped preview/export but no product delivery claim, bot, outbound auto-send or
+conversation ingestion. Applies to v3 only; v2 history retained. Partial supersession of
+ADR-016/017 only for internal buddy action, not access confirmation/authorization.
+[Design and retirement gate](../v3/architecture.md), [SDD](../features/telegram-mentor-contact/spec.md).
+
+## ADR-028 · 2026-11-13 · Mentor-owned task versions and separate clarity reports
+
+TaskBrief/Assignment app-owned, published versions immutable; mentors explicitly publish
+successors. Repeated structured ambiguity in one task/version/section/reason yields a
+scoped report to its owner, with distinct/window/dedup determined by Go. No employee
+rating or automatic blame/publish/verified. Extends ADR-019/020 with a separate group
+model; original documentation candidates retain their semantics. Design proposed for
+contract review, runtime not implemented. [Product](../v3/product.md), [model](../v3/architecture.md).

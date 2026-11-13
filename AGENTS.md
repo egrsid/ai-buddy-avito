@@ -6,17 +6,18 @@ Work on project files locally. You may create local Git commits. Do not list Cod
 
 Do not push to any remote, including feature branches and forks. Do not open or merge pull requests, invite collaborators, or change repository permissions. The repository owner handles publishing and access management.
 
-## Current main integration assignment · 2026-11-13
+## Current assignment · v3 documentation · 2026-11-13
 
-The owner authorized consolidating the final tested AI worktree into local main,
-including local commits/merges and changes across component branches as necessary.
-main is the canonical local demo/build checkout. Preserve the chosen AI 9b54700 UI,
-streaming/fallback behavior and the TL check/version pending guard.
-No push/PR/remote merge; publishing remains the repository owner's responsibility.
-Preserve demo volumes and user progress unless reset is explicitly requested.
-Historical TL/AI assignment restrictions in team records describe earlier tasks.
-Current integration facts: docs/team/tl-readiness.md and integration-sources.json.
-The temporary team action file is removed only after all its issues have evidence.
+Work in docs/v3-planning, based on verified published main b6f940d.
+Only Markdown documentation/agent instructions may change in this assignment.
+Do not change executable files, schemas/fixtures, migrations/seed, env, CI/Docker or DB.
+main remains the canonical v2 demo/build branch. No push/PR/remote merge.
+Read docs/v3/README.md, product.md, architecture.md, delivery.md, testing.md and the
+three new feature SDDs before v3 work. Runtime implementation belongs to subsequent component tasks, not this docs-only turn.
+V3 replaces internal intern-to-buddy tickets with direct Telegram personal messaging
+(manual send, scoped copy/preview); adds mentor-owned versioned task briefs and a
+separate task-clarity feedback report. Docs-owner feedback/evidence/authorization remain.
+Legacy v2 handoffs below v3 banners and S1–S4 are not the current implementation plan.
 
 ## Product direction
 

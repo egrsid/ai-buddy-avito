@@ -1,5 +1,14 @@
 # Назначение: Backend
 
+## Следующая работа — v3
+
+Ваши задачи: V3-CONTRACT-BE-01, V3-DATA-01, V3-CONTACT-01, V3-TASK-01, V3-FRICTION-01, V3-REVIEW-01, V3-MIGRATE-01. Читать [Product/SDD](../../v3/README.md),
+[единый handoff и зависимости](../../v3/delivery.md), [acceptance](../../v3/testing.md).
+Общая база main b6f940d + принятая документация docs/v3-planning. Новые v3 branches пока
+не созданы. Старые задания ниже относятся к v2; не возобновлять internal buddy workflow.
+В текущем поручении разрешено только проектирование/документация, runtime tasks TODO.
+
+
 
 Рабочая ветка **feature/backend-mvp-v2 существует на GitHub**. Проверенный head и
 состояние — в [inventory](../branches.md). Текущие TL решения/границы/приемка:

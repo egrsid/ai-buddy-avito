@@ -1,5 +1,9 @@
 # Buddy Debug Bridge — design
 
+**Superseded для v3:** [Telegram contact SDD](../telegram-mentor-contact/spec.md).
+Ниже сохранён baseline внутреннего workflow v2; не реализовывать заново очередь обращений,
+внутреннюю отправку или reply UI. Переход старых данных — [migration plan](../../v3/architecture.md).
+
 Целевое проектирование v2, implementation pending. [Поведение и приёмка](spec.md).
 
 ## Компоненты и поток

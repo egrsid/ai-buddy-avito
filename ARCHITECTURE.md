@@ -1,5 +1,11 @@
 # Avito AI-buddy — System Architecture
 
+**Изменения target v3:** [архитектура и переход](docs/v3/architecture.md),
+[Product v3](docs/v3/product.md). Ниже — baseline v2/main. V3 заменяет внутреннюю
+эскалацию Telegram-переходом, добавляет app-owned versioned TaskBrief/assignments и
+Task Clarity Reports. Go/AI/knowledge ownership, verification и scoped docs flow сохранены.
+Никаких executable contracts/DDL/runtime изменений этим docs-пакетом не внесено.
+
 Версия 2.0 · 2026-11-11 · целевая архитектура Engineering Onboarding & Feedback Loop.
 [Product Spec](docs/product/specification.md), [основание](CODEX_PROJECT_REPLAN.md).
 Runtime/DDL/seed v2 сведены в TL из авторских branches; API acceptance пройден,

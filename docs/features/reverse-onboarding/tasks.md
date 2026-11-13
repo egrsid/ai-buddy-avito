@@ -1,5 +1,9 @@
 # Reverse Onboarding — tasks
 
+**V3:** этот documentation-owner loop сохраняется. Отчёт о понятности ТЗ — отдельная
+фича [mentor-task-feedback](../mentor-task-feedback/spec.md) со своим ключом/ACL/получателем.
+Не отправлять каждый технический blocker наставнику как доказанную ошибку постановки.
+
 13 ноября: компоненты сведены в TL, настоящий AI/Go/corporate/DB API путь прошёл;
 offline browser A/B/C/restart/ACL 4 PASS и image build PASS; cold/CI/formal consumer gates отдельно. Текущие source SHA, component checks
 и конкретные оставшиеся задачи — [TL record](../../team/tl-readiness.md).

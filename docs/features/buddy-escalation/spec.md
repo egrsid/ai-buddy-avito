@@ -1,5 +1,9 @@
 # Buddy Debug Bridge — specification
 
+**Superseded для v3:** [Telegram contact SDD](../telegram-mentor-contact/spec.md).
+Ниже сохранён baseline внутреннего workflow v2; не реализовывать заново очередь обращений,
+внутреннюю отправку или reply UI. Переход старых данных — [migration plan](../../v3/architecture.md).
+
 Версия 2.0 · P0 · статус: спроектировано, не реализовано.
 Владельцы: Backend + AI + Frontend. Backlog: RP-BUDDY-01, RP-FE-03, RP-AI-DIAG-01.
 

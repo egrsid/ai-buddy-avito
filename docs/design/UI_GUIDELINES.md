@@ -1,5 +1,9 @@
 # AI-buddy — UI Design Guidelines
 
+**V3 target:** [новый сценарий/требования](../v3/product.md). Нижний текст — baseline v2.
+В v3 нет inbox/reply стажёрских обращений; наставник получает кабинет ТЗ и агрегаты
+понятности, стажёр — Telegram/copy. Выбранный дизайн main сохраняется, реализация TODO.
+
 Версия 2.0 · 2026-11-11 · Visual Design Reference для целевого MVP.
 Основной референс: `docs/design/ui-reference.png`; визуальный стиль сохраняется,
 информационная иерархия изменена по [Product Spec](../product/specification.md).

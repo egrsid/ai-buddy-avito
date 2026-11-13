@@ -1,5 +1,10 @@
 # API target v2 — проектный контракт
 
+**Target v3:** [архитектура/DTO/ACL/переход](../v3/architecture.md),
+[приёмка](../v3/testing.md). Ниже — v2 baseline; внутренний buddy send/reply не переносить
+в новый интерфейс. В V3-CONTRACT-01 нужны реальные schemas/fixtures/consumer review;
+проектные таблицы сами по себе не являются исполняемыми контрактами.
+
 Версия 2.0 · 2026-11-11 · [TL baseline](contract-baseline.md) подготовлен.
 Исполняемые BE/AI schemas, FE consumption и final review ещё требуются по
 [RP-CONTRACT-01 handoff](../team/contract-handoff.md).

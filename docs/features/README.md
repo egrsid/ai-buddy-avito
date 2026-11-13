@@ -1,5 +1,20 @@
 # Feature Specifications — target v2
 
+## Текущий план новой разработки — v3
+
+V2 ниже — baseline работающего main, не очередь новых задач. Новый план:
+[Product/архитектура/backlog/приёмка](../v3/README.md).
+
+| Фича v3 | SDD |
+|---|---|
+| Telegram-контакт | [spec](telegram-mentor-contact/spec.md), [design](telegram-mentor-contact/design.md), [tasks](telegram-mentor-contact/tasks.md) |
+| Редактор/версии ТЗ | [spec](mentor-task-authoring/spec.md), [design](mentor-task-authoring/design.md), [tasks](mentor-task-authoring/tasks.md) |
+| Понятность ТЗ | [spec](mentor-task-feedback/spec.md), [design](mentor-task-feedback/design.md), [tasks](mentor-task-feedback/tasks.md) |
+
+Старая buddy-escalation superseded для v3. Reverse-onboarding по документации сохраняется;
+новый task feedback независим от него. Стадия v3 — PLANNED, схем/миграций/кода пока нет.
+
+
 Статус восьми фич: runtime v2 сведен в TL, реальный API A/B/feedback путь проверен;
 offline browser приемка A/B/C/restart/ACL пройдена (4 PASS), live/CI отдельно. [Текущие результаты](../team/tl-readiness.md).
 AI-часть частично реализована в 3f955322: [review и остаток](../team/ai-review-2026-11-12.md).

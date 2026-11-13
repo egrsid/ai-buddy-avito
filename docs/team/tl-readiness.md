@@ -1,5 +1,17 @@
 # TL readiness и решения по интеграции
 
+## Передача к v3 · 13 ноября · документация
+
+Владелец опубликовал main b6f940d: [remote audit/CI/tree comparison](repository-audit-2026-11-13.md).
+Ветка docs/v3-planning создана от main, только Markdown. [V3 пакет](../v3/README.md)
+задаёт Telegram вместо внутреннего обращения, редактор версий ТЗ и независимый task clarity
+feedback наставнику. Telegram выбран владельцем явно. V3-TL-01 готов на уровне docs;
+code/schema/migration/runtime/acceptance v3 остаются TODO. Main/Docker/БД не менялись.
+Старые handoff/specs помечены v2 baseline либо superseded, начальная очередь — delivery.md.
+Документационная проверка: make check 57 PASS, docs links/schema/SQL/YAML/lint PASS.
+V3 acceptance matrix — план; код и поведение этим проходом не тестировались/не менялись.
+
+
 ## Финальная локальная интеграция в main · 13 ноября
 
 По прямому поручению владельца main fast-forward до TL b0e5529, затем в main перенесён

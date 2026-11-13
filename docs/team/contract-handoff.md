@@ -1,5 +1,10 @@
 # RP-CONTRACT-01 — текущая передача
 
+**Новый план v3:** [backlog/owners/dependencies/allowed directories/DoD](../v3/delivery.md),
+[пакет](../v3/README.md). Сначала docs/contract gate, runtime v3 ещё TODO. Исторические
+RP/S1–S4 задачи ниже не назначаются заново. Текущий проход — только docs/v3-planning;
+код, contracts JSON, SQL, seed, env, Docker/CI и данные не менять.
+
 Дополнение RP-DEMO-UX-01: FE recovery теперь требует open blocker и актуальный
 Step.available_actions; resolved карточки не отправляют недопустимые draft.
 Source открывается из чата повторным Go GET knowledge с ACL. AI string допускает

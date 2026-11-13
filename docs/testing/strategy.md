@@ -1,5 +1,9 @@
 # Проверки и Definition of Done — target v2
 
+**V3 target:** [новый сценарий/требования](../v3/testing.md). Нижний текст — baseline v2.
+В v3 нет inbox/reply стажёрских обращений; наставник получает кабинет ТЗ и агрегаты
+понятности, стажёр — Telegram/copy. Выбранный дизайн main сохраняется, реализация TODO.
+
 Версия 2.0 · 2026-11-11. [Product DoD](../product/specification.md),
 [demo](../product/demo.md), [SDD](../features/README.md) — критерии нового MVP.
 Runtime v2 и настоящий API feedback путь проверены в TL. Browser A/B/C, clean build/CI

@@ -1,5 +1,10 @@
 # Avito AI-buddy — Product Specification
 
+**V3 target:** [Product Spec v3](../v3/product.md), [пакет команды](../v3/README.md).
+Ниже сохранена спецификация работающего v2. Её внутренние Escalation/inbox/reply заменяются
+в v3 прямым Telegram-контактом; feedback по инструкциям сохраняется, feedback по ТЗ добавляется
+отдельно. V3 не реализован. При конфликте требований следовать v3 для новой разработки.
+
 Версия 2.0 · 2026-11-11 · целевая спецификация недельного MVP.
 Основание: [CODEX_PROJECT_REPLAN.md](../../CODEX_PROJECT_REPLAN.md).
 Предыдущие S1–S4 и S5/HR заменены моделью ниже. Runtime компонентов уже сведен в TL;

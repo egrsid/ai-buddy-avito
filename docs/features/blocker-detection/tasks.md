@@ -1,5 +1,10 @@
 # Causal Blockers & Friction Events — tasks
 
+**Для новой разработки v3:** [Product/SDD](../../v3/README.md),
+[границы и переход](../../v3/architecture.md), [задачи](../../v3/delivery.md).
+Ниже сохранён baseline v2. Внутренний escalate_to_buddy/inbox/reply заменён Telegram;
+добавлены versioned ТЗ и отдельные отчёты понятности, без изменения прав/verified.
+
 13 ноября: компоненты сведены в TL, настоящий AI/Go/corporate/DB API путь прошёл;
 offline browser A/B/C/restart/ACL 4 PASS и image build PASS; cold/CI/formal consumer gates отдельно. Текущие source SHA, component checks
 и конкретные оставшиеся задачи — [TL record](../../team/tl-readiness.md).

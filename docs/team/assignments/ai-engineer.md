@@ -1,5 +1,14 @@
 # Назначение: AI Engineer
 
+## Следующая работа — v3
+
+Ваши задачи: V3-CONTRACT-AI-01, V3-AI-01. Читать [Product/SDD](../../v3/README.md),
+[единый handoff и зависимости](../../v3/delivery.md), [acceptance](../../v3/testing.md).
+Общая база main b6f940d + принятая документация docs/v3-planning. Новые v3 branches пока
+не созданы. Старые задания ниже относятся к v2; не возобновлять internal buddy workflow.
+В текущем поручении разрешено только проектирование/документация, runtime tasks TODO.
+
+
 ## Текущая передача · 13 ноября
 
 Runtime aa6ff38, persistent kb/ingest/readiness и budget/live adapters уже сведены в TL.

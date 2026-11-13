@@ -1,5 +1,10 @@
 # Engineering Readiness Journey — specification
 
+**Для новой разработки v3:** [Product/SDD](../../v3/README.md),
+[границы и переход](../../v3/architecture.md), [задачи](../../v3/delivery.md).
+Ниже сохранён baseline v2. Внутренний escalate_to_buddy/inbox/reply заменён Telegram;
+добавлены versioned ТЗ и отдельные отчёты понятности, без изменения прав/verified.
+
 Версия 2.0 · P0 · статус: спроектировано, не реализовано.
 Владельцы: Backend + Frontend. Backlog: RP-JOURNEY-01, RP-FE-01.
 

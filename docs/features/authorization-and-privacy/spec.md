@@ -1,5 +1,10 @@
 # Authorization & Privacy — specification
 
+**Для новой разработки v3:** [Product/SDD](../../v3/README.md),
+[границы и переход](../../v3/architecture.md), [задачи](../../v3/delivery.md).
+Ниже сохранён baseline v2. Внутренний escalate_to_buddy/inbox/reply заменён Telegram;
+добавлены versioned ТЗ и отдельные отчёты понятности, без изменения прав/verified.
+
 Версия 2.0 · P0 · статус: спроектировано, не реализовано.
 Владельцы: Backend + AI. Backlog: RP-AUTH-01, RP-AI-CORE-01, RP-QA-01.
 

@@ -1,5 +1,10 @@
 # AI design target v2
 
+**Target v3:** [архитектура/DTO/ACL/переход](../v3/architecture.md),
+[приёмка](../v3/testing.md). Ниже — v2 baseline; внутренний buddy send/reply не переносить
+в новый интерфейс. В V3-CONTRACT-01 нужны реальные schemas/fixtures/consumer review;
+проектные таблицы сами по себе не являются исполняемыми контрактами.
+
 ## Уточнение владельца · 13 ноября 2026
 
 Текущее live-решение: `GigaChat/GigaChat-3-Pro` →

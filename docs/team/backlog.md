@@ -1,5 +1,10 @@
 # Backlog — назначения пяти участников
 
+**Новый план v3:** [backlog/owners/dependencies/allowed directories/DoD](../v3/delivery.md),
+[пакет](../v3/README.md). Сначала docs/contract gate, runtime v3 ещё TODO. Исторические
+RP/S1–S4 задачи ниже не назначаются заново. Текущий проход — только docs/v3-planning;
+код, contracts JSON, SQL, seed, env, Docker/CI и данные не менять.
+
 Текущее поручение владельца: TL + QA + AI доводят local demo, только в своих branches.
 В TL checkout выполнены consumer integration fixes и полная QA browser приемка:
 4 PASS, включая A/B/C/restart/ACL; 475 FE tests/94.34%, 57 shared tests, 5 AI DB tests.

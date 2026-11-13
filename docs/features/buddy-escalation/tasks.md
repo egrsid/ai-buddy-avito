@@ -1,5 +1,9 @@
 # Buddy Debug Bridge — tasks
 
+**Superseded для v3:** [Telegram contact SDD](../telegram-mentor-contact/spec.md).
+Ниже сохранён baseline внутреннего workflow v2; не реализовывать заново очередь обращений,
+внутреннюю отправку или reply UI. Переход старых данных — [migration plan](../../v3/architecture.md).
+
 RP-DEMO-UX-01: readable guidance/citation drawer и recovery UI по текущему Go allowlist
 проверены component/browser tests; [evidence](../../team/tl-readiness.md).
 

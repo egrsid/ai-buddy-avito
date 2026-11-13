@@ -1,5 +1,14 @@
 # Назначение: Fullstack–QA–Integration
 
+## Следующая работа — v3
+
+Ваши задачи: V3-QA-01. Читать [Product/SDD](../../v3/README.md),
+[единый handoff и зависимости](../../v3/delivery.md), [acceptance](../../v3/testing.md).
+Общая база main b6f940d + принятая документация docs/v3-planning. Новые v3 branches пока
+не созданы. Старые задания ниже относятся к v2; не возобновлять internal buddy workflow.
+В текущем поручении разрешено только проектирование/документация, runtime tasks TODO.
+
+
 Текущее поручение владельца: TL + QA + AI доводят local demo, только в своих branches.
 В TL checkout выполнены consumer integration fixes и полная QA browser приемка:
 4 PASS, включая A/B/C/restart/ACL; 475 FE tests/94.34%, 57 shared tests, 5 AI DB tests.

@@ -1,5 +1,9 @@
 # Reverse Onboarding — specification
 
+**V3:** этот documentation-owner loop сохраняется. Отчёт о понятности ТЗ — отдельная
+фича [mentor-task-feedback](../mentor-task-feedback/spec.md) со своим ключом/ACL/получателем.
+Не отправлять каждый технический blocker наставнику как доказанную ошибку постановки.
+
 Версия 2.0 · P0 · статус: спроектировано, не реализовано.
 Владельцы: Backend + AI + Frontend. Backlog: RP-REVERSE-01, RP-FE-03, RP-AI-DIAG-01.
 

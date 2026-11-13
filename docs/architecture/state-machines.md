@@ -1,5 +1,10 @@
 # Состояния и восстановление target v2
 
+**Target v3:** [архитектура/DTO/ACL/переход](../v3/architecture.md),
+[приёмка](../v3/testing.md). Ниже — v2 baseline; внутренний buddy send/reply не переносить
+в новый интерфейс. В V3-CONTRACT-01 нужны реальные schemas/fixtures/consumer review;
+проектные таблицы сами по себе не являются исполняемыми контрактами.
+
 Версия 2.0 · проектирование; legacy todo/in_progress/done и ручной PATCH task отменены
 для нового маршрута. Реализация и JSON Schema v1 ещё не обновлены.
 
