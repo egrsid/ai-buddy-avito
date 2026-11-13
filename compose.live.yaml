@@ -1,0 +1,18 @@
+# Live LLM demo on top of compose.demo.yaml: same isolated v2 dataset, but the AI chain
+# GigaChat-3-Pro -> GigaChat3.5 -> offline is real. Start only via `make live-demo`
+# (scripts/live_demo.py checks .env before Docker). The budget ledger volume is pinned
+# to the one of the main project, so the 800 RUB stop never restarts from zero.
+services:
+  ai-ingest:
+    environment:
+      LLM_MODE: ${LLM_MODE:?LLM_MODE is required}
+  ai-service:
+    environment:
+      LLM_MODE: ${LLM_MODE:?LLM_MODE is required}
+  backend:
+    environment:
+      LLM_MODE: ${LLM_MODE:?LLM_MODE is required}
+
+volumes:
+  ai-budget:
+    name: ai-buddy_ai-budget
