@@ -27,29 +27,18 @@ from dataclasses import replace
 from app.budget import BudgetUnavailable
 from app.config import Settings
 from app.mock_provider import BudgetDenied, ProviderUnavailable, mock_answer
+from app.notices import INTERRUPTED, MOCK_PREFIX, NOTICE, OFFLINE_NOTICE, RESERVE_NOTICE
 from app.openai_provider import OpenAIProvider
 from app.prompt import LlmInput
 
 logger = logging.getLogger(__name__)
 
-NOTICE = (
-    "Произошла ошибка обращения к LLM. Работает fallback. "
-    "Обратись к своему наставнику напрямую для решения вопроса. "
-)
-RESERVE_NOTICE = "Используется резервная модель.\n\n"
-INTERRUPTED = "\n\n_Ответ модели прервался. Повтори вопрос или обратись к наставнику._"
-OFFLINE_NOTICE = (
-    "Ответ ниже подготовлен без LLM по разрешённому контексту и шаблонам. "
-    "Он не подтверждает выполнение шага.\n\n"
-)
 # Сколько секунд не обращаться к модели после её сбоя.
 COOLDOWN_SECONDS = 30.0
 # Предел длины offline-ответа: вместе с уведомлением влезает в 4000 символов Go.
 OFFLINE_LIMIT = 3000
 # Предел текста модели: с уведомлением о резерве и об обрыве влезает в 4000 символов Go.
 LIVE_LIMIT = 3500
-# Начало шаблонного ответа mock-режима: здесь о режиме уже сказано в OFFLINE_NOTICE.
-MOCK_PREFIX = "Демо-режим mock: ответ подготовлен без LLM.\n\n"
 
 
 def model_name(provider, index: int) -> str:
