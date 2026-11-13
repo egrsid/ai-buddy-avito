@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-buddy.invalid/contracts/v3/events.schema.json",
+  "title": "AI-buddy v3 internal task workflow events (Go-only, never accepted from the browser)",
+  "$defs": {
+    "TaskEventType": {
+      "enum": ["brief_published", "brief_archived", "task_assigned", "task_assignment_adopted", "task_friction_reported", "task_clarity_threshold_reached", "task_clarity_reviewed", "escalation_retired"]
+    },
+    "TaskEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "schema_version", "occurred_at", "source", "entity", "correlation_id", "payload", "synthetic"],
+      "properties": {
+        "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "type": {"$ref": "#/$defs/TaskEventType"},
+        "schema_version": {"const": 1},
+        "occurred_at": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"},
+        "source": {"enum": ["go_task_workflow", "go_v3_migration"]},
+        "entity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "id"],
+          "properties": {
+            "type": {"enum": ["task_brief", "task_assignment", "task_clarity_report", "action"]},
+            "id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+          }
+        },
+        "correlation_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+        "payload": {
+          "type": "object",
+          "maxProperties": 8,
+          "propertyNames": {"enum": ["brief_id", "brief_version", "assignment_id", "section_id", "reason", "report_id", "decision", "action_id"]},
+          "properties": {
+            "brief_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+            "brief_version": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/PositiveInt"},
+            "assignment_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+            "section_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"},
+            "reason": {"enum": ["requirement_unclear", "outcome_unclear", "acceptance_unclear"]},
+            "report_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"},
+            "decision": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/ReviewDecision"},
+            "action_id": {"$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"}
+          }
+        },
+        "synthetic": {"const": true}
+      }
+    }
+  }
+}
