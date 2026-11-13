@@ -1115,5 +1115,14 @@
     "AI owned runtime and associated tests/evals imported from 25ac58f; FE tests/fixtures there derive from c814283.",
     "TL session readiness, embedded step chat, four primary roles and Markdown/source UI retained.",
     "Go syntheticKnowledge copies not imported: kb/AI remains authoritative for document body/version and source excerpt validation. No branch refs updated."
-  ]
+  ],
+  "main_integration": {
+    "base": "b0e5529",
+    "final_ai_commit": "9b54700d015106ad5ad5394307789b269a1f724a",
+    "source_worktree": "tmp/final-ai",
+    "target_branch": "main",
+    "method": "verified snapshot import; preserve TL records and AI pending guard",
+    "build_command": "make main-demo",
+    "remote_publish": false
+  }
 }

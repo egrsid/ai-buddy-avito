@@ -1,5 +1,25 @@
 # TL readiness и решения по интеграции
 
+## Финальная локальная интеграция в main · 13 ноября
+
+По прямому поручению владельца main fast-forward до TL b0e5529, затем в main перенесён
+полный executable/config/UI snapshot проверенной AI worktree 9b54700 с pending guard.
+Исходные AI/BE/QA/TL ветки и отдельная AI worktree сохранены. История оригинального AI
+commit неполная, поэтому использован проверенный snapshot import, без фиктивного merge
+ancestry. Происхождение отражено в integration-sources.json; TL records сохранены.
+Новые локальные commits разрешены текущим поручением; push/PR не выполняются.
+
+Главный build checkout — корень проекта, ветка main. `make main-demo` проверяет branch
+и вызывает offline rebuild/up текущих исходников. UI/AI/business behavior совпадают
+с финальной AI версией, дополнительных функциональных изменений нет. Пользовательская
+БД не сбрасывается. Повторная проверка всех frontend/AI/backend/mock/contracts/data
+файлов против проверенной AI worktree: полное совпадение. В main повторно выполнены:
+make check 57 PASS; FE build/494 tests/94.78%; AI 457 PASS/99.75% (5 DB tests требуют
+отдельного DB runner). Предыдущая full browser/DB приемка того же runtime сохраняется:
+4/4 и 5/5; на текущей пользовательской БД выполняется только read-only session smoke.
+Контейнеры пересоздаются из корневой папки main, volumes и текущий прогресс сохранены.
+
+
 ## Последняя сверка всех branches · RP-INTEGRATION-01 · 13 ноября
 
 Сверены все шесть remote branches через GitHub connector. Owner сохранил прошлый UX

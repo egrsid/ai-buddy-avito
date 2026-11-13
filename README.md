@@ -9,13 +9,29 @@ Knowledge Gap Candidate с человеческим review. Accepted не пуб
 restart проверены.** Текущие source SHA,
 проверки и приоритеты — [TL readiness](docs/team/tl-readiness.md),
 [backlog](docs/team/backlog.md). Старые S1–S4 не являются текущим планом.
-Commit/push/PR/merge в этом проходе не выполнялись.
+Объединение выполнено локально в main; push/PR на GitHub не выполнялись.
 
 React/TypeScript/Tailwind/TanStack Query/Zod → Go REST/SSE → Python/FastAPI и отдельный
 corporate mock; PostgreSQL app/kb/corporate и pgvector. Только Go меняет app state;
 AI предлагает и фильтрует знания по проверенному scope до LLM.
 [Product Spec](docs/product/specification.md), [Architecture](ARCHITECTURE.md),
 [ADR](docs/architecture/decisions.md), [восемь SDD](docs/features/README.md).
+
+## Итоговая версия в main
+
+Локальный `main` объединяет TL integration и проверенный финальный AI snapshot
+`9b54700` с выбранным UI, streaming, метками AI/fallback и защитой check/version.
+Собирать из корневой папки проекта на ветке `main`:
+
+```sh
+make main-demo
+```
+
+Это проверяет текущую ветку, пересобирает исходники main из подготовленного на этом
+ноутбуке dependency cache и запускает http://localhost:15173. База и прогресс сохраняются.
+На новой машине без cache использовать `make demo-up` после подготовки Docker/зависимостей.
+LLM сейчас offline/mock; переключатель Live API означает Go API. Live LLM — отдельная
+конфигурация с API key и бюджетом. Папка tmp/final-ai больше не является базой сборки.
 
 ## Локальная offline-демонстрация
 

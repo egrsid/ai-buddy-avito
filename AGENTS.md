@@ -6,20 +6,17 @@ Work on project files locally. You may create local Git commits. Do not list Cod
 
 Do not push to any remote, including feature branches and forks. Do not open or merge pull requests, invite collaborators, or change repository permissions. The repository owner handles publishing and access management.
 
-## Current TL integration assignment · 2026-11-11
+## Current main integration assignment · 2026-11-13
 
-The owner authorized TL implementation and a delivery plan for 2026-11-12 22:00 Europe/Moscow.
-Work in the assigned `feature/team-start-foundation`; a new owner branch is permitted only
-if needed. Never change BE/AI/FE/QA branches or refs. No push/PR or local commit in this run.
-The earlier RP-DOC-01/RP-TEAM-01 docs-only restriction was specific to those completed tasks.
-The current assignment permits TL-owned scripts/tests, Docker/Compose/CI/config and project
-documentation. Import the reviewed contract artifacts into the TL checkout with provenance;
-component authors retain ownership of schema changes, runtime code, migrations and seed.
-Do not implement teammates' business logic or report their missing acceptance as DONE.
-
-Current integration facts/decisions: docs/team/tl-readiness.md. The temporary team action
-file docs/team/MVP_UNBLOCK_DELETE_AFTER_RESOLUTION.md must be removed after all listed
-issues have evidence and permanent backlog/acceptance records are updated.
+The owner authorized consolidating the final tested AI worktree into local main,
+including local commits/merges and changes across component branches as necessary.
+main is the canonical local demo/build checkout. Preserve the chosen AI 9b54700 UI,
+streaming/fallback behavior and the TL check/version pending guard.
+No push/PR/remote merge; publishing remains the repository owner's responsibility.
+Preserve demo volumes and user progress unless reset is explicitly requested.
+Historical TL/AI assignment restrictions in team records describe earlier tasks.
+Current integration facts: docs/team/tl-readiness.md and integration-sources.json.
+The temporary team action file is removed only after all its issues have evidence.
 
 ## Product direction
 

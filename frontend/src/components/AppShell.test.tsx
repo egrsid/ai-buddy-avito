@@ -27,12 +27,32 @@ describe('AppShell', () => {
     expect(screen.getAllByRole('option').map(o => o.textContent)).toEqual(['Стажёр', 'Наставник', 'Согласующий доступ', 'Владелец документации']);
   });
 
-  it('дополнительные аккаунты доступны отдельно для проверки feedback loop и ACL', () => {
-    render(<AppShell user={users['intern-a']} route="/onboarding" view="data" mode="live" onUserChange={() => {}} onViewChange={() => {}}>Демо</AppShell>);
+  it.each(['live', 'fixtures'] as const)('дополнительные аккаунты доступны отдельно для проверки feedback loop и ACL (%s)', (mode) => {
+    render(<AppShell user={users['intern-a']} route="/onboarding" view="data" mode={mode} onUserChange={() => {}} onViewChange={() => {}}>Демо</AppShell>);
     expect(screen.getAllByRole('option')).toHaveLength(4);
     fireEvent.click(screen.getByLabelText('Дополнительные участники'));
-    expect(screen.getAllByRole('option')).toHaveLength(7);
-    expect(screen.getByRole('option', { name: 'Второй стажёр' })).toBeInTheDocument();
+    expect(screen.getAllByRole('option').map(o => o.textContent)).toEqual([
+      'Стажёр', 'Наставник', 'Согласующий доступ', 'Владелец документации',
+      'Второй стажёр', 'Стажёр другой команды', 'Наставник другой команды',
+    ]);
+  });
+
+  it('источник данных переключается и в демо-сборке, состояние экрана — в fixtures', () => {
+    vi.stubEnv('VITE_DATA_MODE', 'live');
+    const onModeChange = vi.fn();
+    const onViewChange = vi.fn();
+    render(<AppShell user={users['intern-a']} route="/onboarding" view="data" mode="fixtures" onModeChange={onModeChange} onUserChange={() => {}} onViewChange={onViewChange}>Демо</AppShell>);
+    fireEvent.click(screen.getByRole('button', { name: 'Live API' }));
+    expect(onModeChange).toHaveBeenCalledWith('live');
+    const states = screen.getByRole('group', { name: 'Демо-состояние данных' });
+    expect(states).toBeInTheDocument();
+    vi.unstubAllEnvs();
+  });
+
+  it('в fixtures видны наставник и стажёр другой команды', () => {
+    renderShell('buddy-b', '/buddy/escalations');
+    expect(screen.getByRole('option', { name: 'Наставник другой команды' })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Основная навигация' })).toHaveTextContent('Обращения стажёров');
   });
   it('intern: навигация цель/заявки/чат, активный пункт помечен', () => {
     renderShell('intern-a');

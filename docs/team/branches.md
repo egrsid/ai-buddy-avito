@@ -14,6 +14,15 @@ Read-only GitHub snapshot · 2026-11-13. Текущий checkout — feature/tea
 
 Текущий source manifest: [integration-sources.json](integration-sources.json). Чужие refs не менялись.
 
+## Каноническая локальная ветка — main · 13 ноября
+
+В main локально включена TL история до b0e5529 и проверенный финальный AI snapshot
+9b54700 с исправлениями из tmp/final-ai. Корень проекта переключён на main;
+собирать Docker командой `make main-demo` отсюда. AI worktree сохранена как источник,
+больше не используется для основного запуска. Remote main агент не изменял.
+Исходные feature branches сохранены. [Проверки/результат](tl-readiness.md).
+
+
 ## Повторная remote-сверка всех веток · 13 ноября
 
 GitHub connector: search_branches + compare_commits, затем чтение immutable snapshots.
