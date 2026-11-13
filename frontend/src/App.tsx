@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { LifeBuoy, ShieldCheck } from 'lucide-react';
 import { AppShell, DemoModeNote } from './components/AppShell';
-import { Card } from './components/ui';
+import { Card, LoadingState } from './components/ui';
 import { matchIdRoute, matchStepRoute, useHashRoute } from './lib/router';
 import type { ViewState } from './lib/useMockData';
 import { DataModeProvider, useDataMode } from './lib/dataMode';
@@ -80,7 +80,7 @@ export function App() {
 
 function AppInner() {
   const route = useHashRoute();
-  const { mode, setMode, user, accountId, switchAccount, sessionError } = useDataMode();
+  const { mode, setMode, user, accountId, switchAccount, sessionError, sessionReady } = useDataMode();
   const [view, setView] = useState<ViewState>('data');
 
   const stepRoute = matchStepRoute(route);
@@ -92,7 +92,7 @@ function AppInner() {
 
   if (mode === 'live') {
     if (stepRoute) {
-      page = <LiveStepPage goalId={stepRoute.goalId} stepId={stepRoute.stepId} />;
+      page = <LiveStepPage key={`${stepRoute.goalId}:${stepRoute.stepId}`} goalId={stepRoute.goalId} stepId={stepRoute.stepId} />;
     } else if (route === '/onboarding') {
       page = <LiveOnboardingPage />;
     } else if (route === '/requests') {
@@ -137,17 +137,26 @@ function AppInner() {
       user={user}
       route={route}
       view={view}
-      onUserChange={(id) => void switchAccount(id)}
+      onUserChange={(id) => {
+        void switchAccount(id);
+        window.location.hash = href(id.startsWith('buddy-') ? '/buddy/escalations'
+          : id === 'approver-a' ? '/approvals' : id === 'docs-owner-a' ? '/knowledge-gaps' : '/onboarding');
+      }}
       onViewChange={setView}
       mode={mode}
       onModeChange={setMode}
+      sessionPending={mode === 'live' && !sessionReady && !sessionError}
       sidebar={sidebar}
     >
       {mode === 'fixtures' && <DemoModeNote />}
       {sessionError && (
         <p className="mb-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-error" role="alert">{sessionError}</p>
       )}
-      <div key={`${mode}-${accountId}`}>{page}</div>
+      <div key={`${mode}-${accountId}`}>
+        {mode === 'live' && !sessionReady
+          ? !sessionError && <Card><LoadingState /></Card>
+          : page}
+      </div>
     </AppShell>
   );
 }

@@ -1,7 +1,8 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session } from './endpoints';
-import { demoLogin, logout as apiLogout } from './endpoints';
+import { demoLogin, me, logout as apiLogout } from './endpoints';
+import { ApiError } from './api';
 import type { User } from '../fixtures/all-states';
 import { users as fixtureUsers } from '../fixtures/all-states';
 
@@ -20,26 +21,56 @@ interface DataModeValue {
   accountId: string;
   switchAccount: (accountId: string) => Promise<void> | void;
   sessionError: string | null;
+  sessionReady: boolean;
 }
 
 const DataModeContext = createContext<DataModeValue | null>(null);
 
 export function DataModeProvider({ children }: { children: ReactNode }) {
-  const [mode, setMode] = useState<DataMode>('fixtures');
+  const [mode, setMode] = useState<DataMode>(() =>
+    sessionStorage.getItem('buddy-data-mode') === 'live' || import.meta.env.VITE_DATA_MODE === 'live'
+      ? 'live' : 'fixtures',
+  );
   const [accountId, setAccountId] = useState('intern-a');
   const [session, setSession] = useState<Session | null>(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const [sessionReady, setSessionReady] = useState(mode === 'fixtures');
+  const generation = useRef(0);
+  const initialMode = useRef(mode);
 
   const loginAs = useCallback(async (id: string) => {
+    const attempt = ++generation.current;
+    setSessionReady(false);
     setSessionError(null);
     try {
-      setSession(await demoLogin(id));
-      setAccountId(id);
+      const next = await demoLogin(id);
+      if (attempt !== generation.current) return;
+      setSession(next);
+      setAccountId(next.user.account_id);
+      setSessionReady(true);
     } catch {
+      if (attempt !== generation.current) return;
       setSession(null);
       setSessionError('Не удалось войти в live-режим: backend недоступен или вход запрещён.');
     }
   }, []);
+
+  useEffect(() => {
+    if (initialMode.current !== 'live') return;
+    let active = true;
+    const attempt = ++generation.current;
+    me().then((next) => {
+      if (!active || attempt !== generation.current) return;
+      setSession(next);
+      setAccountId(next.user.account_id);
+      setSessionReady(true);
+    }).catch((error) => {
+      if (!active || attempt !== generation.current) return;
+      if (error instanceof ApiError && error.status === 401) void loginAs('intern-a');
+      else setSessionError('Не удалось восстановить сессию. Повторите вход в Live API.');
+    });
+    return () => { active = false; };
+  }, [loginAs]);
 
   const switchAccount = useCallback(
     (id: string) => {
@@ -52,9 +83,16 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
 
   const changeMode = useCallback(
     (next: DataMode) => {
+      ++generation.current;
+      sessionStorage.setItem('buddy-data-mode', next);
+      setSessionError(null);
       setMode(next);
       if (next === 'live') void loginAs(accountId);
-      else void apiLogout().catch(() => undefined);
+      else {
+        setSessionReady(true);
+        setSession(null);
+        void apiLogout().catch(() => undefined);
+      }
     },
     [accountId, loginAs],
   );
@@ -68,8 +106,9 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
       accountId,
       switchAccount,
       sessionError,
+      sessionReady,
     };
-  }, [mode, changeMode, session, accountId, switchAccount, sessionError]);
+  }, [mode, changeMode, session, accountId, switchAccount, sessionError, sessionReady]);
 
   return <DataModeContext.Provider value={value}>{children}</DataModeContext.Provider>;
 }
@@ -85,6 +124,7 @@ export function useDataMode(): DataModeValue {
       accountId: 'intern-a',
       switchAccount: () => undefined,
       sessionError: null,
+      sessionReady: true,
     };
   }
   return ctx;

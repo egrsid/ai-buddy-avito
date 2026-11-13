@@ -22,6 +22,18 @@ function renderShell(account: string, route = '/onboarding') {
 }
 
 describe('AppShell', () => {
+  it('по умолчанию четыре понятных роли без технических дополнений', () => {
+    renderShell('intern-a');
+    expect(screen.getAllByRole('option').map(o => o.textContent)).toEqual(['Стажёр', 'Наставник', 'Согласующий доступ', 'Владелец документации']);
+  });
+
+  it('дополнительные аккаунты доступны отдельно для проверки feedback loop и ACL', () => {
+    render(<AppShell user={users['intern-a']} route="/onboarding" view="data" mode="live" onUserChange={() => {}} onViewChange={() => {}}>Демо</AppShell>);
+    expect(screen.getAllByRole('option')).toHaveLength(4);
+    fireEvent.click(screen.getByLabelText('Дополнительные участники'));
+    expect(screen.getAllByRole('option')).toHaveLength(7);
+    expect(screen.getByRole('option', { name: 'Второй стажёр' })).toBeInTheDocument();
+  });
   it('intern: навигация цель/заявки/чат, активный пункт помечен', () => {
     renderShell('intern-a');
     const nav = screen.getByRole('navigation', { name: 'Основная навигация' });

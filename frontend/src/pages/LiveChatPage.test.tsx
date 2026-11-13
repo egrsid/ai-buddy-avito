@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RunStreamHandlers } from '../lib/sse';
-import { actions as fixtureActions } from '../fixtures/all-states';
+import { actions as fixtureActions, knowledgeDoc } from '../fixtures/all-states';
 import { LiveChatPage } from './LiveChatPage';
 
 const mocks = vi.hoisted(() => ({
@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   confirmAction: vi.fn(),
   cancelAction: vi.fn(),
   getAction: vi.fn(),
+  getKnowledge: vi.fn(),
   streamRunEvents: vi.fn(),
 }));
 
@@ -25,6 +26,7 @@ vi.mock('../lib/endpoints', () => ({
   confirmAction: mocks.confirmAction,
   cancelAction: mocks.cancelAction,
   getAction: mocks.getAction,
+  getKnowledge: mocks.getKnowledge,
 }));
 
 vi.mock('../lib/sse', async (importOriginal) => {
@@ -73,6 +75,14 @@ describe('LiveChatPage', () => {
     await renderChat();
     expect(mocks.createConversation).toHaveBeenCalledWith(null, null);
     expect(await screen.findByText('Сообщений пока нет')).toBeInTheDocument();
+  });
+
+  it('контекст шага создаёт goal/step диалог вместо общего', async () => {
+    render(<LiveChatPage goalId="goal-a" stepId="check_access" embedded />);
+    await screen.findByLabelText('Сообщение AI-помощнику');
+    expect(mocks.createConversation).toHaveBeenCalledWith('goal-a', 'check_access');
+    expect(mocks.listConversations).not.toHaveBeenCalled();
+    expect(screen.getByRole('heading', { name: 'Помощь с этим шагом' })).toBeInTheDocument();
   });
 
   it('использует существующий диалог без создания', async () => {
@@ -175,6 +185,14 @@ describe('LiveChatPage', () => {
     ]);
     await renderChat();
     expect(await screen.findByText('Нужен sslmode=require.')).toBeInTheDocument();
-    expect(screen.getByText(/Синтетическая инструкция подключения \(v1\)/)).toBeInTheDocument();
+    mocks.getKnowledge.mockResolvedValue(knowledgeDoc);
+    fireEvent.click(screen.getByRole('link', { name: 'Синтетическая инструкция подключения' }));
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(mocks.getKnowledge).toHaveBeenCalledWith('0000000a-0000-4000-8000-00000000000a');
+    fireEvent.click(screen.getByRole('button', { name: 'Закрыть' }));
+    mocks.getKnowledge.mockRejectedValueOnce(new Error('revoked'));
+    fireEvent.click(screen.getByRole('link', { name: 'Синтетическая инструкция подключения' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Возможно, доступ изменился');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

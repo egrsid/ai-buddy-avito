@@ -2,15 +2,18 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { DataModeProvider, useDataMode } from './dataMode';
+import { ApiError } from './api';
 
-const { demoLoginMock, logoutMock } = vi.hoisted(() => ({
+const { demoLoginMock, logoutMock, meMock } = vi.hoisted(() => ({
   demoLoginMock: vi.fn(),
   logoutMock: vi.fn(),
+  meMock: vi.fn(),
 }));
 
 vi.mock('./endpoints', () => ({
   demoLogin: demoLoginMock,
   logout: logoutMock,
+  me: meMock,
 }));
 
 const session = {
@@ -34,6 +37,7 @@ describe('DataMode', () => {
   beforeEach(() => {
     demoLoginMock.mockReset().mockResolvedValue(session);
     logoutMock.mockReset().mockResolvedValue(undefined);
+    meMock.mockReset().mockResolvedValue(session);
   });
 
   it('без провайдера: безопасный fixtures-дефолт', () => {
@@ -81,5 +85,49 @@ describe('DataMode', () => {
     await waitFor(() => expect(demoLoginMock).toHaveBeenCalled());
     act(() => result.current.setMode('fixtures'));
     await waitFor(() => expect(logoutMock).toHaveBeenCalled());
+  });
+
+  it('не разрешает mount live-данных до завершения login', async () => {
+    let finish!: (value: typeof session) => void;
+    demoLoginMock.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    const { result } = renderHook(() => useDataMode(), { wrapper });
+    act(() => result.current.setMode('live'));
+    expect(result.current.sessionReady).toBe(false);
+    await act(async () => finish(session));
+    expect(result.current.sessionReady).toBe(true);
+    expect(sessionStorage.getItem('buddy-data-mode')).toBe('live');
+  });
+
+  it('demo preset открывает серверные данные даже при старом fixtures preference', async () => {
+    vi.stubEnv('VITE_DATA_MODE', 'live');
+    sessionStorage.setItem('buddy-data-mode', 'fixtures');
+    const { result } = renderHook(() => useDataMode(), { wrapper });
+    await waitFor(() => expect(result.current.sessionReady).toBe(true));
+    expect(result.current.mode).toBe('live');
+    vi.unstubAllEnvs();
+  });
+
+  it('после reload восстанавливает реального пользователя через me без нового login', async () => {
+    sessionStorage.setItem('buddy-data-mode', 'live');
+    meMock.mockResolvedValue({ ...session, user: { ...session.user, account_id: 'buddy-a' } });
+    const { result } = renderHook(() => useDataMode(), { wrapper });
+    await waitFor(() => expect(result.current.sessionReady).toBe(true));
+    expect(result.current.accountId).toBe('buddy-a');
+    expect(demoLoginMock).not.toHaveBeenCalled();
+  });
+
+  it('первый demo-вход после 401, ошибка сети не подменяется fixture-данными', async () => {
+    sessionStorage.setItem('buddy-data-mode', 'live');
+    meMock.mockRejectedValueOnce(new ApiError(401, 'UNAUTHENTICATED', 'no session'));
+    const first = renderHook(() => useDataMode(), { wrapper });
+    await waitFor(() => expect(first.result.current.sessionReady).toBe(true));
+    expect(demoLoginMock).toHaveBeenCalledWith('intern-a');
+    first.unmount();
+    demoLoginMock.mockClear();
+    meMock.mockRejectedValueOnce(new Error('network'));
+    const second = renderHook(() => useDataMode(), { wrapper });
+    await waitFor(() => expect(second.result.current.sessionError).toBeTruthy());
+    expect(second.result.current.sessionReady).toBe(false);
+    expect(demoLoginMock).not.toHaveBeenCalled();
   });
 });

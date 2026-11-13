@@ -43,9 +43,9 @@ OFFLINE_NOTICE = (
 # Сколько секунд не обращаться к модели после её сбоя.
 COOLDOWN_SECONDS = 30.0
 # Предел длины offline-ответа: вместе с уведомлением влезает в 4000 символов Go.
-OFFLINE_LIMIT = 1200
+OFFLINE_LIMIT = 3000
 # Начало шаблонного ответа mock-режима: здесь о режиме уже сказано в OFFLINE_NOTICE.
-MOCK_PREFIX = "Режим mock, без LLM. "
+MOCK_PREFIX = "Демо-режим mock: ответ подготовлен без LLM.\n\n"
 
 
 def model_name(provider, index: int) -> str:
@@ -57,10 +57,18 @@ def model_name(provider, index: int) -> str:
 
 
 def offline_text(llm_input: LlmInput) -> str:
-    """Шаблонный ответ без LLM, обрезанный по концу предложения, а не посреди слова."""
+    """Шаблонный ответ без LLM: целые абзацы (ссылки и шаги не рвутся), а если не влез
+    даже первый абзац — обрезка по концу предложения, а не посреди слова."""
     text = mock_answer(llm_input).removeprefix(MOCK_PREFIX)
     if len(text) <= OFFLINE_LIMIT:
         return text
+    parts = []
+    for part in text.split("\n\n"):
+        if len("\n\n".join([*parts, part])) > OFFLINE_LIMIT:
+            break
+        parts.append(part)
+    if parts:
+        return "\n\n".join(parts)
     cut = text[:OFFLINE_LIMIT]
     end = cut.rfind(". ")
     if end > 0:

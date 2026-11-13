@@ -1,0 +1,45 @@
+# Rebuild current sources without contacting a registry. The four explicitly
+# named dependency images must already exist; no host source mounts in the result.
+ARG PYTHON_CACHE_IMAGE=ai-buddy-tl-20261111-contract-image-tests:latest
+ARG NODE_CACHE_IMAGE=ai-buddy-tl-20261111-frontend:latest
+ARG GO_CACHE_IMAGE=ai-buddy-demo-go-build:local
+ARG GO_RUNTIME_IMAGE=ai-buddy-be-v2-api:local
+
+FROM ${PYTHON_CACHE_IMAGE} AS python
+USER root
+WORKDIR /workspace
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --offline --no-dev
+COPY ai-service/ ./ai-service/
+COPY mock-services/ ./mock-services/
+COPY scripts/ ./scripts/
+COPY backend/migrations/ ./backend/migrations/
+COPY contracts/ ./contracts/
+COPY data/ ./data/
+ENV PYTHONPATH=/workspace/ai-service PATH=/workspace/.venv/bin:$PATH
+RUN mkdir -p /var/lib/ai-budget && chown app:app /var/lib/ai-budget
+USER app
+CMD ["uvicorn", "app.main:app", "--app-dir", "ai-service", "--host", "0.0.0.0", "--port", "8000"]
+
+FROM python AS test
+USER root
+RUN uv sync --frozen --offline
+COPY tests/ ./tests/
+ENV COVERAGE_FILE=/tmp/.coverage COVERAGE_OUTPUT_DIR=/tmp/coverage
+USER app
+
+FROM ${GO_CACHE_IMAGE} AS go-build
+WORKDIR /src
+COPY backend/ ./
+RUN GOTOOLCHAIN=local GOPROXY=off CGO_ENABLED=0 go build -o /api ./cmd/api
+
+FROM ${GO_RUNTIME_IMAGE} AS backend
+COPY --from=go-build /api /api
+COPY --chown=app:app contracts/v2/ /contracts/v2/
+ENV CONTRACTS_DIR=/contracts/v2
+
+FROM ${NODE_CACHE_IMAGE} AS frontend
+WORKDIR /app
+COPY --chown=node:node frontend/ ./
+COPY --chown=node:node contracts/ /contracts/
+RUN npm run build

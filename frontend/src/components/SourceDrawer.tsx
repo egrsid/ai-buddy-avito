@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
+import { FormattedText } from './FormattedText';
 
 // Drawer источника: документ открывается отдельным запросом через Go
 // с повторной ACL-проверкой (пока — fixture). Ссылки наружу запрещены контрактом.
@@ -30,6 +31,9 @@ export function SourceDrawer({
   }, [open, onClose]);
 
   if (!open) return null;
+  const firstHeading = content.match(/^#\s+([^\n]+)\n/);
+  const body = firstHeading && title.startsWith(firstHeading[1].trim())
+    ? content.slice(firstHeading[0].length).trimStart() : content;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="presentation">
@@ -43,7 +47,7 @@ export function SourceDrawer({
         role="dialog"
         aria-modal="true"
         aria-label={`Источник: ${title}`}
-        className="relative flex h-full w-full max-w-md flex-col border-l border-border bg-surface p-5 shadow-xl"
+        className="relative flex h-full w-full max-w-2xl flex-col border-l border-border bg-surface p-6 shadow-xl sm:p-8"
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
@@ -62,7 +66,7 @@ export function SourceDrawer({
             <X size={20} aria-hidden />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto text-sm leading-6">{content}</div>
+        <div className="flex-1 overflow-y-auto pr-2"><FormattedText text={body} /></div>
       </div>
     </div>
   );

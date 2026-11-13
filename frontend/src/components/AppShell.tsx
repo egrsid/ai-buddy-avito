@@ -14,7 +14,6 @@ import {
 import { href } from '../lib/router';
 import type { ViewState } from '../lib/useMockData';
 import type { User } from '../fixtures/all-states';
-import { users } from '../fixtures/all-states';
 
 interface NavItem {
   to: string;
@@ -53,6 +52,7 @@ export function AppShell({
   onUserChange,
   onViewChange,
   mode = 'fixtures',
+  sessionPending = false,
   onModeChange,
   children,
   sidebar,
@@ -63,11 +63,24 @@ export function AppShell({
   onUserChange: (account: string) => void;
   onViewChange: (view: ViewState) => void;
   mode?: 'fixtures' | 'live';
+  sessionPending?: boolean;
   onModeChange?: (mode: 'fixtures' | 'live') => void;
   children: ReactNode;
   sidebar?: ReactNode;
 }) {
   const [navOpen, setNavOpen] = useState(false);
+  const [extraAccounts, setExtraAccounts] = useState(false);
+  const mainAccounts = [
+    { id: 'intern-a', label: 'Стажёр' },
+    { id: 'buddy-a', label: 'Наставник' },
+    { id: 'approver-a', label: 'Согласующий доступ' },
+    { id: 'docs-owner-a', label: 'Владелец документации' },
+  ];
+  const extra = [
+    { id: 'intern-b', label: 'Второй стажёр' },
+    { id: 'intern-c', label: 'Стажёр другой команды' },
+    { id: 'buddy-b', label: 'Наставник другой команды' },
+  ];
   const nav = navFor(user);
 
   const navBlock = (
@@ -85,17 +98,22 @@ export function AppShell({
       <label className="mb-4 block px-2">
         <span className="mb-1 block text-xs text-text-secondary">Демо-аккаунт</span>
         <select
+          disabled={sessionPending}
           value={user.account_id}
           onChange={(e) => onUserChange(e.target.value)}
           className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-primary"
         >
-          {Object.values(users).map((u) => (
-            <option key={u.account_id} value={u.account_id}>
-              {u.display_name} ({u.roles.join(', ')})
+          {[...mainAccounts, ...(mode === 'live' ? extra.filter(u => extraAccounts || u.id === user.account_id) : [])].map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.label}
             </option>
           ))}
         </select>
       </label>
+      {mode === 'live' && <label className="mb-4 flex items-center gap-2 px-2 text-xs text-text-secondary">
+        <input type="checkbox" checked={extraAccounts} onChange={e => setExtraAccounts(e.target.checked)} />
+        Дополнительные участники
+      </label>}
 
       <nav aria-label="Основная навигация" className="flex-1 space-y-1">
         {nav.map((item) => {
@@ -127,7 +145,12 @@ export function AppShell({
         </p>
       </div>
 
-      <div className="mt-4 px-2">
+      {import.meta.env.VITE_DATA_MODE === 'live' ? (
+        <div className="mt-4 px-2 text-xs text-text-secondary">
+          <p className="font-medium">Учебный стенд</p>
+          <p className="mt-1">Данные и проверки синтетические. AI работает offline.</p>
+        </div>
+      ) : <div className="mt-4 px-2">
         <span className="mb-1 block text-xs text-text-secondary">Источник данных</span>
         <div className="flex flex-wrap gap-1" role="group" aria-label="Источник данных">
           {(['fixtures', 'live'] as const).map((m) => (
@@ -144,7 +167,7 @@ export function AppShell({
             </button>
           ))}
         </div>
-      </div>
+      </div>}
 
       {mode === 'fixtures' && (
         <div className="mt-4 px-2">

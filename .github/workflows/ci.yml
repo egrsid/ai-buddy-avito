@@ -129,7 +129,25 @@ jobs:
           make migrate seed
           make verify-db smoke
       - run: python3 -m scripts.demo ai-db-test --project ai-buddy-demo-ci
-      - run: python3 -m scripts.demo api-test --project ai-buddy-demo-ci
+      - uses: actions/setup-node@v4
+        with: {node-version-file: .nvmrc}
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - name: Full browser loop, restart and QA API isolation
+        run: npx playwright test --workers=1
+        working-directory: frontend
+        env:
+          E2E_BASE_URL: http://localhost:15173
+          DEMO_PROJECT: ai-buddy-demo-ci
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: demo-browser-evidence
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
       - if: failure()
         run: docker compose logs --no-color
       - if: always()

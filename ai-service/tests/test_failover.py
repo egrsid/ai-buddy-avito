@@ -301,6 +301,21 @@ def test_offline_text_drops_mock_prefix_and_cuts_at_sentence(monkeypatch):
     monkeypatch.setattr(failover, "mock_answer", lambda _: MOCK_PREFIX + "Короткая фраза. " * 200)
     cut = offline_text(llm_input)
     assert len(cut) <= OFFLINE_LIMIT and cut.endswith("фраза.")
-    monkeypatch.setattr(failover, "mock_answer", lambda _: "слово " * 400)
+    monkeypatch.setattr(failover, "mock_answer", lambda _: "слово " * 600)
     cut = offline_text(llm_input)
     assert len(cut) <= OFFLINE_LIMIT + 1 and cut.endswith("слово…")
+
+
+def test_offline_text_keeps_whole_paragraphs(monkeypatch):
+    import app.failover as failover
+    from app.prompt import LlmInput
+
+    llm_input = LlmInput([], generate_request(), [])
+    paragraphs = []
+    for index in range(20):
+        paragraphs.append(f"- [Документ {index}](/api/v2/knowledge/{index})" + " x" * 200)
+    monkeypatch.setattr(failover, "mock_answer", lambda _: MOCK_PREFIX + "\n\n".join(paragraphs))
+    cut = offline_text(llm_input)
+    assert len(cut) <= OFFLINE_LIMIT
+    # Ссылки не рвутся: каждый абзац ответа — целый абзац из шаблона.
+    assert all(part in paragraphs for part in cut.split("\n\n"))

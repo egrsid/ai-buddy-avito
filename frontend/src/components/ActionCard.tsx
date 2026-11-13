@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react';
 import type { Action } from '../fixtures/all-states';
+import type { Escalation } from '../fixtures/all-states';
 import { Card, Button } from './ui';
 import { ActionStatusBadge } from './StatusBadge';
 
@@ -57,10 +58,14 @@ export function ActionCard({
         {previewLines(action).map(([k, v]) => (
           <div key={k} className="flex gap-2">
             <dt className="w-36 shrink-0 text-text-secondary">{k}</dt>
-            <dd>{v}</dd>
+            <dd className="min-w-0 break-words">{v}</dd>
           </div>
         ))}
       </dl>
+
+      {action.type === 'escalate_to_buddy' && (
+        <DiagnosticPreview snapshot={(action.preview as { diagnostic_snapshot: Escalation['diagnostic_snapshot'] }).diagnostic_snapshot} />
+      )}
 
       {action.status === 'pending_confirmation' && (
         <>
@@ -114,5 +119,25 @@ export function ActionCard({
         <p className="text-sm text-text-secondary">Действие отменено и не выполнялось.</p>
       )}
     </Card>
+  );
+}
+
+function DiagnosticPreview({ snapshot: s }: { snapshot: Escalation['diagnostic_snapshot'] }) {
+  return (
+    <details className="mb-4 rounded-xl border border-border p-3" open>
+      <summary className="cursor-pointer text-sm font-medium">Диагностика для наставника</summary>
+      <div className="mt-3 space-y-2 text-sm">
+        <p>Блокер: {s.blocker.error_code} · {s.blocker.type}</p>
+        <p>Проверки:</p>
+        <ul>{s.checks.map(c => <li key={c.id}>{c.method}: {c.status}{c.error_code ? ` · ${c.error_code}` : ''}</li>)}</ul>
+        <p>Действия:</p>
+        <ul>{s.attempted_actions.map((a, i) => <li key={i}>{a.type}: {a.status}</li>)}</ul>
+        <p>Разрешённые инструкции:</p>
+        <ul>{s.instruction_refs.map(ref => <li key={ref.document_id}>{ref.title} · версия {ref.version}<p className="text-text-secondary">{ref.excerpt}</p></li>)}</ul>
+        <p>Гипотезы AI (не доказательство):</p>
+        <ul>{s.hypotheses.map((h, i) => <li key={i}>{h.text} · уверенность {h.confidence}</li>)}</ul>
+        <p className="text-xs text-text-secondary">Передаётся только этот снимок. Вся история чата наставнику не отправляется.</p>
+      </div>
+    </details>
   );
 }
