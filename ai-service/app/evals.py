@@ -17,7 +17,7 @@ from pathlib import Path
 
 from app import operations
 from app.config import Settings
-from app.contracts import COMMON_SCHEMA_ID, is_valid
+from app.contracts import AI_V3_SCHEMA_ID, COMMON_SCHEMA_ID, is_valid
 from app.drafts import access_request_draft
 from app.generate import run_generate
 from app.knowledge import load_corpus
@@ -295,9 +295,14 @@ def schema_failures(case: dict, outcome: Outcome) -> list[str]:
             "generation.completed": "GenerationCompletedEvent",
             "run.failed": "RunFailedEvent",
         }
-        bad = [
-            name for name, payload in outcome.result["events"] if not is_valid(names[name], payload)
-        ]
+        bad = []
+        for name, payload in outcome.result["events"]:
+            if name == "response.origin":
+                valid = is_valid("ResponseOriginEvent", payload, AI_V3_SCHEMA_ID)
+            else:
+                valid = is_valid(names[name], payload)
+            if not valid:
+                bad.append(name)
         return [f"событие {name} не по схеме" for name in bad]
     if outcome.result is None:
         return []

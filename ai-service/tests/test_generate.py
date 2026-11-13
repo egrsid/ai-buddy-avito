@@ -10,8 +10,8 @@ from ai_test_support import (
     knowledge,
     make_settings,
 )
-from app.contracts import is_valid
-from app.generate import run_generate
+from app.contracts import AI_V3_SCHEMA_ID, is_valid
+from app.generate import response_origin, run_generate
 from app.mock_provider import MockProvider
 
 PAYLOADS = {
@@ -57,11 +57,16 @@ def test_normal_stream_order_ids_and_schema():
     items = run(MockProvider(0.0))
     order = names(items)
     assert order[0] == "run.started"
-    assert order[-2:] == ["message.sources", "generation.completed"]
-    assert set(order[1:-2]) == {"message.delta"}
+    assert order[-3:] == ["response.origin", "message.sources", "generation.completed"]
+    assert set(order[1:-3]) == {"message.delta"}
     assert [item["id"] for item in events(items)] == list(range(1, len(order) + 1))
     for item in events(items):
-        assert is_valid(PAYLOADS[item["event"]], item["data"]), item
+        if item["event"] == "response.origin":
+            assert is_valid("ResponseOriginEvent", item["data"], AI_V3_SCHEMA_ID), item
+            # Режим mock честно назван mock, а не «ответом ИИ».
+            assert item["data"]["origin"]["mode"] == "mock"
+        else:
+            assert is_valid(PAYLOADS[item["event"]], item["data"]), item
         assert item["data"]["run_id"] == generate_request()["run_id"]
 
 
@@ -106,6 +111,7 @@ def test_slow_first_chunk_within_limit_is_fine():
     assert names(items) == [
         "run.started",
         "message.delta",
+        "response.origin",
         "message.sources",
         "generation.completed",
     ]
@@ -287,3 +293,19 @@ def test_query_embeddings_off_skips_question_vector():
         items = collect(stream)
         assert events(items)[-1]["event"] == "generation.completed"
         assert len(embedder.calls) == expected_calls
+
+
+class OriginStream:
+    def origin(self):
+        return {"mode": "live", "answered_by": "secondary", "completion": "complete"}
+
+
+def test_response_origin_comes_from_the_live_stream():
+    live = make_settings(llm_mode="live")
+    assert response_origin(live, OriginStream())["answered_by"] == "secondary"
+    # Провайдер без учёта резервов (например, одна модель Ollama) — значит, ответила основная.
+    assert response_origin(live, object()) == {
+        "mode": "live",
+        "answered_by": "primary",
+        "completion": "complete",
+    }

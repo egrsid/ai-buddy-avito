@@ -1,7 +1,8 @@
 """Пайплайн POST /internal/v2/generate: поток SSE-событий для одного run.
 
-Порядок: run.started -> message.delta* -> message.sources -> 0..1 tool.proposed ->
-generation.completed. При сбое провайдера вместо конца — run.failed.
+Порядок: run.started -> message.delta* -> response.origin (v3: кто ответил) ->
+message.sources -> 0..1 tool.proposed -> generation.completed. При сбое провайдера вместо
+конца — run.failed.
 
 Таймеры (монотонные часы):
 - первый непустой кусок текста — не позже first_token_timeout после старта;
@@ -158,6 +159,8 @@ async def run_generate(
     if too_late():
         yield timeout_event()
         return
+    # Кто на самом деле ответил: Go сохраняет это и показывает стажёру, не угадывая по тексту.
+    yield event("response.origin", {"run_id": run_id, "origin": response_origin(settings, chunks)})
     # Перед выдачей ещё раз проверяем права на каждый источник.
     sources = []
     for hit in hits:
@@ -176,3 +179,16 @@ async def run_generate(
         yield timeout_event()
         return
     yield event("generation.completed", {"run_id": run_id})
+
+
+def response_origin(settings: Settings, chunks) -> dict:
+    if settings.llm_mode != "live":
+        return {
+            "mode": "mock",
+            "answered_by": "offline",
+            "completion": "complete",
+            "reason_code": "config_mock",
+        }
+    if hasattr(chunks, "origin"):
+        return chunks.origin()
+    return {"mode": "live", "answered_by": "primary", "completion": "complete"}

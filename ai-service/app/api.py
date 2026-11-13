@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from app import operations
 from app.config import Settings
-from app.contracts import error_fields
+from app.contracts import AI_SCHEMA_ID, AI_V3_SCHEMA_ID, error_fields
 from app.drafts import access_request_draft
 from app.errors import ApiError, error_response
 from app.generate import run_generate
@@ -26,9 +26,11 @@ from app.request_checks import (
     read_scope_header,
 )
 from app.retrieval import KnowledgeBase, source_for
+from app.task_clarity import task_clarity_draft
 from app.vectors import embed_query
 
 PREFIX = "/internal/v2"
+PREFIX_V3 = "/internal/v3"
 HEALTH = {"status": "ok", "service": "ai-service"}
 TIMEOUT_MESSAGE = "Модель не ответила вовремя"
 # Ответ не прошёл свою схему. Отдельного кода в контракте нет: для Go это сбой AI,
@@ -42,9 +44,11 @@ def json_response(content: dict, request_id: str) -> JSONResponse:
     return JSONResponse(content=content, headers={"X-Request-ID": request_id})
 
 
-def check_response(definition: str, result: dict, request_id: str) -> None:
+def check_response(
+    definition: str, result: dict, request_id: str, schema_id: str = AI_SCHEMA_ID
+) -> None:
     """Перед 200 сверяем свой ответ со схемой: невалидное наружу не уходит."""
-    fields = error_fields(definition, result)
+    fields = error_fields(definition, result, schema_id)
     if fields:
         # В лог — только имена полей и правила, без значений.
         logger.error("Ответ %s не прошёл схему: %s", definition, fields)
@@ -189,6 +193,7 @@ def create_app(
         definition: str,
         response_definition: str,
         handler: Callable[[dict], Awaitable[dict | None]],
+        schema_id: str = AI_SCHEMA_ID,
     ):
         """Общий путь непотоковой операции.
 
@@ -196,7 +201,7 @@ def create_app(
         handler вернул None — разрешённых данных нет, это 404.
         """
         accepted = time.monotonic()
-        request_id, body = await read_internal_request(request, settings, definition)
+        request_id, body = await read_internal_request(request, settings, definition, schema_id)
         raise_for_scenario(mock_scenario(request, settings, request_id), request_id)
 
         def work():
@@ -205,7 +210,7 @@ def create_app(
         result = await within_budget(work, accepted, settings.pipeline_timeout, request_id)
         if result is None:
             raise ApiError(404, "NOT_FOUND", "Нет доступных данных", request_id)
-        check_response(response_definition, result, request_id)
+        check_response(response_definition, result, request_id, schema_id)
         return json_response(result, request_id)
 
     async def select_journey(body: dict) -> dict:
@@ -262,6 +267,19 @@ def create_app(
     async def knowledge_gap(request: Request):
         return await structured(
             request, "KnowledgeGapDraftRequest", "KnowledgeGapDraftResponse", draft_knowledge_gap
+        )
+
+    async def draft_task_clarity(body: dict) -> dict:
+        return await task_clarity_draft(body, provider, settings)
+
+    @app.post(f"{PREFIX_V3}/task-clarity-draft")
+    async def task_clarity(request: Request):
+        return await structured(
+            request,
+            "TaskClarityDraftRequest",
+            "TaskClarityDraftResponse",
+            draft_task_clarity,
+            AI_V3_SCHEMA_ID,
         )
 
     @app.post(f"{PREFIX}/knowledge/search")

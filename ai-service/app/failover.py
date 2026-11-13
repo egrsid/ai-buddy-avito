@@ -84,6 +84,10 @@ class FailoverStream:
         self.settings = settings
         self.degraded = False
         self.offline_fallback = False
+        # Происхождение ответа для Go: кто ответил, полный ли ответ, первая причина перехода.
+        self.answered_by = "primary"
+        self.completion = "complete"
+        self.reason_code = None
         now = owner.clock()
         reserve = min(1.0, settings.pipeline_timeout / 10)
         self.pipeline_deadline = now + settings.pipeline_timeout - reserve
@@ -101,6 +105,17 @@ class FailoverStream:
     async def aclose(self):
         await self.iterator.aclose()
 
+    def _note(self, reason: str) -> None:
+        # Запоминаем первую причину: именно она увела ответ с основной модели.
+        if self.reason_code is None:
+            self.reason_code = reason
+
+    def origin(self) -> dict:
+        origin = {"mode": "live", "answered_by": self.answered_by, "completion": self.completion}
+        if self.reason_code is not None and self.answered_by != "primary":
+            origin["reason_code"] = self.reason_code
+        return origin
+
     async def _run(self) -> AsyncIterator[str]:
         clock = self.owner.clock
         # Leave time for retrieval and offline text inside the existing first-token
@@ -111,6 +126,7 @@ class FailoverStream:
         for index, provider in enumerate(self.providers):
             if not self.owner.is_available(index):
                 self.degraded = True
+                self._note("cooldown")
                 continue
             name = model_name(provider, index)
             chunks = provider.stream(self.llm_input, self.scenario)
@@ -138,6 +154,7 @@ class FailoverStream:
                         continue
                     if not started:
                         started = True
+                        self.answered_by = "primary" if index == 0 else "secondary"
                         if self.degraded:
                             yield NOTICE + RESERVE_NOTICE
                     # Go permits 4000 characters per message: длинный ответ обрезаем,
@@ -151,9 +168,11 @@ class FailoverStream:
                     yield text
             except (BudgetDenied, BudgetUnavailable):
                 budget_denied = True
+                self._note("budget_denied")
                 logger.warning("LLM %s: платный вызов запрещён журналом расходов", name)
             except (ProviderUnavailable, TimeoutError) as error:
                 self.owner.mark_failed(index)
+                self._note("timeout" if isinstance(error, TimeoutError) else "model_unavailable")
                 logger.warning(
                     "LLM %s не ответила (%s), пропускаем её %.0f с",
                     name,
@@ -165,12 +184,14 @@ class FailoverStream:
             self.degraded = True
             if started:
                 # Начало ответа уже в чате: другую модель не зовём, только помечаем обрыв.
+                self.completion = "interrupted"
                 yield INTERRUPTED
                 return
             if budget_denied or clock() >= self.pipeline_deadline:
                 # A budget refusal cannot be bypassed with another paid model.
                 break
         self.offline_fallback = True
+        self.answered_by = "offline"
         logger.warning("Все LLM недоступны: отвечаем шаблоном без LLM")
         yield NOTICE + OFFLINE_NOTICE
         yield offline_text(self.llm_input)

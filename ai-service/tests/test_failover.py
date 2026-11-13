@@ -355,3 +355,39 @@ def test_offline_text_keeps_whole_paragraphs(monkeypatch):
     assert len(cut) <= OFFLINE_LIMIT
     # Ссылки не рвутся: каждый абзац ответа — целый абзац из шаблона.
     assert all(part in paragraphs for part in cut.split("\n\n"))
+
+
+def origin_of(items):
+    return next(i["data"]["origin"] for i in items if i["event"] == "response.origin")
+
+
+def test_response_origin_names_the_model_that_actually_answered():
+    live = {"llm_mode": "live"}
+    primary = run(Scripted(["Ответ"]), Scripted(["x"]), **live)
+    expected = {"mode": "live", "answered_by": "primary", "completion": "complete"}
+    assert origin_of(primary) == expected
+    reserve = run(Scripted(error=ProviderUnavailable()), Scripted(["Резерв"]), **live)
+    assert origin_of(reserve) == {
+        "mode": "live",
+        "answered_by": "secondary",
+        "completion": "complete",
+        "reason_code": "model_unavailable",
+    }
+    slow = run(Scripted(hang=True), Scripted(["Резерв"]), **live)
+    assert origin_of(slow)["reason_code"] == "timeout"
+    down = run(Scripted(error=ProviderUnavailable()), Scripted(error=ProviderUnavailable()), **live)
+    assert origin_of(down)["answered_by"] == "offline"
+    budget = run(Scripted(error=BudgetDenied()), Scripted(), **live)
+    assert origin_of(budget)["reason_code"] == "budget_denied"
+    cut = run(Scripted(["Частичный"], error=ProviderUnavailable()), Scripted(), **live)
+    assert origin_of(cut) == {"mode": "live", "answered_by": "primary", "completion": "interrupted"}
+
+
+def test_response_origin_reports_cooldown_skip():
+    settings = make_settings(llm_mode="live")
+    primary, secondary = Scripted(error=ProviderUnavailable()), Scripted(["Резерв"])
+    provider = FailoverProvider(settings, (primary, secondary))
+    collect(run_generate(generate_request(), provider, knowledge(), settings))
+    again = events(collect(run_generate(generate_request(), provider, knowledge(), settings)))
+    assert origin_of(again)["reason_code"] == "cooldown"
+    assert primary.calls == 1
