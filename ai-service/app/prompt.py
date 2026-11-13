@@ -80,19 +80,34 @@ class LlmInput:
     hits: list[Hit]
 
 
+# Действия так, как их видит стажёр на кнопках UI. Модель видит только эти названия,
+# иначе она пересказывает технические id (retry_check) вместо «Повторить проверку».
+ACTION_LABELS = {
+    "retry_check": "«Повторить проверку»",
+    "create_access_request": "«Запросить доступ» (заявка на доступ)",
+    "escalate_to_buddy": "«Спросить наставника» (передать вопрос buddy)",
+}
+
+
+def action_labels(actions: list[str]) -> str:
+    return ", ".join(ACTION_LABELS.get(action, action) for action in actions) or "нет"
+
+
 def goal_summary(goal_context: dict) -> str:
+    """Контекст цели словами: названия шагов и действий вместо их id."""
+    titles = {step["id"]: step["title"] for step in goal_context["steps"]}
+    current = goal_context["current_step_id"]
     lines = [
         f"Маршрут: {goal_context['journey_id']} v{goal_context['journey_version']}",
         f"Ресурс: {goal_context['resource_id']}",
         f"Статус цели: {goal_context['status']}",
-        f"Текущий шаг: {goal_context['current_step_id']}",
+        f"Текущий шаг: «{titles.get(current, current)}»",
     ]
     for step in goal_context["steps"]:
-        lines.append(f"- шаг {step['id']} «{step['title']}»: {step['status']}")
+        lines.append(f"- шаг «{step['title']}»: {step['status']}")
         for blocker in step["blockers"]:
             lines.append(f"  блокер {blocker['error_code']} ({blocker['status']})")
-    actions = ", ".join(goal_context["next_actions"]) or "нет"
-    lines.append(f"Допустимые действия: {actions}")
+    lines.append(f"Допустимые действия: {action_labels(goal_context['next_actions'])}")
     return "\n".join(lines)
 
 

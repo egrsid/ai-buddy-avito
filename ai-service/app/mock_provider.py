@@ -10,7 +10,7 @@ import asyncio
 import re
 from collections.abc import AsyncIterator
 
-from app.prompt import LlmInput, goal_summary, last_user_message
+from app.prompt import LlmInput, action_labels, goal_summary, last_user_message
 from app.redaction import redact
 
 WORDS_PER_CHUNK = 3
@@ -45,6 +45,9 @@ def unknown_terms(llm_input: LlmInput) -> list[str]:
     goal_context = llm_input.request.get("goal_context")
     if goal_context is not None:
         known_parts.append(goal_summary(goal_context).lower())
+        # id шагов и действий в сводке заменены словами, но система их знает.
+        known_parts.extend(step["id"].lower() for step in goal_context["steps"])
+        known_parts.extend(goal_context["next_actions"])
     known_text = " ".join(known_parts)
     # Сначала вычищаем секреты и убираем ссылки/DSN: их нельзя повторять в ответе.
     question = re.sub(r"\S+://\S+", " ", redact(last_user_message(llm_input.request)))
@@ -66,7 +69,7 @@ def goal_part(goal_context: dict) -> list[str]:
             if blocker["status"] == "open":
                 parts.append(f"На шаге открыт блокер {blocker['error_code']}.")
     if goal_context["next_actions"]:
-        actions = ", ".join(goal_context["next_actions"])
+        actions = action_labels(goal_context["next_actions"])
         parts.append(f"Допустимые следующие действия: {actions}.")
     return parts
 
