@@ -10,7 +10,7 @@ import asyncio
 import re
 from collections.abc import AsyncIterator
 
-from app.prompt import LlmInput, goal_summary, last_user_message
+from app.prompt import LlmInput, action_labels, goal_summary, last_user_message
 from app.redaction import redact
 
 WORDS_PER_CHUNK = 3
@@ -45,6 +45,9 @@ def unknown_terms(llm_input: LlmInput) -> list[str]:
     goal_context = llm_input.request.get("goal_context")
     if goal_context is not None:
         known_parts.append(goal_summary(goal_context).lower())
+        # id шагов и действий в сводке заменены словами, но система их знает.
+        known_parts.extend(step["id"].lower() for step in goal_context["steps"])
+        known_parts.extend(goal_context["next_actions"])
     known_text = " ".join(known_parts)
     # Сначала вычищаем секреты и убираем ссылки/DSN: их нельзя повторять в ответе.
     question = re.sub(r"\S+://\S+", " ", redact(last_user_message(llm_input.request)))
@@ -84,9 +87,10 @@ def goal_part(goal_context: dict) -> list[str]:
         parts.append("### Что делать дальше")
         number = 1
         for action in actions:
-            if action in guidance:
-                parts.append(f"{number}. {guidance[action]}")
-                number += 1
+            # Действие без готовой подсказки всё равно называем словами, а не id.
+            text = guidance.get(action) or f"Доступно действие {action_labels([action])}."
+            parts.append(f"{number}. {text}")
+            number += 1
     return parts
 
 

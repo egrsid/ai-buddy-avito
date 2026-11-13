@@ -8,6 +8,17 @@ BE/FE branches/refs не менялись; исходный RP-QA-01 сохра�
 Историческое ограничение QA только двумя smoke ниже этим новым поручением расширено.
 
 
+## RP-INTEGRATION-01 · последняя поставка AI/FE · 13 ноября
+
+Remote AI 25ac58f и FE c814283 сопоставлены с owner d9792ce. AI resilience/prompt/query
+embedding delta и совместимые FE tests/fixtures включены в TL; роли/Markdown/встроенный
+чат сохранены. Backend/QA refs не менялись. AI 453/99.71%, FE 484/94.62%, shared 57 PASS.
+Browser нашёл и регрессионно покрыт check/version race: controls disabled до свежего GET step.
+Report live AI предъявлен (13/13 automated), но не заменяет manual quality/final consumer
+review и не является повторным paid прогоном TL. Матрица решений и remaining gates:
+[TL record](tl-readiness.md), [ветки](branches.md).
+
+
 ## RP-DEMO-UX-01 · замечания владельца · 13 ноября
 
 DONE локально в TL: читаемые Markdown-инструкции и ответы AI со ссылками;

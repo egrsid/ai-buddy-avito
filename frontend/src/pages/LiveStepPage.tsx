@@ -36,8 +36,13 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
   const [action, setAction] = useState<Action | null>(null);
   const [drawerDoc, setDrawerDoc] = useState<KnowledgeDocumentT | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [checkPending, setCheckPending] = useState(false);
   const [sslMode, setSslMode] = useState<'disable' | 'require'>('disable');
   const [reason, setReason] = useState('Нужен доступ к синтетической БД команды A.');
+
+  // Keep recovery controls locked until GET step supplies the new version,
+  // not merely until POST checks returns. Otherwise the next click uses stale data.
+  useEffect(() => { setCheckPending(false); }, [step.data]);
 
   // Опрос executing/unknown действия до терминального статуса.
   useEffect(() => {
@@ -64,6 +69,8 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
   };
 
   const runCheck = async () => {
+    if (checkPending) return;
+    setCheckPending(true);
     setNotice(null);
     try {
       await createCheck(goalId, stepId, {
@@ -73,6 +80,7 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
       });
       step.refetch();
     } catch (e) {
+      setCheckPending(false);
       setNotice(userMessage(e, 'Проверка не запустилась.'));
     }
   };
@@ -207,7 +215,7 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
                       className="mt-1 w-full rounded-xl border border-border px-3 py-2"
                     />
                   </label>
-                  <Button onClick={requestAccess}>Запросить доступ</Button>
+                  <Button onClick={requestAccess} disabled={checkPending}>Запросить доступ</Button>
                 </div>
               )}
               {s.verification_method === 'mock_db_connection' && blocker.recovery_actions.includes('retry_check') && s.available_actions.includes('retry_check') && (
@@ -215,6 +223,7 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
                   SSL
                   <select
                     aria-label="Режим SSL"
+                    disabled={checkPending}
                     value={sslMode}
                     onChange={(event) => setSslMode(event.target.value as 'disable' | 'require')}
                     className="ml-2 rounded-xl border border-border px-2 py-2"
@@ -225,12 +234,12 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
                 </label>
               )}
               {blocker.recovery_actions.includes('retry_check') && s.available_actions.includes('retry_check') && (
-                <Button variant="secondary" onClick={runCheck}>
+                <Button variant="secondary" onClick={runCheck} disabled={checkPending}>
                   <RefreshCw size={16} className="mr-1 inline" aria-hidden /> Повторить проверку
                 </Button>
               )}
               {blocker.recovery_actions.includes('escalate_to_buddy') && s.available_actions.includes('escalate_to_buddy') && (
-                <Button variant="secondary" onClick={escalate}>
+                <Button variant="secondary" onClick={escalate} disabled={checkPending}>
                   <MessageSquareWarning size={16} className="mr-1 inline" aria-hidden /> Спросить наставника
                 </Button>
               )}
@@ -248,6 +257,7 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
                 SSL
                 <select
                   aria-label="Режим SSL"
+                  disabled={checkPending}
                   value={sslMode}
                   onChange={(event) => setSslMode(event.target.value as 'disable' | 'require')}
                   className="ml-2 rounded-xl border border-border px-2 py-2"
@@ -257,7 +267,7 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
                 </select>
               </label>
             )}
-            <Button onClick={runCheck}>
+            <Button onClick={runCheck} disabled={checkPending}>
               <FlaskConical size={16} className="mr-1 inline" aria-hidden /> Запустить проверку
             </Button>
           </Card>

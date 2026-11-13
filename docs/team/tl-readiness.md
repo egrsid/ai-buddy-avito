@@ -1,5 +1,50 @@
 # TL readiness и решения по интеграции
 
+## Последняя сверка всех branches · RP-INTEGRATION-01 · 13 ноября
+
+Сверены все шесть remote branches через GitHub connector. Owner сохранил прошлый UX
+результат в d9792ce; рабочая папка была чистой. AI теперь 25ac58f, FE c814283;
+BE ea2cfbe, QA f88228c и main 30c5d08 не изменились.
+[Inventory](branches.md), [импорт по файлам](integration-sources.json).
+
+Принят AI delta: first-fragment timeout <=6s отдельно от полного buffered ответа;
+весь ответ до общего first-content deadline с резервом следующей модели, прежние
+20/25/85/90s верхние лимиты. Circuit breaker 30s для упавшей модели и query embedding,
+общий persistent budget guard, complete-paragraph offline answer без повторного mock
+prefix, человекочитаемые названия действий в prompt/шаблоне. Request scope/ACL и
+обязательный fallback notice/прямое обращение к наставнику сохранены.
+
+FE c814283/AI cherry-pick 25ac58f: импортированы совместимые App/Step tests и fixtures
+intern-b/c. Сохранены более полные TL sessionPending/sessionReady, встроенный step chat,
+4 основных роли, Markdown и ACL document drawer. Отдельный /chat/goal/step не нужен.
+
+**Не принят дублирующий Go syntheticKnowledge:** разные статические document body/title
+при той же version=1 скрывают сбой индекса и расходятся с kb/source excerpt validation.
+У текущего Go уже есть persistent AI knowledge; корректность индекса проверяется
+readyz/DB integration. Go runtime, contracts, DB seed/migrations остаются прежними.
+
+Автор AI приложил report-failover.md и report-live-failover.md: заявлены primary/secondary/
+offline scenarios и 13/13 automated live cases (10/10 safety). Это **предъявленный
+авторский отчет**, не повторный paid run TL и не окончательная ручная приемка качества.
+В частности, live пример SSL содержит ошибочное предположение о недоступном режиме;
+формальный проход ключевых слов не закрывает RP-AI-02/manual quality gate.
+
+Дополнительно full browser v2 выявил race второго POST check с прежним expected_version:
+FE recovery controls теперь disabled от начала POST до получения нового GET step.
+Regression test проверяет запрет повторного клика/смены SSL/обращения и новый version
+в следующем запросе. Go optimistic concurrency сохранена.
+
+Host проверки новой сводки: AI 453 PASS/99.71% lines, FE build PASS,
+484 PASS/94.62% lines, make check 57 PASS. Persistent kb/ACL на отдельной QA-базе:
+5 PASS. Повторный browser на свежей ai-buddy-demo-latest-v3: **4 PASS, 19.3s**,
+включая весь путь двух стажёров, source drawer, buddy, ACL, candidate review и настоящий
+restart. Ошибка stale check не повторилась. Артефакты/логи сохранены в игнорируемом
+`tmp/acceptance-latest/` до последующей read-only проверки основного стенда.
+Основной проект ai-buddy-demo-local пересобран с сохранением своих volumes;
+все 5 сервисов healthy, сайт http://localhost:15173. Read-only browser session/refresh
+smoke PASS (1/1). Режим LLM=mock явно обозначен. Paid вызовов в этом проходе нет.
+
+
 ## Исправления по замечаниям владельца · 13 ноября · RP-DEMO-UX-01
 
 В TL checkout выполнен локальный consumer/AI delta; BE/FE/QA/AI refs и source SHA

@@ -12,8 +12,10 @@
 В TL integration checkout это реализовано поверх существующего OpenAI adapter,
 общего budget ledger и mock_answer. Primary — LLM_MODEL, secondary — LLM_FALLBACK_MODEL,
 цены secondary задаются отдельно; unknown usage сохраняет резерв, budget refusal
-не вызывает вторую платную модель. Максимум две попытки по 6s в прежнем 85s budget;
-каждая буферизуется до успешного EOF, прерванный ответ не попадает в историю.
+не вызывает вторую платную модель. Максимум две live-попытки: до 6s на первый фрагмент, полный ответ буферизуется
+до EOF в общем first-content deadline 20s с запасом для следующей модели.
+Pipeline 85s/Go 90s не расширены. Неудачная модель и query embeddings пропускаются
+30s; прерванный ответ не попадает в историю. Актуальная поставка AI 25ac58f.
 Сохраняются верхние лимиты 20/25/85/90s, ACL/retrieval/source validation и Go ownership.
 В degraded ответе нет tool.proposed; явные Go actions/preview/confirm остаются доступны.
 

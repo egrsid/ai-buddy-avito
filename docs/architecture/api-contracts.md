@@ -46,7 +46,7 @@ IDs действуют и после истечения replay TTL. После 2
 | GET /goals | — | GoalList={items:Goal[]} только свои, с полными steps |
 | GET /goals/{id} | — | Goal со steps/progress |
 | GET /goals/{id}/steps/{step_id} | — | Step, evidence, blockers, safe next action |
-| GET /goals/{id}/steps/{step_id}/actions | — | StepActionList={items:RecoveryAction[]}; тот же allowlist, что Step.available_actions; schema addition ожидается от BE |
+| GET /goals/{id}/steps/{step_id}/actions | — | StepActionList={items:RecoveryAction[]}; тот же allowlist, что Step.available_actions |
 | POST /goals/{id}/steps/{step_id}/checks | {method,options,expected_version} | 201 Check, выполнение trusted adapter; 409 при старой версии |
 | GET /checks/{id} | — | Только свой безопасный Check, без инфраструктурных секретов |
 | GET /resources | — | Разрешённые safe resource metadata и requestable_roles |

@@ -286,9 +286,9 @@
     },
     {
       "path": "ai-service/app/generate.py",
-      "source": "aa6ff38d6dbb77ec427991913152cd6b10e311bf",
-      "sha256": "3c159aa86b0957b366ef1d6669d21d63474f4b7fa921dcaf48ae2b11600d8d9d",
-      "locally_modified": true
+      "source": "25ac58f91efec6f551d24dd59820a59f5dcdf56a",
+      "sha256": "335498cebcced01f51b437e4c6497d6856ce9effc5a1820f4e9faa21af92a250",
+      "locally_modified": false
     },
     {
       "path": "ai-service/app/ingest.py",
@@ -322,9 +322,9 @@
     },
     {
       "path": "ai-service/app/mock_provider.py",
-      "source": "aa6ff38d6dbb77ec427991913152cd6b10e311bf",
-      "sha256": "e34fe289dd78bedf66f1f781dbbb5303f35d69973f2d47c020c893dd61e0062b",
-      "locally_modified": true
+      "source": "25ac58f91efec6f551d24dd59820a59f5dcdf56a",
+      "sha256": "480ef3e61a23309d2385a4ff8f72329045cf46b8beae439213e176b09f2a8f84",
+      "locally_modified": false
     },
     {
       "path": "ai-service/app/ollama_provider.py",
@@ -346,9 +346,9 @@
     },
     {
       "path": "ai-service/app/prompt.py",
-      "source": "aa6ff38d6dbb77ec427991913152cd6b10e311bf",
-      "sha256": "9c1deeb04dacb7129602e42317a90a733f79848ead172e37edc33e34feda98e3",
-      "locally_modified": true
+      "source": "25ac58f91efec6f551d24dd59820a59f5dcdf56a",
+      "sha256": "6e69450d6ad7dffe2738fef9bd551a5226ac590e6f117f10d6eb132c6f904ee4",
+      "locally_modified": false
     },
     {
       "path": "ai-service/app/redaction.py",
@@ -388,15 +388,15 @@
     },
     {
       "path": "ai-service/app/vectors.py",
-      "source": "aa6ff38d6dbb77ec427991913152cd6b10e311bf",
-      "sha256": "744791e1feb844eaaec3b716e17257e32c7e91ede651cd9b3699da51a74aa134",
+      "source": "25ac58f91efec6f551d24dd59820a59f5dcdf56a",
+      "sha256": "46a7708fed3d0e0ba00c5e72fa7621c2adeb0bfa79aa89d896fe982c84ef4baa",
       "locally_modified": false
     },
     {
       "path": "ai-service/evals/cases.json",
-      "source": "aa6ff38d6dbb77ec427991913152cd6b10e311bf",
-      "sha256": "9660f5e0c3fb7b2442844263ab82303bc17a4953a15387778a0173f156d7a9fb",
-      "locally_modified": true
+      "source": "25ac58f91efec6f551d24dd59820a59f5dcdf56a",
+      "sha256": "ac1e50051345634aafa777009b90d4c9d67a9e3321570e3cf4001469d92b6111",
+      "locally_modified": false
     },
     {
       "path": "ai-service/evals/report-live-gigachat.md",
@@ -508,8 +508,8 @@
     },
     {
       "path": "ai-service/tests/test_embeddings.py",
-      "source": "aa6ff38d6dbb77ec427991913152cd6b10e311bf",
-      "sha256": "c1785b6e589fb58782d971b8d91cfbdbf9141853f947cdada3de80b48f59a46e",
+      "source": "25ac58f91efec6f551d24dd59820a59f5dcdf56a",
+      "sha256": "ca8a9d46720eb691342878ffe3eb8679ab731c895c2449ad1b866d6322fc9705",
       "locally_modified": false
     },
     {
@@ -580,8 +580,8 @@
     },
     {
       "path": "ai-service/tests/test_operations.py",
-      "source": "aa6ff38d6dbb77ec427991913152cd6b10e311bf",
-      "sha256": "1b635dc9dc5637c3fbe74c3bfee94fd6eb9d97973a536979806189bfdad7269a",
+      "source": "25ac58f91efec6f551d24dd59820a59f5dcdf56a",
+      "sha256": "9b351e58c6d42664135262e6f6be214c00e8884604e59f82d63feb3611a89cd3",
       "locally_modified": false
     },
     {
@@ -676,8 +676,8 @@
     },
     {
       "path": "frontend/src/App.test.tsx",
-      "source": "3ea1d019081e836b9628084183174740c7caa5d9",
-      "sha256": "30ff8f2be86c58a2fe0ea5cc07e1f2d29f94c1c6974f4b876656876c6e135ead",
+      "source": "25ac58f91efec6f551d24dd59820a59f5dcdf56a",
+      "sha256": "821b9e0ab91a96b4bde6798546c806bb96cccf6c9556b14f7871d148c9f4442a",
       "locally_modified": false
     },
     {
@@ -766,8 +766,8 @@
     },
     {
       "path": "frontend/src/fixtures/all-states.ts",
-      "source": "3ea1d019081e836b9628084183174740c7caa5d9",
-      "sha256": "a690febfc6b7a370f6c9e9bfbd74defcd6ec016d035c2cebcf444574bd0640fd",
+      "source": "25ac58f91efec6f551d24dd59820a59f5dcdf56a",
+      "sha256": "4ab1acf132dbe44ca0e802e2c36edf298a4217582c53e0f9825d98ec6178e6b3",
       "locally_modified": false
     },
     {
@@ -1060,8 +1060,8 @@
     },
     {
       "path": "frontend/src/pages/LiveStepPage.test.tsx",
-      "source": "1f96778b5da0f5d6d2194d3d79d6fd1a56fce224",
-      "sha256": "47273345f648e4615c5f7a721457a4073825a10738e9d8d3f8a70c91bc146dbb",
+      "source": "25ac58f91efec6f551d24dd59820a59f5dcdf56a",
+      "sha256": "bdf9d2028451688d34e1986c0b4e24f5bb5e261fc02da915127622b029eb5901",
       "locally_modified": true
     },
     {
@@ -1069,6 +1069,30 @@
       "source": "1f96778b5da0f5d6d2194d3d79d6fd1a56fce224",
       "sha256": "1b5d1d57b67345b94664223c16523532a159674b126544c42805c5021e37351f",
       "locally_modified": true
+    },
+    {
+      "path": "ai-service/app/failover.py",
+      "source": "25ac58f91efec6f551d24dd59820a59f5dcdf56a",
+      "sha256": "aee7320015739bca532b744a7408810494f40120ba27e3f7bd8e5cc032a386b6",
+      "locally_modified": false
+    },
+    {
+      "path": "ai-service/tests/test_failover.py",
+      "source": "25ac58f91efec6f551d24dd59820a59f5dcdf56a",
+      "sha256": "2f4ba8fe661e0cc219417d1de835b9ada3247790194bed98a750221b6a553ab7",
+      "locally_modified": false
+    },
+    {
+      "path": "ai-service/evals/report-failover.md",
+      "source": "25ac58f91efec6f551d24dd59820a59f5dcdf56a",
+      "sha256": "892f340e57d558a28f5c907386e951f8576567a5abb271451144b68d831ca132",
+      "locally_modified": false
+    },
+    {
+      "path": "ai-service/evals/report-live-failover.md",
+      "source": "25ac58f91efec6f551d24dd59820a59f5dcdf56a",
+      "sha256": "17f20a6aaa547b05803410330202c187a3eb083ef451487cbbc443bf6e5b6b62",
+      "locally_modified": false
     }
   ],
   "ai_delta_location": "TL checkout only; AI branch/ref has not been changed",
@@ -1078,5 +1102,18 @@
     "Dockerfile.demo-offline",
     "compose.offline.yaml",
     "frontend/e2e/demo-loop.spec.ts"
+  ],
+  "reviewed_branch_heads": {
+    "main": "30c5d08908aace5d10318adc429bbaa837b1a929",
+    "feature/team-start-foundation": "d9792ced0585ad29cfd7e95f0d46dde5dc720c3a",
+    "feature/backend-mvp-v2": "ea2cfbe35abb027c921c7e38882f43469e0fdadc",
+    "feature/ai-mvp-v2": "25ac58f91efec6f551d24dd59820a59f5dcdf56a",
+    "feature/frontend-mvp-v2": "c814283909dcbc672aa014fa3bd7349d6025e240",
+    "feature/qa-01-m1": "f88228cb5b1d669f05958c706e2c236c8cc7834f"
+  },
+  "integration_notes": [
+    "AI owned runtime and associated tests/evals imported from 25ac58f; FE tests/fixtures there derive from c814283.",
+    "TL session readiness, embedded step chat, four primary roles and Markdown/source UI retained.",
+    "Go syntheticKnowledge copies not imported: kb/AI remains authoritative for document body/version and source excerpt validation. No branch refs updated."
   ]
 }

@@ -306,6 +306,24 @@ def test_prompt_without_goal():
     )
 
 
+def test_goal_context_names_steps_and_actions_in_words():
+    from app.mock_provider import mock_answer
+    from app.prompt import LlmInput
+
+    goal_context = generate_request()["goal_context"]
+    goal_context["next_actions"] = ["retry_check", "escalate_to_buddy", "future_action"]
+    summary = goal_summary(goal_context)
+    assert "«Повторить проверку»" in summary and "«Спросить наставника»" in summary
+    # Неизвестное действие не теряется, а показывается как есть.
+    assert "future_action" in summary
+    for step in goal_context["steps"]:
+        assert f"«{step['title']}»" in summary
+        assert step["id"] not in summary
+    request = {**generate_request(), "goal_context": goal_context}
+    answer = mock_answer(LlmInput([], request, []))
+    assert "retry_check" not in answer and "«Повторить проверку»" in answer
+
+
 def test_document_injection_never_reaches_model():
     request = generate_request()
     hits = knowledge().search(intern_a_scope(), "заметки стажёров подключение")

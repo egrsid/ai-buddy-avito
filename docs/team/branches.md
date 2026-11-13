@@ -14,6 +14,26 @@ Read-only GitHub snapshot · 2026-11-13. Текущий checkout — feature/tea
 
 Текущий source manifest: [integration-sources.json](integration-sources.json). Чужие refs не менялись.
 
+## Повторная remote-сверка всех веток · 13 ноября
+
+GitHub connector: search_branches + compare_commits, затем чтение immutable snapshots.
+Прямой git fetch оборвался Connection reset by peer; refs/ветки не обновлялись.
+
+| Ветка | Последний remote SHA | Решение для сводного демо |
+|---|---|---|
+| main | 30c5d08908aace5d10318adc429bbaa837b1a929 | Без новых изменений, legacy |
+| feature/team-start-foundation | d9792ced0585ad29cfd7e95f0d46dde5dc720c3a | Текущая чистая owner-база до этого прохода |
+| feature/backend-mvp-v2 | ea2cfbe35abb027c921c7e38882f43469e0fdadc | Без новых изменений, уже импортирован |
+| feature/ai-mvp-v2 | 25ac58f91efec6f551d24dd59820a59f5dcdf56a | Новые AI runtime/tests/eval reports импортированы в TL; consumer fixes TL сохранены |
+| feature/frontend-mvp-v2 | c814283909dcbc672aa014fa3bd7349d6025e240 | Session/context fixes перекрываются TL; новые совместимые tests/fixtures взяты из AI cherry-pick этой поставки |
+| feature/qa-01-m1 | f88228cb5b1d669f05958c706e2c236c8cc7834f | Без новых изменений; исходные API tests сохранены |
+
+AI ветка содержит TL d9792ce и последующие доработки: полный tree delta 24 файла.
+Перенос всей ветки не нужен: исключены Go syntheticKnowledge и отдельный chat route,
+которые дублируют authoritative kb/встроенный чат. Manifest хранит импортированные файлы
+и точные SHA; [решения и повторная приемка](tl-readiness.md).
+
+
 ## История inventory 12 ноября
 
 
