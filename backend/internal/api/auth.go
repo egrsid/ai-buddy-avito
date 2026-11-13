@@ -148,4 +148,8 @@ func (s *Server) routes(m *http.ServeMux) {
 	s.actionRoutes(m)
 	s.chatRoutes(m)
 	s.feedbackRoutes(m)
+	s.contactRoutes(m)
+	s.taskRoutes(m)
+	s.goalRoutes(m)
+	s.statisticsRoutes(m)
 }

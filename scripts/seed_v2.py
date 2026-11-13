@@ -5,6 +5,8 @@ from pathlib import Path
 
 from psycopg.types.json import Jsonb
 
+from scripts.seed_v3 import seed_v3
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -108,6 +110,7 @@ def seed(connection):
                 (resource["resource_id"], "10000000-0000-4000-8000-000000000006"),
             )
     connection.execute("RESET ROLE")
+    seed_v3(connection)
     print(
         "Synthetic v2 app/corporate seed loaded; existing progress and grants "
         "preserved; KB is AI-owned."

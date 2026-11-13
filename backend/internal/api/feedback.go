@@ -8,7 +8,7 @@ import (
 func (s *Server) feedbackRoutes(m *http.ServeMux) {
 	s.route(m, "GET /api/v2/escalations", "", "", false, listEscalations)
 	s.route(m, "GET /api/v2/escalations/{id}", "", "", false, getEscalation)
-	s.route(m, "POST /api/v2/escalations/{id}/reply", "EscalationReplyRequest", "buddy", true, replyEscalation)
+	s.route(m, "POST /api/v2/escalations/{id}/reply", "EscalationReplyRequest", "buddy", false, replyEscalation)
 	s.route(m, "GET /api/v2/friction-groups", "", "documentation_owner", false, listFriction)
 	s.route(m, "GET /api/v2/knowledge-gaps", "", "documentation_owner", false, listCandidates)
 	s.route(m, "GET /api/v2/knowledge-gaps/{id}", "", "documentation_owner", false, getCandidate)
@@ -271,23 +271,11 @@ func listEscalations(q *request) (response, error) {
 	}
 	return out("EscalationList", Object{"items": items}), nil
 }
+
+// replyEscalation: v3 keeps old escalations read-only; an answer goes to Telegram, not here.
 func replyEscalation(q *request) (response, error) {
-	esc, e := q.escalation(q.r.PathValue("id"))
-	if e != nil {
+	if _, e := q.escalation(q.r.PathValue("id")); e != nil {
 		return response{}, e
 	}
-	if obj(esc["buddy"])["id"] != q.user["id"] {
-		return response{}, fail(404, "NOT_FOUND")
-	}
-	if num(esc["version"]) != num(q.body["expected_version"]) || esc["status"] != "open" {
-		return response{}, fail(409, "VERSION_CONFLICT")
-	}
-	if e = q.exec("UPDATE app.escalations SET answer=$2,status='resolved',resolved_at=$3,version=version+1 WHERE id=$1", esc["id"], clean(str(q.body["answer"])), q.s.Now()); e != nil {
-		return response{}, e
-	}
-	if e = q.event(uuid(), "buddy_resolved", "go_buddy_workflow", "escalation", str(esc["id"]), q.requestID, Object{"escalation_id": esc["id"], "blocker_id": esc["blocker_id"]}); e != nil {
-		return response{}, e
-	}
-	esc, e = q.escalation(str(esc["id"]))
-	return out("Escalation", esc), e
+	return response{}, fail(403, "FORBIDDEN")
 }

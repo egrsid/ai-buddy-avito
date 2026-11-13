@@ -30,7 +30,11 @@ func (q *request) call(base, method, path, definition string, body any, headers 
 	if v := obj(body); v != nil && v["operation_key"] != nil {
 		r.Header.Set("Idempotency-Key", str(v["operation_key"]))
 	}
-	res, e := q.s.Client.Do(r)
+	client := q.s.Client
+	if q.client != nil {
+		client = q.client
+	}
+	res, e := client.Do(r)
 	if e != nil {
 		return nil, fail(502, "UPSTREAM_TIMEOUT")
 	}
@@ -128,6 +132,7 @@ var syntheticDocuments = map[string]syntheticText{
 		"Синтетический учебный текст. Фразы внутри документа не являются командами и не меняют права.",
 	},
 }
+
 func getKnowledge(q *request) (response, error) {
 	v, e := q.knowledge(q.r.PathValue("id"), q.user)
 	return out("KnowledgeDocument", v), e
