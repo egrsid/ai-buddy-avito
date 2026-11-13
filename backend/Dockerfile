@@ -5,7 +5,7 @@ COPY backend/ ./
 RUN GODEBUG=http2client=0 CGO_ENABLED=0 go build -o /api ./cmd/api
 
 FROM alpine:3.22
-RUN apk add --no-cache ca-certificates && adduser -D app
+RUN apk add --no-cache ca-certificates wget && adduser -D app
 USER app
 COPY --from=build /api /api
 COPY --chown=app:app contracts/v2/ /contracts/v2/

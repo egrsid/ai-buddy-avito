@@ -10,6 +10,7 @@ import {
   createCheck,
   createConversation,
   getAction,
+  getGoal,
   getKnowledge,
   getStep,
   getStepActions,
@@ -34,6 +35,8 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
   const [action, setAction] = useState<Action | null>(null);
   const [drawerDoc, setDrawerDoc] = useState<KnowledgeDocumentT | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [sslMode, setSslMode] = useState<'disable' | 'require'>('disable');
+  const [reason, setReason] = useState('Нужен доступ к синтетической БД команды A.');
 
   // Опрос executing/unknown действия до терминального статуса.
   useEffect(() => {
@@ -64,12 +67,35 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
     try {
       await createCheck(goalId, stepId, {
         method: s.verification_method,
-        options: s.verification_method === 'mock_db_connection' ? { ssl_mode: 'require' } : {},
+        options: s.verification_method === 'mock_db_connection' ? { ssl_mode: sslMode } : {},
         expected_version: s.version,
       });
       step.refetch();
     } catch (e) {
       setNotice(userMessage(e, 'Проверка не запустилась.'));
+    }
+  };
+
+  const requestAccess = async () => {
+    setNotice(null);
+    try {
+      const goal = await getGoal(goalId);
+      const conversation = await createConversation(goalId, s.id);
+      const created = await createAction({
+        conversation_id: conversation.id,
+        goal_id: goalId,
+        step_id: s.id,
+        type: 'create_access_request',
+        parameters: {
+          resource_id: goal.resource_id,
+          requested_role: 'db_reader',
+          reason,
+          additional_fields: {},
+        },
+      });
+      setAction(created);
+    } catch (e) {
+      setNotice(userMessage(e, 'Не удалось подготовить заявку.'));
     }
   };
 
@@ -169,6 +195,33 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
               <code className="rounded bg-red-50 px-1.5 py-0.5 text-xs text-error">{blocker.error_code}</code>
             </div>
             <div className="flex flex-wrap gap-2">
+              {blocker.recovery_actions.includes('create_access_request') && (
+                <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end">
+                  <label className="flex-1 text-sm">
+                    Основание заявки
+                    <input
+                      value={reason}
+                      onChange={(event) => setReason(event.target.value)}
+                      className="mt-1 w-full rounded-xl border border-border px-3 py-2"
+                    />
+                  </label>
+                  <Button onClick={requestAccess}>Запросить доступ</Button>
+                </div>
+              )}
+              {s.verification_method === 'mock_db_connection' && blocker.recovery_actions.includes('retry_check') && (
+                <label className="text-sm">
+                  SSL
+                  <select
+                    aria-label="Режим SSL"
+                    value={sslMode}
+                    onChange={(event) => setSslMode(event.target.value as 'disable' | 'require')}
+                    className="ml-2 rounded-xl border border-border px-2 py-2"
+                  >
+                    <option value="disable">disable</option>
+                    <option value="require">require</option>
+                  </select>
+                </label>
+              )}
               {blocker.recovery_actions.includes('retry_check') && (
                 <Button variant="secondary" onClick={runCheck}>
                   <RefreshCw size={16} className="mr-1 inline" aria-hidden /> Повторить проверку
@@ -188,6 +241,20 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
             <p className="mb-3 text-sm text-text-secondary">
               Проверка выполняется безопасным способом — без произвольных команд.
             </p>
+            {s.verification_method === 'mock_db_connection' && (
+              <label className="mb-3 block text-sm">
+                SSL
+                <select
+                  aria-label="Режим SSL"
+                  value={sslMode}
+                  onChange={(event) => setSslMode(event.target.value as 'disable' | 'require')}
+                  className="ml-2 rounded-xl border border-border px-2 py-2"
+                >
+                  <option value="disable">disable</option>
+                  <option value="require">require</option>
+                </select>
+              </label>
+            )}
             <Button onClick={runCheck}>
               <FlaskConical size={16} className="mr-1 inline" aria-hidden /> Запустить проверку
             </Button>
