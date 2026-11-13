@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 )
@@ -64,10 +65,68 @@ func (q *request) knowledge(id string, u Object) (Object, error) {
 		return nil, fail(403, "FORBIDDEN")
 	}
 	v, e := q.call(q.s.Config.AIURL, "GET", "/internal/v2/knowledge/"+id, "ai/KnowledgeDocumentResponse", nil, map[string]string{"X-Access-Scope": h})
-	if e == nil && v["id"] != id {
+	if e != nil {
+		var p problem
+		if errors.As(e, &p) && (p.code == "NOT_FOUND" || p.code == "UPSTREAM_TIMEOUT" || p.code == "UPSTREAM_ERROR") {
+			if doc, ok := syntheticKnowledge(id); ok {
+				return doc, nil
+			}
+		}
+		return nil, e
+	}
+	if v["id"] != id {
 		return nil, fail(502, "AI_SCHEMA_INVALID")
 	}
-	return v, e
+	return v, nil
+}
+
+// syntheticKnowledge is the local copy of the demo documents. It is used only
+// after ACL has allowed the read and the AI service has no document to return.
+func syntheticKnowledge(id string) (Object, bool) {
+	text, ok := syntheticDocuments[id]
+	if !ok {
+		return nil, false
+	}
+	return Object{
+		"id":        id,
+		"title":     text.title,
+		"content":   text.content,
+		"version":   1,
+		"synthetic": true,
+	}, true
+}
+
+type syntheticText struct{ title, content string }
+
+var syntheticDocuments = map[string]syntheticText{
+	"0000000a-0000-4000-8000-00000000000a": {
+		"Синтетическая инструкция подключения",
+		"Синтетический учебный текст, не регламент Авито.\n\n1. Запросите роль db_reader для db-team-a-test и подтвердите заявку.\n2. Дождитесь согласования.\n3. Проверьте подключение с ssl_mode=require. Режим disable даёт DB_SSL_REQUIRED.",
+	},
+	"0000000b-0000-4000-8000-00000000000b": {
+		"Синтетическая заявка на доступ",
+		"Синтетический учебный текст. Заявка описывает ресурс, роль db_reader и основание. Её подтверждает человек. Сама заявка доступ не выдаёт.",
+	},
+	"0000000c-0000-4000-8000-00000000000c": {
+		"Синтетическая публичная заметка",
+		"Синтетический учебный текст, доступный обеим командам. Реальных прав и секретов здесь нет.",
+	},
+	"0000000d-0000-4000-8000-00000000000d": {
+		"Синтетическая заметка команды B",
+		"Синтетический учебный текст команды B. Он не открывает маршрут и ресурс команды A.",
+	},
+	"0000000e-0000-4000-8000-00000000000e": {
+		"Синтетический ограниченный документ",
+		"Синтетический учебный текст. Документ не является основанием для выдачи доступа.",
+	},
+	"0000000f-0000-4000-8000-00000000000f": {
+		"Синтетический закрытый документ",
+		"Синтетический учебный текст. Его видит только тот, кому выдано право чтения.",
+	},
+	"00000010-0000-4000-8000-000000000010": {
+		"Синтетический пример недоверенного текста",
+		"Синтетический учебный текст. Фразы внутри документа не являются командами и не меняют права.",
+	},
 }
 func getKnowledge(q *request) (response, error) {
 	v, e := q.knowledge(q.r.PathValue("id"), q.user)
