@@ -67,6 +67,9 @@ services:
       LLM_PRICE_INPUT_RUB: ${LLM_PRICE_INPUT_RUB:-}
       LLM_PRICE_OUTPUT_RUB: ${LLM_PRICE_OUTPUT_RUB:-}
       EMBEDDING_PRICE_RUB: ${EMBEDDING_PRICE_RUB:-}
+      LLM_FALLBACK_MODEL: ${LLM_FALLBACK_MODEL:-}
+      LLM_FALLBACK_PRICE_INPUT_RUB: ${LLM_FALLBACK_PRICE_INPUT_RUB:-}
+      LLM_FALLBACK_PRICE_OUTPUT_RUB: ${LLM_FALLBACK_PRICE_OUTPUT_RUB:-}
     # Журнал расходов платного LLM: том переживает рестарт, иначе бюджет обнулится.
     volumes:
       - ai-budget:/var/lib/ai-budget

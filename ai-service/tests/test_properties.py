@@ -101,13 +101,14 @@ def test_last_user_message_without_user_turn():
     assert last_user_message(request) == ""
 
 
-def test_long_excerpt_is_cut_on_word_boundary():
-    document = Document("x", "Заголовок", 1, "public", None, None, "", "h")
+def test_long_excerpt_is_a_literal_span_without_inserted_ellipsis():
+    content = "# Заголовок\n\n" + "слово " * 200
+    document = Document("x", "Заголовок", 1, "public", None, None, content, "h")
     chunk = Chunk("x", 1, 0, "Заголовок\n\n" + "слово " * 200)
     text = excerpt(chunk, document)
-    assert text.endswith("…")
-    assert len(text) <= 301
-    assert "слов…" not in text
+    assert text in content
+    assert 0 < len(text) <= 300
+    assert "…" not in text
 
 
 def test_first_chunk_of_unknown_document_fails():

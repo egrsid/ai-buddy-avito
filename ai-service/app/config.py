@@ -66,6 +66,10 @@ class Settings:
     price_input_rub: float = 0.0
     price_output_rub: float = 0.0
     price_embedding_rub: float = 0.0
+    # Optional second model on the same OpenAI-compatible endpoint and budget ledger.
+    llm_fallback_model: str = ""
+    fallback_price_input_rub: float = 0.0
+    fallback_price_output_rub: float = 0.0
 
 
 def parse_bool(name: str, value: str) -> bool:
@@ -112,6 +116,16 @@ def load_paid_api(env: Mapping[str, str]) -> dict:
     stop = env.get("LLM_BUDGET_STOP_RUB") or str(DEFAULT_BUDGET_STOP_RUB)
     values["budget_stop_rub"] = parse_rub("LLM_BUDGET_STOP_RUB", stop)
     values["llm_reasoning_effort"] = env.get("LLM_REASONING_EFFORT", "")
+    fallback = env.get("LLM_FALLBACK_MODEL", "")
+    if fallback:
+        if fallback == env.get("LLM_MODEL"):
+            raise ConfigError("LLM_FALLBACK_MODEL должен отличаться от LLM_MODEL")
+        values["llm_fallback_model"] = fallback
+        for field_name, variable in (
+            ("fallback_price_input_rub", "LLM_FALLBACK_PRICE_INPUT_RUB"),
+            ("fallback_price_output_rub", "LLM_FALLBACK_PRICE_OUTPUT_RUB"),
+        ):
+            values[field_name] = parse_rub(variable, env.get(variable, ""))
     return values
 
 

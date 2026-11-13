@@ -12,6 +12,7 @@
 import math
 import re
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 
 from app.acl import can_read
 from app.knowledge import Chunk, Document, chunk_document
@@ -54,12 +55,17 @@ class Hit:
 
 
 def excerpt(chunk: Chunk, document: Document) -> str:
+    """A literal source span: Go verifies substring membership in the raw document.
+
+    Retrieval chunks use plain text and prepend a title. Find a matching span in
+    the original Markdown instead of normalizing whitespace or appending an ellipsis.
+    No index/profile change: chunk contents and ranking remain unchanged.
+    """
     text = chunk.text.removeprefix(document.title).strip()
-    text = " ".join(text.split())
-    if len(text) <= EXCERPT_LENGTH:
-        return text
-    cut = text[:EXCERPT_LENGTH].rsplit(" ", 1)[0]
-    return cut + "…"
+    match = SequenceMatcher(None, text, document.content, autojunk=False).find_longest_match()
+    start = match.b if match.size else 0
+    size = min(match.size or len(document.content), EXCERPT_LENGTH)
+    return document.content[start : start + size].strip()
 
 
 def source_for(document: Document, chunk: Chunk) -> dict:

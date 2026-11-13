@@ -1,0 +1,76 @@
+"""Offline rehearsal in a separate Compose project; never deletes volumes.
+
+Uses synthetic .env.example explicitly. Cached-image mode is reported separately
+from a fresh production build and requires an explicit local overlay.
+"""
+
+import argparse
+import os
+import re
+import subprocess
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def configuration(project: str, cached_overlay: str | None = None):
+    if not re.fullmatch(r"ai-buddy-demo-[a-z0-9-]+", project):
+        raise ValueError("Use a separate ai-buddy-demo-* project, never the legacy project")
+    env = {
+        **os.environ,
+        "APP_ENV": "local",
+        "APP_ORIGIN": "http://localhost:15173",
+        "BACKEND_PORT": "18080",
+        "FRONTEND_PORT": "15173",
+        "LLM_MODE": "mock",
+        "MOCK_FAULTS_ENABLED": "false",
+        "AI_MOCK_SCENARIO": "normal",
+    }
+    command = ["docker", "compose", "--env-file", str(ROOT / ".env.example"), "-p", project]
+    for name in ("compose.yaml", "compose.mvp.yaml", "compose.demo.yaml"):
+        command += ["-f", str(ROOT / name)]
+    if cached_overlay:
+        command += ["-f", str(Path(cached_overlay).resolve(strict=True))]
+    return command, env
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("action", choices=("up", "down", "status", "ai-db-test", "api-test"))
+    parser.add_argument("--project", default="ai-buddy-demo-local")
+    parser.add_argument("--cached-overlay")
+    args = parser.parse_args()
+    command, env = configuration(args.project, args.cached_overlay)
+    if args.action == "up":
+        command += ["up", "--no-build" if args.cached_overlay else "--build", "-d", "--wait"]
+    elif args.action == "down":
+        command += ["down"]
+    elif args.action == "status":
+        command += ["ps", "-a"]
+    elif args.action == "ai-db-test":
+        command += ["--profile", "acceptance", "run", "--rm", "--no-deps", "ai-db-tests"]
+    else:
+        command += [
+            "--profile",
+            "acceptance",
+            "run",
+            "--rm",
+            "--no-deps",
+            "-e",
+            "BACKEND_ACCEPTANCE_URL=http://backend:8080",
+            "-e",
+            "APP_ORIGIN=http://localhost:15173",
+            "-e",
+            "AI_ACCEPTANCE=1",
+            "ai-db-tests",
+            "python",
+            "-m",
+            "scripts.backend_acceptance",
+        ]
+    if args.cached_overlay:
+        print("CACHED-IMAGE rehearsal; clean production build is not verified.", flush=True)
+    subprocess.run(command, env=env, cwd=ROOT, check=True)
+
+
+if __name__ == "__main__":
+    main()
