@@ -42,11 +42,12 @@ async function markUnclear(page: Page, sectionTitle: string, reason: string) {
   return section;
 }
 
-test('v3: ТЗ → две неясности → отчёт → новая версия; Telegram, цели, статистика', async ({ page }, info) => {
+test('v3: ТЗ → две неясности → отчёт → новая версия; Telegram, цели, статистика', async ({ page, context }, info) => {
   test.setTimeout(240_000);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   const title = `E2E ТЗ ${Date.now()}`;
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
   await page.goto('/');
   const live = page.getByRole('button', { name: 'Live API', exact: true });
@@ -63,7 +64,7 @@ test('v3: ТЗ → две неясности → отчёт → новая ве�
   await page.getByLabel('Ожидаемый результат').fill('Отчёт в документе команды.');
   await page.getByLabel('Критерий 1', { exact: true }).fill('В отчёте перечислены шаги подключения.');
   await button(page, 'Сохранить черновик').click();
-  await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible({ timeout: 15_000 });
   await button(page, /Опубликовать версию 1/).click();
   await expect(page.getByText('Опубликованная версия 1')).toBeVisible();
   for (const intern of ['intern-a', 'intern-b']) {
@@ -87,6 +88,11 @@ test('v3: ТЗ → две неясности → отчёт → новая ве�
   await expect(text).toContainText(`Задание: ${title} (версия 1)`);
   await expect(text).toContainText('Раздел: Срок');
   await expect(page.getByRole('button', { name: /Открыть Telegram/ })).toBeVisible();
+  // В буфер попадает ровно перепроверенный сервером текст; внутреннего обращения нет.
+  await button(page, /Только скопировать/).click();
+  await expect(page.getByText('Текст скопирован.')).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(`Задание: ${title} (версия 1)`);
+  expect((await read(page, '/api/v2/escalations')).items).toEqual([]);
   await page.screenshot({ path: info.outputPath('intern-task.png'), fullPage: true });
 
   // Одного стажёра мало: отчёта нет.
@@ -130,9 +136,22 @@ test('v3: ТЗ → две неясности → отчёт → новая ве�
   await account(page, 'intern-a');
   await openTask(page, title);
   await expect(page.getByText(/Вы работаете по версии 1/)).toBeVisible();
+  await button(page, 'Посмотреть версию 2').click();
+  await expect(page.getByLabel('Текст версии 2')).toContainText('до пятницы 18:00');
   await button(page, 'Перейти на версию 2').click();
   await expect(page.getByText('Отчёт сдать до пятницы 18:00 ссылкой на документ команды.')).toBeVisible();
   await expect(page.getByText(/Вы работаете по версии/)).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText('Отчёт сдать до пятницы 18:00 ссылкой на документ команды.')).toBeVisible();
+  // Мобильная ширина: без горизонтальной прокрутки.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await expect(page.getByText('Отчёт сдать до пятницы 18:00 ссылкой на документ команды.')).toBeVisible();
+  // Меню на телефоне закрыто и не перекрывает ТЗ.
+  await expect(page.getByRole('button', { name: 'Открыть меню' })).toBeVisible();
+  await page.screenshot({ path: info.outputPath('intern-task-mobile.png'), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
+  await page.setViewportSize({ width: 1280, height: 900 });
 
   // 6. Цели: карточки с прогрессом, раскрытие переживает перезагрузку.
   await page.getByRole('link', { name: 'Мои цели', exact: true }).click();

@@ -18,6 +18,7 @@ func (s *Server) taskRoutes(m *http.ServeMux) {
 	s.route(m, "POST /api/v3/task-briefs/{id}/archive", "v3/public/RevisionRequest", "buddy", false, archiveBrief)
 	s.route(m, "POST /api/v3/task-assignments", "v3/public/TaskAssignmentCreateRequest", "buddy", true, createAssignment)
 	s.route(m, "GET /api/v3/task-assignments", "", "", false, listAssignments)
+	s.route(m, "GET /api/v3/task-assignments/{id}/latest-version", "", "", false, previewAssignmentVersion)
 	s.route(m, "GET /api/v3/task-assignments/{id}", "", "", false, getAssignment)
 	s.route(m, "POST /api/v3/task-assignments/{id}/adopt-version", "v3/public/TaskAssignmentAdoptRequest", "", false, adoptVersion)
 	s.route(m, "POST /api/v3/task-assignments/{id}/frictions", "v3/public/FrictionCreateRequest", "intern", true, reportFriction)
@@ -355,6 +356,10 @@ func (q *request) assignment(id string) (Object, error) {
 }
 
 func (q *request) assignmentDTO(a Object) (Object, error) {
+	content, err := q.visibleBriefContent(a["content"])
+	if err != nil {
+		return nil, err
+	}
 	var latest int
 	if e := q.tx.QueryRow(q.Context, "SELECT max(version) FROM app.task_brief_versions WHERE brief_id=$1 AND state='published'", a["brief_id"]).Scan(&latest); e != nil {
 		return nil, e
@@ -376,7 +381,7 @@ func (q *request) assignmentDTO(a Object) (Object, error) {
 	if a["archived"] == true {
 		state = "archived"
 	}
-	return Object{"id": a["id"], "brief_id": a["brief_id"], "brief_version": a["brief_version"], "brief_state": state, "latest_published_version": latest, "content": a["content"], "intern": intern, "author": author, "reported_sections": reported, "verification": "not_verified", "revision": a["revision"], "created_at": a["created_at"], "updated_at": a["updated_at"]}, nil
+	return Object{"id": a["id"], "brief_id": a["brief_id"], "brief_version": a["brief_version"], "brief_state": state, "latest_published_version": latest, "content": content, "intern": intern, "author": author, "reported_sections": reported, "verification": "not_verified", "revision": a["revision"], "created_at": a["created_at"], "updated_at": a["updated_at"]}, nil
 }
 
 func listAssignments(q *request) (response, error) {
@@ -437,4 +442,38 @@ func adoptVersion(q *request) (response, error) {
 	}
 	dto, e := q.assignmentDTO(a)
 	return out3("TaskAssignment", dto), e
+}
+
+// Preview is scoped through the assignment, including when the viewer is its intern.
+func previewAssignmentVersion(q *request) (response, error) {
+	a, e := q.assignment(q.r.PathValue("id"))
+	if e != nil {
+		return response{}, e
+	}
+	v, e := q.one("SELECT jsonb_strip_nulls(to_jsonb(v)-'published_by') FROM app.task_brief_versions v WHERE brief_id=$1 AND state='published' ORDER BY version DESC LIMIT 1", a["brief_id"])
+	if e != nil {
+		return response{}, e
+	}
+	content, e := q.visibleBriefContent(v["content"])
+	if e != nil {
+		return response{}, e
+	}
+	v["content"] = content
+	return out3("TaskBriefVersion", v), nil
+}
+
+func (q *request) visibleBriefContent(raw any) (Object, error) {
+	c := clone(raw)
+	refs := []any{}
+	for _, ref := range list(c["refs"]) {
+		yes, e := q.canRead(str(obj(ref)["document_id"]), q.user)
+		if e != nil {
+			return nil, e
+		}
+		if yes {
+			refs = append(refs, ref)
+		}
+	}
+	c["refs"] = refs
+	return c, nil
 }

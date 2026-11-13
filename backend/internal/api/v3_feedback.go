@@ -105,6 +105,11 @@ func (q *request) report(id string) (Object, error) {
 	if e != nil {
 		return nil, e
 	}
+	var current int
+	if e = q.tx.QueryRow(q.Context, "SELECT count(DISTINCT intern_id) FROM app.task_frictions WHERE team_id=$1 AND owner_id=$2 AND brief_id=$3 AND brief_version=$4 AND section_id=$5 AND reason=$6 AND last_seen>$7", r["team_id"], r["owner_id"], r["brief_id"], r["brief_version"], r["section_id"], r["reason"], q.s.Now().Add(-clarityWindow)).Scan(&current); e != nil {
+		return nil, e
+	}
+	r["current_count"] = current
 	content := obj(r["content"])
 	title, _ := sectionTitle(content, str(r["section_id"]))
 	if title == "" {

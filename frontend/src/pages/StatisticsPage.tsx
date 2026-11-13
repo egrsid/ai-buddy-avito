@@ -91,7 +91,7 @@ export function StatisticsView({ stats }: { stats: StatisticsT }) {
         <>
           <div className="grid gap-3 sm:grid-cols-3">
             {summary.suppressed ? (
-              <Card className="sm:col-span-3"><p className="text-sm">Недостаточно данных для итогов: все группы меньше {stats.privacy_threshold} стажёров.</p></Card>
+              <Card className="sm:col-span-3"><p className="text-sm">Итоги скрыты: среди групп есть такие, где меньше {stats.privacy_threshold} стажёров, — по итогу их можно было бы вычислить. Смотрите строки ниже.</p></Card>
             ) : (
               <>
                 <Tile label="Затронуто разных стажёров" value={value(summary.affected_interns)} />

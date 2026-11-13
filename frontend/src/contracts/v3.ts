@@ -34,6 +34,7 @@ export const ContactPreview = z.object({
   expires_at: Timestamp,
 }).strict();
 export const ContactExport = z.object({ text: z.string().min(1).max(4000), telegram_url: TelegramUrl }).strict();
+export const ContactExportRequest = z.object({ preview_id: Uuid, content_hash: Sha256, contact_revision: PositiveInt }).strict();
 
 export const BriefSection = z.object({
   id: StableId,
@@ -52,6 +53,8 @@ export const BriefContent = z.object({
 
 export const BriefState = z.enum(['draft', 'published', 'archived']);
 export const BriefVersionState = z.enum(['draft', 'published']);
+export const TaskBriefCreateRequest = z.object({ content: BriefContent }).strict();
+// Опубликованная версия всегда с датой публикации, черновик — без неё.
 export const TaskBriefVersion = z.object({
   brief_id: Uuid,
   version: PositiveInt,
@@ -60,7 +63,9 @@ export const TaskBriefVersion = z.object({
   content_hash: Sha256,
   created_at: Timestamp,
   published_at: Timestamp.optional(),
-}).strict();
+}).strict().refine((v) => (v.state === 'published') === (v.published_at !== undefined), {
+  message: 'published_at обязателен только для опубликованной версии',
+});
 export const VersionSummary = z.object({
   version: PositiveInt,
   state: BriefVersionState,
@@ -82,6 +87,7 @@ export const TaskBrief = z.object({
 export const TaskBriefList = z.object({ items: z.array(TaskBrief).max(100) }).strict();
 
 export const FrictionReason = z.enum(['requirement_unclear', 'outcome_unclear', 'acceptance_unclear']);
+export const FrictionCreateRequest = z.object({ section_id: StableId, reason: FrictionReason }).strict();
 export const TaskAssignment = z.object({
   id: Uuid,
   brief_id: Uuid,
@@ -128,12 +134,15 @@ export const TaskClarityReport = z.object({
   updated_at: Timestamp,
 }).strict();
 export const TaskClarityReportList = z.object({ items: z.array(TaskClarityReport).max(100) }).strict();
+// resolved — только со ссылкой на опубликованную версию, остальные решения — без неё.
 export const TaskClarityReviewRequest = z.object({
   decision: ReviewDecision,
   reason: z.string().min(1).max(1000),
   expected_version: PositiveInt,
   resolved_version: PositiveInt.optional(),
-}).strict();
+}).strict().refine((v) => (v.decision === 'resolved') === (v.resolved_version !== undefined), {
+  message: 'resolved_version обязателен только для resolved',
+});
 
 export const GoalSummary = z.object({
   id: Uuid,

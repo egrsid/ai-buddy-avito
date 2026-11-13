@@ -65,7 +65,7 @@ describe('StatisticsView', () => {
 
   it('все группы скрыты — итог тоже скрыт; пусто — понятное сообщение', () => {
     const { unmount } = render(<StatisticsView stats={fx.stats({ summary: { affected_interns: null, observations: null, open_items: null, suppressed: true } })} />);
-    expect(screen.getByText(/Недостаточно данных для итогов/)).toBeInTheDocument();
+    expect(screen.getByText(/Итоги скрыты/)).toBeInTheDocument();
     unmount();
     render(<StatisticsView stats={fx.stats({ rows: [], daily: [] })} />);
     expect(screen.getByText('Затруднений нет')).toBeInTheDocument();

@@ -3,8 +3,8 @@ import { ArrowLeft, ArrowRight, HelpCircle, RefreshCw } from 'lucide-react';
 import { userMessage } from '../lib/api';
 import { useLiveData } from '../lib/live';
 import { href } from '../lib/router';
-import type { FrictionReasonT, TaskAssignmentT } from '../lib/v3';
-import { adoptVersion, getAssignment, listAssignments, reportFriction } from '../lib/v3';
+import type { FrictionReasonT, TaskAssignmentT, TaskBriefVersionT } from '../lib/v3';
+import { adoptVersion, getAssignment, getLatestVersion, listAssignments, reportFriction } from '../lib/v3';
 import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '../components/ui';
 import { MentorContactCard } from '../components/MentorContactCard';
 
@@ -114,6 +114,7 @@ export function InternTaskDetailPage({ id }: { id: string }) {
             <p className="text-sm">
               Автор опубликовал версию {t.latest_published_version}. Вы работаете по версии {t.brief_version} — она не меняется без вашего решения.
             </p>
+            <NewVersionPreview key={t.latest_published_version} assignmentId={t.id} version={t.latest_published_version} />
             <div className="mt-3">
               <Button disabled={busy} onClick={adopt}>
                 <RefreshCw size={14} className="mr-1 inline" aria-hidden /> Перейти на версию {t.latest_published_version}
@@ -139,6 +140,35 @@ export function InternTaskDetailPage({ id }: { id: string }) {
         />
       </div>
     </>
+  );
+}
+
+// Текст новой версии до перехода: сервер отдаёт его через назначение и с проверкой прав.
+function NewVersionPreview({ assignmentId, version }: { assignmentId: string; version: number }) {
+  const [open, setOpen] = useState(false);
+  const preview = useLiveData(() => getLatestVersion(assignmentId), [assignmentId, version], null as TaskBriefVersionT | null, { enabled: open });
+  if (!open) {
+    return (
+      <div className="mt-3">
+        <Button variant="secondary" onClick={() => setOpen(true)}>Посмотреть версию {version}</Button>
+      </div>
+    );
+  }
+  if (preview.state === 'loading') return <div className="mt-3"><LoadingState label="Загружаем новую версию…" /></div>;
+  if (preview.state === 'error' || !preview.data) {
+    return <p className="mt-3 text-sm text-error" role="alert">{userMessage(preview.error, 'Новую версию не удалось загрузить.')}</p>;
+  }
+  const c = preview.data.content;
+  return (
+    <div className="mt-3 space-y-2 rounded-xl bg-surface p-3 text-sm" aria-label={`Текст версии ${version}`}>
+      <p className="font-medium">{c.title}</p>
+      <p className="whitespace-pre-wrap"><span className="font-medium">Цель: </span>{c.goal}</p>
+      {c.sections.map((s) => (
+        <p key={s.id} className="whitespace-pre-wrap"><span className="font-medium">{s.title}: </span>{s.text}</p>
+      ))}
+      <p className="whitespace-pre-wrap"><span className="font-medium">Ожидаемый результат: </span>{c.expected_result}</p>
+      {c.acceptance_criteria.map((a) => <p key={a.id}>• {a.text}</p>)}
+    </div>
   );
 }
 
