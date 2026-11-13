@@ -96,9 +96,20 @@ Dockerfile.demo-offline копирует текущий код в самосто
 
 Для отдельного live запуска скопировать `.env.example` в `.env`, задать `LLM_MODE=live`,
 `LLM_PROVIDER=openai`, `LLM_BASE_URL`, `LLM_MODEL=GigaChat/GigaChat-3-Pro`, `LLM_API_KEY`,
-`EMBEDDING_MODEL=BAAI/bge-m3`, а также проверенные цены обеих моделей. Затем использовать
-`make mvp-up` в отдельном Compose project с корректными APP_ORIGIN/портами.
-`make demo-up` намеренно всегда offline. Бюджет 1000/stop 800 ₽, unknown usage сохраняет
+`EMBEDDING_MODEL=BAAI/bge-m3`, а также проверенные цены обеих моделей. Затем:
+
+```bash
+make live-demo-check   # только проверка .env, без Docker и платных вызовов
+make live-demo         # тот же v2-стенд, что demo-up, но с настоящей LLM: http://localhost:15173
+make live-demo-down    # остановить, данные и журнал расходов сохраняются
+```
+
+`live-demo` берёт настройки только из `.env` (LLM_* из терминала игнорируются) и до старта
+Docker называет недостающие переменные, не печатая значений. Журнал расходов общий с
+основным проектом (`ai-buddy_ai-budget`), предупреждение Compose об этом томе ожидаемо.
+Одновременно с `demo-up` не запускать: те же порты 15173/18080.
+`make demo-up` и `main-demo` намеренно всегда offline: там отвечает шаблон, а не модель.
+Почему раньше чат уходил в fallback — [диагностика](docs/operations/llm-diagnosis.md). Бюджет 1000/stop 800 ₽, unknown usage сохраняет
 резерв, budget refusal не вызывает вторую платную модель. Ключи только в env Python.
 
 Первый фрагмент каждой live-попытки ожидается до 6s; полный буферизованный ответ

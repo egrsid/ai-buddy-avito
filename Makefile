@@ -62,6 +62,17 @@ demo-down:
 demo-offline:
 	python3 -m scripts.demo up --offline
 
+.PHONY: live-demo live-demo-down live-demo-check
+# Live LLM demo (real GigaChat chain); settings only from .env, checked before Docker.
+live-demo:
+	python3 -m scripts.live_demo up
+
+live-demo-down:
+	python3 -m scripts.live_demo down
+
+live-demo-check:
+	python3 -m scripts.live_demo check
+
 .PHONY: main-demo
 main-demo:
 	@test "$$(git branch --show-current)" = main || (echo 'Run main-demo from the main checkout'; exit 1)
