@@ -14,7 +14,7 @@ import uuid
 from fastapi import Request
 
 from app.config import Settings
-from app.contracts import COMMON_SCHEMA_ID, error_fields
+from app.contracts import AI_SCHEMA_ID, COMMON_SCHEMA_ID, error_fields
 from app.errors import ApiError
 
 # Как common Uuid: каноническая строка UUIDv4 в нижнем регистре.
@@ -79,7 +79,7 @@ def check_auth(request: Request, settings: Settings) -> str:
 
 
 async def read_internal_request(
-    request: Request, settings: Settings, definition: str
+    request: Request, settings: Settings, definition: str, schema_id: str = AI_SCHEMA_ID
 ) -> tuple[str, dict]:
     """Проверяет токен, ID, JSON и схему. Возвращает (request_id, тело) или бросает ApiError."""
     request_id = check_auth(request, settings)
@@ -94,7 +94,7 @@ async def read_internal_request(
         # UnicodeDecodeError и json.JSONDecodeError — тоже ValueError.
         raise ApiError(400, "INVALID_JSON", "Тело запроса не является JSON", request_id)
 
-    fields = error_fields(definition, body)
+    fields = error_fields(definition, body, schema_id)
     if not fields and definition == "GenerateRequest" and messages_too_long(body):
         fields = [{"name": "messages", "code": "maxTotalLength"}]
     if fields:
