@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { LifeBuoy, ShieldCheck } from 'lucide-react';
 import { AppShell, DemoModeNote } from './components/AppShell';
-import { Card } from './components/ui';
-import { matchIdRoute, matchStepRoute, useHashRoute } from './lib/router';
+import { Card, LoadingState } from './components/ui';
+import { matchChatRoute, matchIdRoute, matchStepRoute, useHashRoute } from './lib/router';
 import type { ViewState } from './lib/useMockData';
 import { DataModeProvider, useDataMode } from './lib/dataMode';
 import { goals, accessRequests } from './fixtures/all-states';
@@ -80,17 +80,20 @@ export function App() {
 
 function AppInner() {
   const route = useHashRoute();
-  const { mode, setMode, user, accountId, switchAccount, sessionError } = useDataMode();
+  const { mode, ready, setMode, user, accountId, switchAccount, sessionError } = useDataMode();
   const [view, setView] = useState<ViewState>('data');
 
   const stepRoute = matchStepRoute(route);
+  const chatContext = matchChatRoute(route);
   const escalationId = matchIdRoute(route, '/buddy/escalations');
   const gapId = matchIdRoute(route, '/knowledge-gaps');
 
   let page: React.ReactNode;
   let sidebar: React.ReactNode = null;
 
-  if (mode === 'live') {
+  if (!ready) {
+    page = <Card><LoadingState /></Card>;
+  } else if (mode === 'live') {
     if (stepRoute) {
       page = <LiveStepPage goalId={stepRoute.goalId} stepId={stepRoute.stepId} />;
     } else if (route === '/onboarding') {
@@ -108,7 +111,7 @@ function AppInner() {
     } else if (route === '/knowledge-gaps') {
       page = <LiveKnowledgeGapsPage />;
     } else {
-      page = <LiveChatPage />;
+      page = <LiveChatPage goalId={chatContext?.goalId ?? null} stepId={chatContext?.stepId ?? null} />;
     }
   } else if (stepRoute) {
     page = <StepPage goalId={stepRoute.goalId} stepId={stepRoute.stepId} view={view} />;
@@ -143,7 +146,7 @@ function AppInner() {
       onModeChange={setMode}
       sidebar={sidebar}
     >
-      {mode === 'fixtures' && <DemoModeNote />}
+      {ready && mode === 'fixtures' && <DemoModeNote />}
       {sessionError && (
         <p className="mb-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-error" role="alert">{sessionError}</p>
       )}

@@ -21,6 +21,11 @@ export function href(to: string) {
   return `#${to}`;
 }
 
+export function matchChatRoute(route: string): { goalId: string; stepId: string } | null {
+  const m = route.match(/^\/chat\/([^/]+)\/([^/]+)$/);
+  return m ? { goalId: m[1], stepId: m[2] } : null;
+}
+
 export function matchStepRoute(route: string): { goalId: string; stepId: string } | null {
   const m = route.match(/^\/onboarding\/([^/]+)\/steps\/([^/]+)$/);
   return m ? { goalId: m[1], stepId: m[2] } : null;

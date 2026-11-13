@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { href, matchIdRoute, matchStepRoute, navigate, useHashRoute } from './router';
+import { href, matchChatRoute, matchIdRoute, matchStepRoute, navigate, useHashRoute } from './router';
 
 describe('router', () => {
   it('href оборачивает путь в hash', () => {
@@ -28,6 +28,12 @@ describe('router', () => {
     expect(matchStepRoute('/onboarding/g1/steps/s1')).toEqual({ goalId: 'g1', stepId: 's1' });
     expect(matchStepRoute('/onboarding/g1')).toBeNull();
     expect(matchStepRoute('/requests')).toBeNull();
+  });
+
+  it('matchChatRoute: диалог шага и общий чат', () => {
+    expect(matchChatRoute('/chat/goal-1/check_access')).toEqual({ goalId: 'goal-1', stepId: 'check_access' });
+    expect(matchChatRoute('/chat')).toBeNull();
+    expect(matchChatRoute('/onboarding/g1/steps/s1')).toBeNull();
   });
 
   it('matchIdRoute: извлекает id по базовому пути', () => {

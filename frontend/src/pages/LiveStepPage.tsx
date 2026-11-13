@@ -169,14 +169,23 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
               Зависит от: {s.dependencies.map((d) => d.step_id).join(', ')}
             </p>
           )}
-          <button
-            type="button"
-            onClick={openInstruction}
-            className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm text-primary hover:bg-primary-light focus-visible:outline-2 focus-visible:outline-primary"
-          >
-            <BookOpen size={16} aria-hidden />
-            Инструкция (версия {s.instruction_reference.version})
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={openInstruction}
+              className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm text-primary hover:bg-primary-light focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              <BookOpen size={16} aria-hidden />
+              Инструкция (версия {s.instruction_reference.version})
+            </button>
+            <a
+              href={href(`/chat/${goalId}/${s.id}`)}
+              className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm text-primary hover:bg-primary-light focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              <MessageSquareWarning size={16} aria-hidden />
+              Диалог этого шага
+            </a>
+          </div>
           {s.user_claim && (
             <p className="mt-3 rounded-xl bg-surface-muted px-3 py-2 text-sm text-text-secondary">
               Ваша отметка (не является проверкой): «{s.user_claim}»

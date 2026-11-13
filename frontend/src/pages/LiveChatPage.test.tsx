@@ -69,6 +69,13 @@ describe('LiveChatPage', () => {
     });
   });
 
+  it('диалог шага создаётся с goal_id и step_id, а не пустым контекстом', async () => {
+    render(<LiveChatPage goalId="goal-1" stepId="check_access" />);
+    await screen.findByLabelText('Сообщение AI-помощнику');
+    expect(mocks.createConversation).toHaveBeenCalledWith('goal-1', 'check_access');
+    expect(screen.getByText(/Диалог шага check_access/)).toBeInTheDocument();
+  });
+
   it('создаёт общий диалог и показывает пустое состояние', async () => {
     await renderChat();
     expect(mocks.createConversation).toHaveBeenCalledWith(null, null);
