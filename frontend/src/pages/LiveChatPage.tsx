@@ -69,7 +69,21 @@ export function LiveChatPage({ goalId = null, stepId = null, embedded = false, o
 function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
   conversationId: string; embedded: boolean; onActionChanged?: () => void;
 }) {
-  const messages = useLiveData(() => listMessages(conversationId), [conversationId], []);
+  // keepPrevious: после отправки лента не исчезает на время перечитывания — экран не прыгает.
+  const messages = useLiveData(() => listMessages(conversationId), [conversationId], [], { keepPrevious: true });
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const latestData = useRef(messages.data);
+  latestData.current = messages.data;
+  const settleFrom = useRef<unknown>(undefined);
+  const [settling, setSettling] = useState(false);
+  useEffect(() => {
+    if (!settling) return;
+    if (messages.data !== settleFrom.current || messages.state === 'error') {
+      setStreamText('');
+      setStreamSources([]);
+      setSettling(false);
+    }
+  }, [settling, messages.data, messages.state]);
   const [draft, setDraft] = useState('');
   const [streamText, setStreamText] = useState('');
   const [streamSources, setStreamSources] = useState<SourceT[]>([]);
@@ -110,6 +124,12 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
+  // Новое сообщение, кусок ответа или карточка действия — прокручиваем ленту к низу.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages.data, streamText, activeRun, action]);
+
   const handleEvent = (event: SseEvent) => {
     switch (event.type) {
       case 'message.delta':
@@ -127,8 +147,10 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
       default:
         if (isTerminalEvent(event.type)) {
           setActiveRun(null);
-          setStreamText('');
-          setStreamSources([]);
+          // Потоковый текст остаётся на экране, пока не придёт сохранённое сообщение,
+          // иначе ответ на миг пропадает.
+          settleFrom.current = latestData.current;
+          setSettling(true);
           messages.refetch();
           if (event.type === 'run.failed') {
             setNotice(`Генерация не удалась (${event.data.code}). Сообщение сохранено, действие не выполнялось.`);
@@ -194,8 +216,10 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
     }
   };
 
+  const hints = embedded ? STEP_HINTS : CHAT_HINTS;
   return (
-    <>
+    // Как в веб-чатах: страница не листается, листается только лента, ввод всегда внизу.
+    <div className={embedded ? '' : 'flex h-[calc(100dvh-5.5rem)] flex-col md:h-[calc(100dvh-3rem)]'}>
       <PageHeader title={embedded ? 'Помощь с этим шагом' : 'AI-помощник'} subtitle="Следующее действие и подходящие инструкции" />
       <SourceDrawer open={document !== null} title={document?.title ?? ''} content={document?.content ?? ''} version={document?.version ?? 1} onClose={() => setDocument(null)} />
       {messages.state === 'loading' && <Card><LoadingState /></Card>}
@@ -203,8 +227,8 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
         <ErrorState message={userMessage(messages.error)} onRetry={messages.refetch} />
       )}
       {(messages.state === 'empty' || messages.state === 'data') && (
-        <Card className={`flex ${embedded ? 'min-h-64' : 'min-h-[60vh]'} flex-col`}>
-          <div className="flex-1 space-y-4 overflow-y-auto" aria-live="polite">
+        <Card className={`flex min-h-0 flex-col ${embedded ? 'h-[34rem]' : 'flex-1'}`}>
+          <div ref={scrollRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1" aria-live="polite" aria-label="Переписка">
             {messages.state === 'empty' && (
               <EmptyState title="Сообщений пока нет" message="Спросите про цель, шаг, ошибку или следующее действие." />
             )}
@@ -248,6 +272,20 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
 
           {notice && <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-error" role="alert">{notice}</p>}
 
+          <div className="mt-3 flex flex-wrap gap-2" aria-label="Быстрые подсказки">
+            {hints.map((hint) => (
+              <button
+                key={hint}
+                type="button"
+                disabled={activeRun !== null}
+                onClick={() => void send(hint)}
+                className="rounded-full border border-border px-3 py-1.5 text-xs text-text-secondary hover:border-primary hover:text-primary focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {hint}
+              </button>
+            ))}
+          </div>
+
           <form
             className="mt-3 flex gap-2"
             onSubmit={(e) => {
@@ -280,9 +318,13 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
           </p>
         </Card>
       )}
-    </>
+    </div>
   );
 }
+
+// Подсказки уходят в чат сразу по нажатию — как обычный вопрос стажёра.
+export const CHAT_HINTS = ['Что мне делать дальше?', 'Почему шаг заблокирован?', 'Как запросить доступ к тестовой БД?'];
+export const STEP_HINTS = ['Что сделать на этом шаге?', 'Почему не проходит проверка?', 'Что написано в инструкции?'];
 
 function DocumentLink({ source, onDocument }: { source: SourceT; onDocument: (id: string) => void }) {
   return <a href={source.url} className="text-primary underline underline-offset-4" onClick={e => { e.preventDefault(); onDocument(source.document_id); }}>{source.title}</a>;
@@ -307,7 +349,7 @@ function ChatMessage({ message: m, origin, onDocument }: {
     return (
       <div className="ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-primary-light px-4 py-3">
         <p className="text-sm">{m.content}</p>
-        <p className="mt-1 text-right text-[11px] text-text-secondary">{m.created_at}</p>
+        <p className="mt-1 text-right text-[11px] text-text-secondary">{shortTime(m.created_at)}</p>
       </div>
     );
   }
@@ -330,10 +372,19 @@ function ChatMessage({ message: m, origin, onDocument }: {
           </ul>
         )}
         <p className="mt-1 text-[11px] text-text-secondary">
-          {m.created_at}
+          {shortTime(m.created_at)}
           {m.status !== 'completed' ? ` · ${m.status}` : ''}
         </p>
       </div>
     </div>
   );
+}
+
+// «23:13» для сегодняшних сообщений, «13.11 23:13» — для более старых.
+export function shortTime(stamp: string, now: Date = new Date()): string {
+  const at = new Date(stamp);
+  if (Number.isNaN(at.getTime())) return stamp;
+  const time = at.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  if (at.toDateString() === now.toDateString()) return time;
+  return `${at.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} ${time}`;
 }

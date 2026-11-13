@@ -212,7 +212,7 @@ export function AppShell({
       </button>
 
       <aside
-        className={`fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-border bg-surface p-4 transition-transform md:static md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-border bg-surface p-4 transition-transform md:sticky md:top-0 md:h-screen md:shrink-0 md:self-start md:overflow-y-auto md:translate-x-0 ${
           navOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

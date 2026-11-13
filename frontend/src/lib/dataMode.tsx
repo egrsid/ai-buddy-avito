@@ -26,11 +26,19 @@ interface DataModeValue {
 
 const DataModeContext = createContext<DataModeValue | null>(null);
 
+// v3: по умолчанию — живой Go API (разделы ТЗ, отчётов и статистики есть только там).
+// VITE_DATA_MODE=live принудительно включает live (демо-стенд); fixtures — офлайн-демо,
+// его можно выбрать переключателем, выбор помнится до закрытия вкладки.
+export function defaultMode(): DataMode {
+  const preset = import.meta.env.VITE_DATA_MODE;
+  if (preset === 'live') return 'live';
+  const stored = sessionStorage.getItem('buddy-data-mode');
+  if (stored === 'live' || stored === 'fixtures') return stored;
+  return preset === 'fixtures' ? 'fixtures' : 'live';
+}
+
 export function DataModeProvider({ children }: { children: ReactNode }) {
-  const [mode, setMode] = useState<DataMode>(() =>
-    sessionStorage.getItem('buddy-data-mode') === 'live' || import.meta.env.VITE_DATA_MODE === 'live'
-      ? 'live' : 'fixtures',
-  );
+  const [mode, setMode] = useState<DataMode>(() => defaultMode());
   const [accountId, setAccountId] = useState('intern-a');
   const [session, setSession] = useState<Session | null>(null);
   const [sessionError, setSessionError] = useState<string | null>(null);

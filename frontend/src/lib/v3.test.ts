@@ -121,6 +121,8 @@ describe('v3: отчёты, статистика, происхождение о�
     expect(apiFetchMock).toHaveBeenLastCalledWith('/api/v3/statistics/mentor?days=7&source=task_clarity');
     await api.getStatistics('documentation', 90, 'technical');
     expect(apiFetchMock).toHaveBeenLastCalledWith('/api/v3/statistics/documentation?days=90');
+    await api.getStatistics('mentor', 30, 'technical', { error_code: 'DB_SSL_REQUIRED', status: '' });
+    expect(apiFetchMock).toHaveBeenLastCalledWith('/api/v3/statistics/mentor?days=30&source=technical&error_code=DB_SSL_REQUIRED');
   });
 
   it('происхождение ответов из истории', async () => {

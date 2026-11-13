@@ -139,9 +139,16 @@ export async function reviewReport(id: string, input: z.infer<typeof TaskClarity
 
 // --- статистика ---
 
-export async function getStatistics(view: 'mentor' | 'documentation', days: 7 | 30 | 90, source?: 'technical' | 'task_clarity') {
+export async function getStatistics(
+  view: 'mentor' | 'documentation',
+  days: 7 | 30 | 90,
+  source?: 'technical' | 'task_clarity',
+  filters: Record<string, string> = {},
+) {
   const query = new URLSearchParams({ days: String(days) });
   if (source && view === 'mentor') query.set('source', source);
+  // Только разрешённые сервером фильтры; пустые значения не отправляем.
+  for (const [key, value] of Object.entries(filters)) if (value) query.set(key, value);
   return parse(Statistics, await apiFetch(`${V3}/statistics/${view}?${query.toString()}`));
 }
 

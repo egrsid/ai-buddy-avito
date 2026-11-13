@@ -15,11 +15,19 @@ describe('StatisticsPage', () => {
   it('наставник: источник и период переключаются, по умолчанию 30 дней и технические', async () => {
     render(<StatisticsPage view="mentor" />);
     expect(await screen.findByText('Затронуто разных стажёров')).toBeInTheDocument();
-    expect(v3.getStatistics).toHaveBeenLastCalledWith('mentor', 30, 'technical');
+    expect(v3.getStatistics).toHaveBeenLastCalledWith('mentor', 30, 'technical', { error_code: '', status: '' });
     fireEvent.click(screen.getByRole('tab', { name: 'Понятность моих ТЗ' }));
-    expect(v3.getStatistics).toHaveBeenLastCalledWith('mentor', 30, 'task_clarity');
+    expect(v3.getStatistics).toHaveBeenLastCalledWith('mentor', 30, 'task_clarity', { reason: '', status: '' });
     fireEvent.click(screen.getByRole('button', { name: '7 дней' }));
-    expect(v3.getStatistics).toHaveBeenLastCalledWith('mentor', 7, 'task_clarity');
+    expect(v3.getStatistics).toHaveBeenLastCalledWith('mentor', 7, 'task_clarity', { reason: '', status: '' });
+    fireEvent.change(screen.getByLabelText('Причина'), { target: { value: 'outcome_unclear' } });
+    fireEvent.change(screen.getByLabelText('Состояние'), { target: { value: 'open' } });
+    expect(v3.getStatistics).toHaveBeenLastCalledWith('mentor', 7, 'task_clarity', { reason: 'outcome_unclear', status: 'open' });
+    // Смена источника сбрасывает фильтр проблемы: у вкладок разные значения.
+    fireEvent.click(screen.getByRole('tab', { name: 'Технические трудности моих стажёров' }));
+    expect(v3.getStatistics).toHaveBeenLastCalledWith('mentor', 7, 'technical', { error_code: '', status: 'open' });
+    fireEvent.change(screen.getByLabelText('Ошибка'), { target: { value: 'DB_SSL_REQUIRED' } });
+    expect(v3.getStatistics).toHaveBeenLastCalledWith('mentor', 7, 'technical', { error_code: 'DB_SSL_REQUIRED', status: 'open' });
     expect(screen.getByRole('button', { name: '7 дней' })).toHaveAttribute('aria-pressed', 'true');
   });
 
@@ -27,7 +35,7 @@ describe('StatisticsPage', () => {
     render(<StatisticsPage view="documentation" />);
     await screen.findByText('Затронуто разных стажёров');
     expect(screen.queryByRole('tab')).not.toBeInTheDocument();
-    expect(v3.getStatistics).toHaveBeenLastCalledWith('documentation', 30, 'technical');
+    expect(v3.getStatistics).toHaveBeenLastCalledWith('documentation', 30, 'technical', { error_code: '', status: '' });
   });
 
   it('ошибка загрузки с retry', async () => {

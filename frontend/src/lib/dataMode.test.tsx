@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
-import { DataModeProvider, useDataMode } from './dataMode';
+import { DataModeProvider, defaultMode, useDataMode } from './dataMode';
 import { ApiError } from './api';
 
 const { demoLoginMock, logoutMock, meMock } = vi.hoisted(() => ({
@@ -53,6 +53,15 @@ describe('DataMode', () => {
     expect(result.current.accountId).toBe('buddy-a');
     expect(result.current.user.account_id).toBe('buddy-a');
     expect(demoLoginMock).not.toHaveBeenCalled();
+  });
+
+  it('без пресета — live по умолчанию; выбор fixtures в вкладке сохраняется', () => {
+    vi.stubEnv('VITE_DATA_MODE', '');
+    expect(defaultMode()).toBe('live');
+    sessionStorage.setItem('buddy-data-mode', 'fixtures');
+    expect(defaultMode()).toBe('fixtures');
+    vi.stubEnv('VITE_DATA_MODE', 'live');
+    expect(defaultMode()).toBe('live');
   });
 
   it('переход в live выполняет demo-login, пользователь из сессии', async () => {
