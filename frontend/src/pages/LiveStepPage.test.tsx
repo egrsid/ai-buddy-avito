@@ -144,7 +144,7 @@ describe('LiveStepPage', () => {
     fireEvent.click(retry);
     expect(retry).toBeDisabled();
     expect(screen.getByLabelText('Режим SSL')).toBeDisabled();
-    expect(screen.getByRole('button', { name: /Спросить наставника/ })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /Спросить наставника/ })).not.toBeInTheDocument();
     fireEvent.click(retry);
     expect(mocks.createCheck).toHaveBeenCalledTimes(1);
     await act(async () => { finishCheck({}); });
@@ -156,32 +156,7 @@ describe('LiveStepPage', () => {
     expect(mocks.createCheck).toHaveBeenLastCalledWith(blockedGoal.id, blockedStep.id, expect.objectContaining({ expected_version: blockedStep.version + 1 }));
   });
 
-  it('эскалация: conversation → action → confirm → опрос до succeeded', async () => {
-    render(<LiveStepPage goalId={blockedGoal.id} stepId={blockedStep.id} />);
-    fireEvent.click(await screen.findByRole('button', { name: /Спросить наставника/ }));
-    expect(mocks.createConversation).toHaveBeenCalledWith(blockedGoal.id, blockedStep.id);
-    // карточка действия появляется после createAction
-    fireEvent.click(await screen.findByRole('button', { name: 'Подтвердить' }));
-    expect(mocks.createAction).toHaveBeenCalledWith(
-      expect.objectContaining({
-        conversation_id: CONV,
-        goal_id: blockedGoal.id,
-        step_id: blockedStep.id,
-        type: 'escalate_to_buddy',
-      }),
-    );
-    expect(mocks.confirmAction).toHaveBeenCalledWith(escalationPendingAction.id);
-    // статус executing → опрос getAction до succeeded
-    expect(await screen.findByText(/Вопрос передан наставнику/, undefined, { timeout: 3000 })).toBeInTheDocument();
-  });
 
-  it('эскалация: cancel', async () => {
-    render(<LiveStepPage goalId={blockedGoal.id} stepId={blockedStep.id} />);
-    fireEvent.click(await screen.findByRole('button', { name: /Спросить наставника/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Отмена' }));
-    expect(mocks.cancelAction).toHaveBeenCalledWith(escalationPendingAction.id);
-    expect(await screen.findByText('Действие отменено и не выполнялось.')).toBeInTheDocument();
-  });
 
   it('устранённый блокер не предлагает повторную проверку или обращение наставнику', async () => {
     mocks.getStep.mockResolvedValue({ ...blockedStep, status: 'verified', available_actions: [], blockers: blockedStep.blockers.map(b => ({ ...b, status: 'resolved' })) });
@@ -214,20 +189,7 @@ describe('LiveStepPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Проверка не запустилась.');
   });
 
-  it('эскалация упала на createAction: notice без карточки', async () => {
-    mocks.createAction.mockRejectedValueOnce(new Error('conflict'));
-    render(<LiveStepPage goalId={blockedGoal.id} stepId={blockedStep.id} />);
-    fireEvent.click(await screen.findByRole('button', { name: /Спросить наставника/ }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось подготовить передачу наставнику.');
-  });
 
-  it('отмена действия упала: notice об ошибке', async () => {
-    mocks.cancelAction.mockRejectedValueOnce(new Error('gone'));
-    render(<LiveStepPage goalId={blockedGoal.id} stepId={blockedStep.id} />);
-    fireEvent.click(await screen.findByRole('button', { name: /Спросить наставника/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Отмена' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Отмена не прошла.');
-  });
 
   it('drawer закрывается кнопкой', async () => {
     render(<LiveStepPage goalId={blockedGoal.id} stepId={blockedStep.id} />);

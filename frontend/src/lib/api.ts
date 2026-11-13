@@ -40,6 +40,7 @@ export interface RequestOptions {
   body?: unknown;
   idempotencyKey?: string;
   signal?: AbortSignal;
+  version?: 'v2' | 'v3';
 }
 
 const ErrorEnvelope = z.object({ error: ErrorBody });
@@ -55,7 +56,7 @@ export async function apiFetch(path: string, options: RequestOptions = {}): Prom
 
   let response: Response;
   try {
-    response = await fetch(`/api/v2${path}`, {
+    response = await fetch(`/api/${options.version ?? 'v2'}${path}`, {
       method,
       headers,
       credentials: 'same-origin',

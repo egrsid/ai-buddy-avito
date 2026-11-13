@@ -21,21 +21,23 @@ interface NavItem {
   icon: ReactNode;
 }
 
-function navFor(user: User): NavItem[] {
+function navFor(user: User, live = false): NavItem[] {
   if (user.roles.includes('intern')) {
     return [
       { to: '/onboarding', label: 'Моя цель', icon: <Target size={20} /> },
+      ...(live ? [{ to: '/assignments', label: 'Мои задания', icon: <ClipboardList size={20} /> }] : []),
       { to: '/requests', label: 'Мои заявки', icon: <ClipboardList size={20} /> },
       { to: '/chat', label: 'AI-помощник', icon: <MessageSquare size={20} /> },
     ];
   }
   if (user.roles.includes('buddy')) {
+    if (live) return [{ to: '/mentor/tasks', label: 'Задания команды', icon: <ClipboardList size={20} /> }, { to: '/mentor/reports', label: 'Понятность заданий', icon: <FileQuestion size={20} /> }, { to: '/statistics', label: 'Статистика', icon: <BookOpenCheck size={20} /> }];
     return [{ to: '/buddy/escalations', label: 'Обращения стажёров', icon: <MessageSquare size={20} /> }];
   }
   if (user.roles.includes('access_approver')) {
     return [{ to: '/approvals', label: 'Согласования', icon: <CheckSquare size={20} /> }];
   }
-  return [{ to: '/knowledge-gaps', label: 'Пробелы знаний', icon: <BookOpenCheck size={20} /> }];
+  return [{ to: '/knowledge-gaps', label: 'Пробелы знаний', icon: <BookOpenCheck size={20} /> }, ...(live ? [{ to: '/statistics', label: 'Статистика', icon: <BookOpenCheck size={20} /> }] : [])];
 }
 
 const viewLabels: Record<ViewState, string> = {
@@ -81,7 +83,7 @@ export function AppShell({
     { id: 'intern-c', label: 'Стажёр другой команды' },
     { id: 'buddy-b', label: 'Наставник другой команды' },
   ];
-  const nav = navFor(user);
+  const nav = navFor(user, mode === 'live');
 
   const navBlock = (
     <>
@@ -90,7 +92,7 @@ export function AppShell({
         <p className="text-lg font-bold">
           Avito <span className="text-primary">AI-buddy</span>
           <span className="ml-1.5 rounded bg-primary-light px-1.5 py-0.5 text-[10px] font-medium text-primary">
-            beta
+            v3
           </span>
         </p>
       </div>

@@ -476,3 +476,25 @@ func TestResponseOriginPersisted(t *testing.T) {
 	}
 	f.browser("intern-b").call("GET", "/api/v3/conversations/"+str(c["id"])+"/message-origins", nil, 404)
 }
+
+func TestAssignmentSuccessorPreviewAndWindowDecay(t *testing.T) {
+	f := newFixture(t)
+	buddy := f.browser("buddy-a")
+	brief, assignments := buddy.publishedBrief(internA, internB)
+	for i, account := range []string{"intern-a", "intern-b"} {
+		f.browser(account).call("POST", "/api/v3/task-assignments/"+str(assignments[i]["id"])+"/frictions", Object{"section_id": "deadline", "reason": "outcome_unclear"}, 201)
+	}
+	path := "/api/v3/task-assignments/" + str(assignments[0]["id"]) + "/latest-version"
+	preview := f.browser("intern-a").call("GET", path, nil, 200)
+	if num(preview["version"]) != 1 || preview["brief_id"] != brief["id"] {
+		t.Fatal(preview)
+	}
+	f.browser("intern-b").call("GET", path, nil, 404)
+	f.browser("buddy-b").call("GET", path, nil, 404)
+	f.sql("UPDATE app.task_frictions SET first_seen=now()-interval '32 days',last_seen=now()-interval '31 days'")
+	reports := buddy.call("GET", "/api/v3/task-clarity-reports", nil, 200)
+	report := obj(list(reports["items"])[0])
+	if num(report["current_count"]) != 0 || num(report["lifetime_count"]) != 2 || report["state"] != "proposed" {
+		t.Fatal(report)
+	}
+}

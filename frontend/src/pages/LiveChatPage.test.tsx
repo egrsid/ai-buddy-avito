@@ -5,6 +5,7 @@ import { actions as fixtureActions, knowledgeDoc } from '../fixtures/all-states'
 import { LiveChatPage } from './LiveChatPage';
 
 const mocks = vi.hoisted(() => ({
+  read3: vi.fn(),
   listConversations: vi.fn(),
   createConversation: vi.fn(),
   listMessages: vi.fn(),
@@ -16,6 +17,8 @@ const mocks = vi.hoisted(() => ({
   getKnowledge: vi.fn(),
   streamRunEvents: vi.fn(),
 }));
+
+vi.mock('../lib/v3', () => ({ read3: mocks.read3 }));
 
 vi.mock('../lib/endpoints', () => ({
   listConversations: mocks.listConversations,
@@ -58,6 +61,7 @@ async function renderChat() {
 describe('LiveChatPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.read3.mockResolvedValue({items: []});
     mocks.listConversations.mockResolvedValue([]);
     mocks.createConversation.mockResolvedValue(conversation);
     mocks.listMessages.mockResolvedValue([]);
@@ -109,7 +113,7 @@ describe('LiveChatPage', () => {
       handlers.onEvent({ type: 'message.delta', data: { run_id: RUN, text: 'Проверяю…' } }, 2);
     });
     expect(screen.getByText('Проверяю…')).toBeInTheDocument();
-    expect(screen.getByText('Сгенерировано ИИ')).toBeInTheDocument();
+    expect(screen.getByText('Источник ответа не подтверждён')).toBeInTheDocument();
     expect(screen.queryByText('ИИ готовит ответ…')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Остановить генерацию' })).toBeInTheDocument();
 
@@ -128,11 +132,15 @@ describe('LiveChatPage', () => {
         + 'Ответ ниже подготовлен без LLM по разрешённому контексту и шаблонам. Он не подтверждает выполнение шага.\n\n'
         + 'Шаблонная подсказка.',
     };
+    mocks.read3.mockResolvedValue({items: [
+      {message_id: MSG_A, run_id: RUN, origin: {mode: 'live', answered_by: 'primary', completion: 'complete'}},
+      {message_id: fallback.id, run_id: RUN, origin: {mode: 'live', answered_by: 'offline', completion: 'complete'}}
+    ]});
     mocks.listMessages.mockResolvedValue([userMessage, assistantMessage, fallback]);
     await renderChat();
     expect(await screen.findByText('Нужен sslmode=require.')).toBeInTheDocument();
-    expect(screen.getByText('Сгенерировано ИИ')).toBeInTheDocument();
-    expect(screen.getByText('Fallback · без ИИ')).toBeInTheDocument();
+    expect(await screen.findByText('ИИ · основная модель')).toBeInTheDocument();
+    expect(screen.getByText('Fallback · без LLM')).toBeInTheDocument();
     expect(screen.getByText('Шаблонная подсказка.')).toBeInTheDocument();
     expect(screen.queryByText(/Произошла ошибка обращения к LLM/)).not.toBeInTheDocument();
   });

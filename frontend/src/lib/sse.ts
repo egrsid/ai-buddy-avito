@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MessageOriginData } from '../contracts/v3';
 import {
   ActionProposedData,
   MessageDeltaData,
@@ -14,6 +15,7 @@ import {
 // Heartbeat `: ping` — комментарий, пропускаем. Терминальное событие ровно одно.
 
 export type SseEvent =
+  | { type: 'message.origin'; data: z.infer<typeof MessageOriginData> }
   | { type: 'run.started'; data: z.infer<typeof RunStartedData> }
   | { type: 'message.delta'; data: z.infer<typeof MessageDeltaData> }
   | { type: 'message.sources'; data: z.infer<typeof MessageSourcesData> }
@@ -23,6 +25,7 @@ export type SseEvent =
   | { type: 'run.cancelled'; data: z.infer<typeof RunCancelledData> };
 
 const dataSchemas = {
+  'message.origin': MessageOriginData,
   'run.started': RunStartedData,
   'message.delta': MessageDeltaData,
   'message.sources': MessageSourcesData,
