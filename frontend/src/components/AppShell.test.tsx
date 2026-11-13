@@ -52,22 +52,27 @@ describe('AppShell', () => {
   it('в fixtures видны наставник и стажёр другой команды', () => {
     renderShell('buddy-b', '/buddy/escalations');
     expect(screen.getByRole('option', { name: 'Наставник другой команды' })).toBeInTheDocument();
-    expect(screen.getByRole('navigation', { name: 'Основная навигация' })).toHaveTextContent('Обращения стажёров');
+    expect(screen.getByRole('navigation', { name: 'Основная навигация' })).toHaveTextContent('Архив обращений');
   });
-  it('intern: навигация цель/заявки/чат, активный пункт помечен', () => {
+  it('intern: цели/задания/заявки/чат, активный пункт помечен', () => {
     renderShell('intern-a');
     const nav = screen.getByRole('navigation', { name: 'Основная навигация' });
-    expect(nav).toHaveTextContent('Моя цель');
+    expect(nav).toHaveTextContent('Мои цели');
+    expect(nav).toHaveTextContent('Мои задания');
     expect(nav).toHaveTextContent('Мои заявки');
     expect(nav).toHaveTextContent('AI-помощник');
-    expect(screen.getByRole('link', { name: 'Моя цель' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Мои цели' })).toHaveAttribute('aria-current', 'page');
   });
 
-  it('buddy: только обращения стажёров', () => {
-    renderShell('buddy-a', '/buddy/escalations');
+  it('buddy v3: задания, понятность, статистика и архив обращений без ответа', () => {
+    renderShell('buddy-a', '/mentor/reports/abc');
     const nav = screen.getByRole('navigation', { name: 'Основная навигация' });
-    expect(nav).toHaveTextContent('Обращения стажёров');
-    expect(nav).not.toHaveTextContent('Моя цель');
+    expect(nav).toHaveTextContent('Мои задания');
+    expect(nav).toHaveTextContent('Понятность заданий');
+    expect(nav).toHaveTextContent('Статистика');
+    expect(nav).toHaveTextContent('Архив обращений');
+    expect(nav).not.toHaveTextContent('Мои цели');
+    expect(screen.getByRole('link', { name: 'Понятность заданий' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('approver: только согласования', () => {
@@ -75,9 +80,10 @@ describe('AppShell', () => {
     expect(screen.getByRole('navigation', { name: 'Основная навигация' })).toHaveTextContent('Согласования');
   });
 
-  it('documentation_owner: только пробелы знаний', () => {
+  it('documentation_owner: пробелы знаний и статистика', () => {
     renderShell('docs-owner-a', '/knowledge-gaps');
     expect(screen.getByRole('navigation', { name: 'Основная навигация' })).toHaveTextContent('Пробелы знаний');
+    expect(screen.getByRole('navigation', { name: 'Основная навигация' })).toHaveTextContent('Статистика');
   });
 
   it('смена демо-аккаунта вызывает onUserChange', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyAnswer } from './answerOrigin';
+import { classifyAnswer, originFromServer } from './answerOrigin';
 
 const NOTICE =
   'Произошла ошибка обращения к LLM. Работает fallback. Обратись к своему наставнику напрямую для решения вопроса. ';
@@ -41,5 +41,16 @@ describe('classifyAnswer', () => {
     expect(classifyAnswer(`Начало ответа${INTERRUPTED}`)).toEqual({
       origin: 'ai', text: 'Начало ответа', interrupted: true,
     });
+  });
+});
+
+describe('originFromServer', () => {
+  it('сервер называет, кто ответил; unknown — нет доверенной метки', () => {
+    expect(originFromServer({ mode: 'live', answered_by: 'primary', completion: 'complete' })).toEqual({ origin: 'ai', interrupted: false });
+    expect(originFromServer({ mode: 'live', answered_by: 'secondary', completion: 'interrupted', reason_code: 'timeout' })).toEqual({ origin: 'ai-reserve', interrupted: true });
+    expect(originFromServer({ mode: 'live', answered_by: 'offline', completion: 'complete' })).toEqual({ origin: 'fallback', interrupted: false });
+    expect(originFromServer({ mode: 'mock', answered_by: 'offline', completion: 'complete', reason_code: 'config_mock' })?.origin).toBe('fallback');
+    expect(originFromServer({ mode: 'unknown', answered_by: 'unknown', completion: 'complete' })).toBeNull();
+    expect(originFromServer(undefined)).toBeNull();
   });
 });

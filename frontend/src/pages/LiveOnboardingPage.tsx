@@ -1,24 +1,47 @@
 import { useState } from 'react';
+import type { z } from 'zod';
+import type { GoalSummary } from '../contracts/v3';
 import { useLiveData } from '../lib/live';
-import { createGoal, listGoals, listJourneys } from '../lib/endpoints';
+import { createGoal, listJourneys } from '../lib/endpoints';
+import { listGoalSummaries } from '../lib/v3';
 import { userMessage } from '../lib/api';
+import { useDataMode } from '../lib/dataMode';
 import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '../components/ui';
-import { GoalView } from './OnboardingPage';
+import { GoalCards } from '../components/GoalCards';
 
-// RP-FE-02: live-вариант «Моя цель» на Go API.
-// Целей нет → предлагаем доступные journeys и создаём goal серверным POST.
+// V3: «Мои цели» — все цели стажёра карточками (GET /api/v3/goals, по 20 на страницу).
+// Целей нет или все проверены → можно начать разрешённый маршрут серверным POST.
+
+type GoalSummaryT = z.infer<typeof GoalSummary>;
+
+interface GoalPage {
+  items: GoalSummaryT[];
+  next: string | null;
+}
 
 export function LiveOnboardingPage() {
-  const goals = useLiveData(() => listGoals(), [], []);
+  const { accountId } = useDataMode();
+  const first = useLiveData<GoalPage>(async () => {
+    const page = await listGoalSummaries();
+    return { items: page.items, next: page.next_cursor };
+  }, [], { items: [], next: null });
+  const [more, setMore] = useState<GoalPage | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreError, setMoreError] = useState<string | null>(null);
   const [creating, setCreating] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
+
+  const refresh = () => {
+    setMore(null);
+    first.refetch();
+  };
 
   const startGoal = async (journeyId: string, version: number) => {
     setCreating(journeyId);
     setCreateError(null);
     try {
       await createGoal(journeyId, version);
-      goals.refetch();
+      refresh();
     } catch (e) {
       setCreateError(userMessage(e, 'Не удалось создать цель.'));
     } finally {
@@ -26,15 +49,52 @@ export function LiveOnboardingPage() {
     }
   };
 
+  const page = first.data;
+  const goals = page ? [...page.items, ...(more?.items ?? [])] : [];
+  const next = more ? more.next : page?.next ?? null;
+
+  const loadMore = async () => {
+    if (!next) return;
+    setLoadingMore(true);
+    setMoreError(null);
+    try {
+      const fresh = await listGoalSummaries(next);
+      // Курсор стабилен: новые и уже показанные цели не дублируются.
+      const known = new Set(goals.map((g) => g.id));
+      setMore({ items: [...(more?.items ?? []), ...fresh.items.filter((g) => !known.has(g.id))], next: fresh.next_cursor });
+    } catch (e) {
+      setMoreError(userMessage(e, 'Не удалось загрузить ещё цели.'));
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const allVerified = goals.length > 0 && goals.every((g) => g.status === 'verified');
+
   return (
     <>
-      <PageHeader title="Моя цель" subtitle="Доступ к тестовой БД и проверка подключения · live API" />
-      {goals.state === 'loading' && <Card><LoadingState /></Card>}
-      {goals.state === 'error' && (
-        <ErrorState message={userMessage(goals.error)} onRetry={goals.refetch} />
+      <PageHeader title="Мои цели" subtitle="Прогресс считает сервер по проверкам · раскройте карточку, чтобы увидеть подзадачи" />
+      {first.state === 'loading' && <Card><LoadingState /></Card>}
+      {first.state === 'error' && <ErrorState message={userMessage(first.error)} onRetry={refresh} />}
+      {page && goals.length === 0 && first.state !== 'loading' && first.state !== 'error' && (
+        <JourneyPicker creating={creating} error={createError} onStart={startGoal} />
       )}
-      {goals.state === 'empty' && <JourneyPicker creating={creating} error={createError} onStart={startGoal} />}
-      {goals.state === 'data' && goals.data && <GoalView goal={goals.data[0]} />}
+      {goals.length > 0 && first.state !== 'error' && (
+        <>
+          <GoalCards goals={goals} accountId={accountId} />
+          {next && (
+            <div className="mt-4 flex justify-center">
+              <Button variant="secondary" disabled={loadingMore} onClick={loadMore}>
+                {loadingMore ? 'Загружаем…' : 'Показать ещё цели'}
+              </Button>
+            </div>
+          )}
+          {moreError && <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-error" role="alert">{moreError}</p>}
+          {allVerified && (
+            <div className="mt-6"><JourneyPicker creating={creating} error={createError} onStart={startGoal} title="Все цели проверены — можно начать новую" /></div>
+          )}
+        </>
+      )}
     </>
   );
 }
@@ -43,10 +103,12 @@ function JourneyPicker({
   creating,
   error,
   onStart,
+  title = 'Цель пока не выбрана',
 }: {
   creating: string | null;
   error: string | null;
   onStart: (journeyId: string, version: number) => void;
+  title?: string;
 }) {
   const journeys = useLiveData(() => listJourneys(), [], []);
 
@@ -59,7 +121,7 @@ function JourneyPicker({
   }
   return (
     <Card>
-      <h2 className="mb-1 font-medium">Цель пока не выбрана</h2>
+      <h2 className="mb-1 font-medium">{title}</h2>
       <p className="mb-4 text-sm text-text-secondary">Выберите разрешённый маршрут — сервер привяжет ресурс.</p>
       {error && <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-error" role="alert">{error}</p>}
       <ul className="space-y-2">

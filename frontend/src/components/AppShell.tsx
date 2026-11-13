@@ -1,11 +1,15 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import {
+  Archive,
+  BarChart3,
   BookOpenCheck,
   Bot,
   CheckSquare,
   ClipboardList,
   FileQuestion,
+  FileText,
+  Lightbulb,
   Menu,
   MessageSquare,
   Target,
@@ -24,18 +28,27 @@ interface NavItem {
 function navFor(user: User): NavItem[] {
   if (user.roles.includes('intern')) {
     return [
-      { to: '/onboarding', label: 'Моя цель', icon: <Target size={20} /> },
+      { to: '/onboarding', label: 'Мои цели', icon: <Target size={20} /> },
+      { to: '/tasks', label: 'Мои задания', icon: <FileText size={20} /> },
       { to: '/requests', label: 'Мои заявки', icon: <ClipboardList size={20} /> },
       { to: '/chat', label: 'AI-помощник', icon: <MessageSquare size={20} /> },
     ];
   }
   if (user.roles.includes('buddy')) {
-    return [{ to: '/buddy/escalations', label: 'Обращения стажёров', icon: <MessageSquare size={20} /> }];
+    return [
+      { to: '/mentor/briefs', label: 'Мои задания', icon: <FileText size={20} /> },
+      { to: '/mentor/reports', label: 'Понятность заданий', icon: <Lightbulb size={20} /> },
+      { to: '/mentor/stats', label: 'Статистика', icon: <BarChart3 size={20} /> },
+      { to: '/buddy/escalations', label: 'Архив обращений', icon: <Archive size={20} /> },
+    ];
   }
   if (user.roles.includes('access_approver')) {
     return [{ to: '/approvals', label: 'Согласования', icon: <CheckSquare size={20} /> }];
   }
-  return [{ to: '/knowledge-gaps', label: 'Пробелы знаний', icon: <BookOpenCheck size={20} /> }];
+  return [
+    { to: '/knowledge-gaps', label: 'Пробелы знаний', icon: <BookOpenCheck size={20} /> },
+    { to: '/docs/stats', label: 'Статистика', icon: <BarChart3 size={20} /> },
+  ];
 }
 
 const viewLabels: Record<ViewState, string> = {

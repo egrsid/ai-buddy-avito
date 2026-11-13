@@ -24,7 +24,9 @@ import { ActionCard } from '../components/ActionCard';
 import { FormattedText } from '../components/FormattedText';
 import { SourceDrawer } from '../components/SourceDrawer';
 import { AnswerOriginBadge } from '../components/AnswerOriginBadge';
-import { classifyAnswer } from '../lib/answerOrigin';
+import { classifyAnswer, originFromServer } from '../lib/answerOrigin';
+import type { ResponseOrigin } from '../contracts/v3';
+import { listMessageOrigins } from '../lib/v3';
 
 // RP-FE-02: live-чат. Диалог goal_id/step_id = null (общий).
 // Run запускается POST /runs, стрим — GET /runs/{id}/events (SSE).
@@ -34,6 +36,7 @@ import { classifyAnswer } from '../lib/answerOrigin';
 type MessageT = z.infer<typeof Message>;
 type RunT = z.infer<typeof Run>;
 type SourceT = z.infer<typeof Source>;
+type ResponseOriginT = z.infer<typeof ResponseOrigin>;
 
 export function LiveChatPage({ goalId = null, stepId = null, embedded = false, onActionChanged }: {
   goalId?: string | null; stepId?: string | null; embedded?: boolean; onActionChanged?: () => void;
@@ -75,6 +78,20 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
   const [notice, setNotice] = useState<string | null>(null);
   const [document, setDocument] = useState<z.infer<typeof KnowledgeDocument> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const [origins, setOrigins] = useState<Record<string, ResponseOriginT>>({});
+  // История происхождения ответов: после каждой перезагрузки сообщений. Ошибка — не критична,
+  // тогда бейдж строится по пометкам в тексте, как раньше.
+  useEffect(() => {
+    if (messages.state !== 'data') return;
+    let active = true;
+    listMessageOrigins(conversationId)
+      .then((items) => {
+        if (!active) return;
+        setOrigins((current) => ({ ...current, ...Object.fromEntries(items.map((i) => [i.message_id, i.origin])) }));
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [conversationId, messages.state, messages.data]);
   const openDocument = async (id: string) => {
     setNotice(null);
     setDocument(null);
@@ -103,6 +120,9 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
         break;
       case 'action.proposed':
         setAction(event.data.action);
+        break;
+      case 'message.origin':
+        setOrigins((current) => ({ ...current, [event.data.message_id]: event.data.origin }));
         break;
       default:
         if (isTerminalEvent(event.type)) {
@@ -189,7 +209,7 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
               <EmptyState title="Сообщений пока нет" message="Спросите про цель, шаг, ошибку или следующее действие." />
             )}
             {messages.data?.map((m) => (
-              <ChatMessage key={m.id} message={m} onDocument={openDocument} />
+              <ChatMessage key={m.id} message={m} origin={origins[m.id]} onDocument={openDocument} />
             ))}
             {activeRun && !streamText && (
               <div className="flex max-w-[85%] gap-3">
@@ -280,7 +300,9 @@ function StreamingAnswer({ text, sources, onDocument }: {
   );
 }
 
-function ChatMessage({ message: m, onDocument }: { message: MessageT; onDocument: (id: string) => void }) {
+function ChatMessage({ message: m, origin, onDocument }: {
+  message: MessageT; origin?: ResponseOriginT; onDocument: (id: string) => void;
+}) {
   if (m.role === 'user') {
     return (
       <div className="ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-primary-light px-4 py-3">
@@ -290,13 +312,15 @@ function ChatMessage({ message: m, onDocument }: { message: MessageT; onDocument
     );
   }
   const answer = classifyAnswer(m.content);
+  const trusted = originFromServer(origin);
+  const badge = trusted ?? { origin: answer.origin, interrupted: answer.interrupted };
   return (
     <div className="flex max-w-[85%] gap-3">
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-light" aria-hidden>
         <Bot size={18} className="text-primary" />
       </span>
       <div className="rounded-2xl rounded-tl-md bg-surface-muted px-4 py-3">
-        <AnswerOriginBadge origin={answer.origin} interrupted={answer.interrupted} />
+        <AnswerOriginBadge origin={badge.origin} interrupted={badge.interrupted} />
         <FormattedText text={answer.text} documents={m.sources} onDocument={onDocument} />
         {m.sources.length > 0 && (
           <ul className="mt-2 space-y-0.5 text-xs text-text-secondary">
