@@ -23,22 +23,13 @@ describe('BuddyEscalationsPage', () => {
 });
 
 describe('BuddyEscalationDetailPage', () => {
-  it('open: диагностика, гипотезы, источники; ответ закрывает обращение', async () => {
+  it('open: диагностика видна, ответить нельзя (v3 — Telegram)', async () => {
     render(<BuddyEscalationDetailPage id={openEsc.id} view="data" />);
     expect(await screen.findByText('Диагностика (разрешённый снимок)')).toBeInTheDocument();
     expect(screen.getByText('Гипотезы')).toBeInTheDocument();
     expect(screen.getByText('Источники')).toBeInTheDocument();
-
-    const send = screen.getByRole('button', { name: 'Ответить и закрыть' });
-    expect(send).toBeDisabled();
-    fireEvent.change(screen.getByPlaceholderText(/sslmode=require/), {
-      target: { value: 'Включи sslmode=require и повтори проверку.' },
-    });
-    expect(send).toBeEnabled();
-    fireEvent.click(send);
-
-    expect(screen.getByText(/Обращение закрыто/)).toBeInTheDocument();
-    expect(screen.getByText(/не публикуется в базу знаний автоматически/)).toBeInTheDocument();
+    expect(screen.getByText(/Ответить здесь больше нельзя/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ответить и закрыть' })).not.toBeInTheDocument();
   });
 
   it('resolved: показывает сохранённый ответ', async () => {
