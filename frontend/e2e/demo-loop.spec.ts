@@ -22,8 +22,11 @@ async function account(page: Page, id: string) {
   await expect(page.getByLabel('Демо-аккаунт')).toBeEnabled();
 }
 async function step(page: Page, id: string) {
-  await page.getByRole('link', { name: 'Моя цель', exact: true }).click();
-  await page.locator(`ol a[href$="/steps/${id}"]`).click();
+  await page.getByRole('link', { name: 'Мои цели', exact: true }).click();
+  // v3: подзадачи цели раскрываются кнопкой на карточке.
+  const expand = page.getByRole('button', { name: 'Раскрыть подзадачи' }).first();
+  if (await expand.isVisible()) await expand.click();
+  await page.locator(`ol a[href$="/steps/${id}"]`).first().click();
   await expect(page.getByRole('heading', { name: 'Помощь с этим шагом' })).toBeVisible();
 }
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true });
@@ -33,9 +36,8 @@ test('A/B/C full browser loop, ACL and real service restart', async ({ page }, i
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Моя цель', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Мои цели', exact: true })).toBeVisible();
   const goals: string[] = [];
-  let escalationId = '';
   for (const id of ['intern-a', 'intern-b']) {
     await account(page, id);
     await expect(page.locator('main')).toContainText(/Цель пока не выбрана|Проверено \d из/);
@@ -81,7 +83,8 @@ test('A/B/C full browser loop, ACL and real service restart', async ({ page }, i
     await expect(page.getByText('DB_SSL_REQUIRED', { exact: true }).first()).toBeVisible();
     await page.screenshot({ path: info.outputPath(`${id}-blocker.png`), fullPage: true });
     await button(page, 'Повторить проверку').click();
-    await expect(button(page, 'Спросить наставника')).toBeVisible();
+    // v3: вместо внутреннего обращения — сообщение наставнику в Telegram.
+    await expect(button(page, 'Подготовить сообщение')).toBeVisible();
     if (id === 'intern-a') {
       await account(page, 'docs-owner-a');
       expect((await read(page, '/knowledge-gaps')).items).toEqual([]);
@@ -89,17 +92,13 @@ test('A/B/C full browser loop, ACL and real service restart', async ({ page }, i
       expect((await read(page, '/friction-groups')).items).toEqual([]);
       await account(page, id);
       await step(page, 'check_connection');
-      await button(page, 'Спросить наставника').click();
-      await expect(page.getByText('Передача вопроса наставнику', { exact: true })).toBeVisible();
-      await button(page, 'Подтвердить').click();
-      await expect.poll(async () => (await read(page, '/escalations')).items.length).toBe(1);
-      escalationId = (await read(page, '/escalations')).items[0].id;
-      await account(page, 'buddy-a');
-      await page.locator(`a[href="#/buddy/escalations/${escalationId}"]`).click();
-      await page.getByLabel('Ответ стажёру').fill('Включи ssl_mode=require и повтори безопасную проверку.');
-      await button(page, 'Ответить и закрыть').click();
-      await expect(page.getByRole('heading', { name: 'Ваш ответ', exact: true })).toBeVisible();
-      await page.screenshot({ path: info.outputPath('buddy.png'), fullPage: true });
+      await button(page, 'Подготовить сообщение').click();
+      await page.getByLabel('Вопрос наставнику (необязательно)').fill('Какой режим SSL выбрать?');
+      await button(page, 'Показать текст сообщения').click();
+      await expect(page.getByLabel('Текст для наставника')).toContainText('DB_SSL_REQUIRED');
+      await expect(page.getByLabel('Текст для наставника')).toContainText('Какой режим SSL выбрать?');
+      expect((await read(page, '/escalations')).items).toEqual([]);
+      await page.screenshot({ path: info.outputPath('telegram-preview.png'), fullPage: true });
       await account(page, id);
       expect((await read(page, '/goals/' + goalId)).status).not.toBe('verified');
       await step(page, 'check_connection');
@@ -107,10 +106,9 @@ test('A/B/C full browser loop, ACL and real service restart', async ({ page }, i
     await page.getByLabel('Режим SSL').selectOption('require');
     await button(page, 'Повторить проверку').click();
     await expect.poll(async () => (await read(page, '/goals/' + goalId)).progress.percent).toBe(100);
-    await expect(button(page, 'Спросить наставника')).toHaveCount(0);
     await expect(button(page, 'Повторить проверку')).toHaveCount(0);
-    await page.getByRole('link', { name: 'Моя цель', exact: true }).click();
-    await expect(page.getByRole('progressbar', { name: 'Прогресс цели' })).toHaveAttribute('aria-valuenow', '100');
+    await page.getByRole('link', { name: 'Мои цели', exact: true }).click();
+    await expect(page.getByRole('progressbar', { name: 'Прогресс цели «Доступ к БД команды A»' }).first()).toHaveAttribute('aria-valuenow', '100');
   }
   await account(page, 'docs-owner-a');
   const candidates = (await read(page, '/knowledge-gaps')).items.filter((c: { error_code: string }) => c.error_code === 'DB_SSL_REQUIRED');
@@ -141,7 +139,5 @@ test('A/B/C full browser loop, ACL and real service restart', async ({ page }, i
   await expect(page.getByText('Маршрутов нет', { exact: true })).toBeVisible();
   expect((await page.request.get('/api/v2/goals/' + goals[0])).status()).toBe(404);
   expect((await page.request.get('/api/v2/knowledge/' + ref.document_id)).status()).toBe(404);
-  await account(page, 'buddy-b');
-  expect((await page.request.get('/api/v2/escalations/' + escalationId)).status()).toBe(404);
   expect(errors).toEqual([]);
 });

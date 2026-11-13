@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { escalations } from '../fixtures/all-states';
 import { LiveBuddyEscalationDetailPage, LiveBuddyEscalationsPage } from './LiveBuddyPages';
@@ -38,41 +38,33 @@ describe('LiveBuddyEscalationsPage', () => {
   });
 });
 
-describe('LiveBuddyEscalationDetailPage', () => {
+describe('LiveBuddyEscalationDetailPage · только чтение', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getEscalation.mockResolvedValue(openEsc);
-    mocks.replyEscalation.mockResolvedValue(resolvedEsc);
   });
 
-  it('ответ закрывает обращение с expected_version', async () => {
+  it('старое открытое обращение: диагностика видна, ответить нельзя', async () => {
     render(<LiveBuddyEscalationDetailPage id={openEsc.id} />);
     expect(await screen.findByText('Диагностика (разрешённый снимок)')).toBeInTheDocument();
     expect(screen.getByText('Гипотезы')).toBeInTheDocument();
     expect(screen.getByText('Источники')).toBeInTheDocument();
-
-    fireEvent.change(screen.getByPlaceholderText(/sslmode=require/), {
-      target: { value: 'Включи sslmode=require и повтори проверку.' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Ответить и закрыть' }));
-    expect(mocks.replyEscalation).toHaveBeenCalledWith(openEsc.id, {
-      answer: 'Включи sslmode=require и повтори проверку.',
-      expected_version: openEsc.version,
-    });
-  });
-
-  it('ошибка ответа: notice', async () => {
-    mocks.replyEscalation.mockRejectedValue(new Error('down'));
-    render(<LiveBuddyEscalationDetailPage id={openEsc.id} />);
-    await screen.findByRole('button', { name: 'Ответить и закрыть' });
-    fireEvent.change(screen.getByPlaceholderText(/sslmode=require/), { target: { value: 'Ответ' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Ответить и закрыть' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Ответ не отправлен');
+    expect(screen.getByText(/Ответить здесь больше нельзя/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ответить и закрыть' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(mocks.replyEscalation).not.toHaveBeenCalled();
   });
 
   it('resolved: сохранённый ответ', async () => {
     mocks.getEscalation.mockResolvedValue(resolvedEsc);
     render(<LiveBuddyEscalationDetailPage id={resolvedEsc.id} />);
     expect(await screen.findByText(/включи sslmode=require/)).toBeInTheDocument();
+  });
+
+  it('ошибка загрузки и пустой ответ', async () => {
+    mocks.getEscalation.mockRejectedValueOnce(new Error('down'));
+    const { unmount } = render(<LiveBuddyEscalationDetailPage id={openEsc.id} />);
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    unmount();
   });
 });

@@ -29,6 +29,9 @@ vi.mock('../lib/endpoints', () => ({
   getKnowledge: mocks.getKnowledge,
 }));
 
+const v3 = vi.hoisted(() => ({ listMessageOrigins: vi.fn() }));
+vi.mock('../lib/v3', () => v3);
+
 vi.mock('../lib/sse', async (importOriginal) => {
   const orig = await importOriginal<typeof import('../lib/sse')>();
   return { ...orig, streamRunEvents: mocks.streamRunEvents };
@@ -61,6 +64,7 @@ describe('LiveChatPage', () => {
     mocks.listConversations.mockResolvedValue([]);
     mocks.createConversation.mockResolvedValue(conversation);
     mocks.listMessages.mockResolvedValue([]);
+    v3.listMessageOrigins.mockResolvedValue([]);
     mocks.createRun.mockResolvedValue(run);
     mocks.cancelRun.mockResolvedValue({ ...run, status: 'cancelled' });
     mocks.confirmAction.mockResolvedValue({ ...pendingAction, status: 'executing' });
@@ -102,7 +106,7 @@ describe('LiveChatPage', () => {
 
     await waitFor(() => expect(mocks.streamRunEvents).toHaveBeenCalled());
     // До первого слова видно, что ИИ уже работает.
-    expect(screen.getByText('ИИ готовит ответ…')).toBeInTheDocument();
+    expect(await screen.findByText('ИИ готовит ответ…')).toBeInTheDocument();
     const handlers = mocks.streamRunEvents.mock.calls[0][1] as RunStreamHandlers;
     act(() => {
       handlers.onEvent({ type: 'run.started', data: { run_id: RUN } }, 1);
@@ -135,6 +139,32 @@ describe('LiveChatPage', () => {
     expect(screen.getByText('Fallback · без ИИ')).toBeInTheDocument();
     expect(screen.getByText('Шаблонная подсказка.')).toBeInTheDocument();
     expect(screen.queryByText(/Произошла ошибка обращения к LLM/)).not.toBeInTheDocument();
+  });
+
+  it('v3: метка берётся от сервера, а не из слов ответа', async () => {
+    // Текст похож на обычный ответ ИИ, но сервер знает, что ответила резервная модель.
+    v3.listMessageOrigins.mockResolvedValue([{ run_id: RUN, message_id: MSG_A, origin: { mode: 'live', answered_by: 'secondary', completion: 'complete' } }]);
+    mocks.listMessages.mockResolvedValue([userMessage, assistantMessage]);
+    await renderChat();
+    expect(await screen.findByText('Сгенерировано ИИ · резервная модель')).toBeInTheDocument();
+    expect(v3.listMessageOrigins).toHaveBeenCalledWith(CONV);
+  });
+
+  it('v3: событие message.origin обновляет метку сообщения; сбой истории не ломает чат', async () => {
+    v3.listMessageOrigins.mockRejectedValue(new Error('down'));
+    mocks.listMessages.mockResolvedValue([userMessage]);
+    await renderChat();
+    fireEvent.change(screen.getByLabelText('Сообщение AI-помощнику'), { target: { value: 'Вопрос' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Отправить' }));
+    await waitFor(() => expect(mocks.streamRunEvents).toHaveBeenCalled());
+    const handlers = mocks.streamRunEvents.mock.calls[0][1] as RunStreamHandlers;
+    mocks.listMessages.mockResolvedValue([userMessage, assistantMessage]);
+    act(() => {
+      handlers.onEvent({ type: 'message.delta', data: { run_id: RUN, text: 'Ответ' } }, 1);
+      handlers.onEvent({ type: 'message.origin', data: { run_id: RUN, message_id: MSG_A, origin: { mode: 'live', answered_by: 'offline', completion: 'complete' } } }, 2);
+      handlers.onEvent({ type: 'run.completed', data: { run_id: RUN, message_id: MSG_A } }, 3);
+    });
+    expect(await screen.findByText('Fallback · без ИИ')).toBeInTheDocument();
   });
 
   it('action.proposed → ActionCard, confirm → executing → опрос до succeeded', async () => {

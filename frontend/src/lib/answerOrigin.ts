@@ -3,7 +3,20 @@
 // Message не меняется, а пометка сохраняется в истории чата вместе с ответом.
 // Здесь эти фразы снимаются с текста и превращаются в бейдж.
 
+import type { z } from 'zod';
+import type { ResponseOrigin } from '../contracts/v3';
+
 export type AnswerOrigin = 'ai' | 'ai-reserve' | 'fallback';
+type ResponseOriginT = z.infer<typeof ResponseOrigin>;
+
+// v3: источник ответа приходит от сервера (Go хранит то, что сообщил AI-сервис).
+// Для старых сообщений сервер отвечает unknown — тогда остаётся разбор пометок в тексте.
+export function originFromServer(origin: ResponseOriginT | undefined): { origin: AnswerOrigin; interrupted: boolean } | null {
+  if (!origin || origin.answered_by === 'unknown') return null;
+  const interrupted = origin.completion === 'interrupted';
+  if (origin.mode === 'mock' || origin.answered_by === 'offline') return { origin: 'fallback', interrupted };
+  return { origin: origin.answered_by === 'secondary' ? 'ai-reserve' : 'ai', interrupted };
+}
 
 export interface ClassifiedAnswer {
   origin: AnswerOrigin;

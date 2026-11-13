@@ -16,6 +16,18 @@ describe('createSseParser', () => {
     expect(events[1][0]).toEqual({ type: 'message.delta', data: { run_id: runId, text: 'При' } });
   });
 
+  it('v3 message.origin — нетерминальное событие с доверенным происхождением', () => {
+    const events: SseEvent[] = [];
+    const parser = createSseParser((e) => events.push(e));
+    const msg = '00000031-0000-4000-8000-000000000031';
+    parser.feed(`event:message.origin
+data:{"run_id":"${runId}","message_id":"${msg}","origin":{"mode":"live","answered_by":"primary","completion":"complete"}}
+
+`);
+    expect(events[0]).toEqual({ type: 'message.origin', data: { run_id: runId, message_id: msg, origin: { mode: 'live', answered_by: 'primary', completion: 'complete' } } });
+    expect(isTerminalEvent('message.origin')).toBe(false);
+  });
+
   it('склеивает событие, разрезанное между чанками', () => {
     const events: SseEvent[] = [];
     const parser = createSseParser((e) => events.push(e));

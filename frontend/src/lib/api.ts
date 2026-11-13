@@ -55,7 +55,8 @@ export async function apiFetch(path: string, options: RequestOptions = {}): Prom
 
   let response: Response;
   try {
-    response = await fetch(`/api/v2${path}`, {
+    // v2-пути передаются без префикса, v3 — полностью (/api/v3/...).
+    response = await fetch(path.startsWith('/api/') ? path : `/api/v2${path}`, {
       method,
       headers,
       credentials: 'same-origin',

@@ -8,6 +8,7 @@ import {
   RunFailedData,
   RunStartedData,
 } from '../contracts/public';
+import { MessageOriginData } from '../contracts/v3';
 
 // RP-FE-02: SSE-поток run (GET /runs/{id}/events).
 // Envelope: event:<type>, id:<sequence>, data:<однострочный JSON>, пустая строка.
@@ -18,6 +19,7 @@ export type SseEvent =
   | { type: 'message.delta'; data: z.infer<typeof MessageDeltaData> }
   | { type: 'message.sources'; data: z.infer<typeof MessageSourcesData> }
   | { type: 'action.proposed'; data: z.infer<typeof ActionProposedData> }
+  | { type: 'message.origin'; data: z.infer<typeof MessageOriginData> }
   | { type: 'run.completed'; data: z.infer<typeof RunCompletedData> }
   | { type: 'run.failed'; data: z.infer<typeof RunFailedData> }
   | { type: 'run.cancelled'; data: z.infer<typeof RunCancelledData> };
@@ -27,6 +29,8 @@ const dataSchemas = {
   'message.delta': MessageDeltaData,
   'message.sources': MessageSourcesData,
   'action.proposed': ActionProposedData,
+  // v3: кто на самом деле ответил (основная/резервная модель или без ИИ) — от сервера.
+  'message.origin': MessageOriginData,
   'run.completed': RunCompletedData,
   'run.failed': RunFailedData,
   'run.cancelled': RunCancelledData,

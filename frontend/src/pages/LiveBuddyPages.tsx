@@ -1,26 +1,26 @@
-import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import type { Escalation } from '../fixtures/all-states';
-import { getEscalation, listEscalations, replyEscalation } from '../lib/endpoints';
+import { getEscalation, listEscalations } from '../lib/endpoints';
 import { userMessage } from '../lib/api';
 import { useLiveData } from '../lib/live';
 import { href } from '../lib/router';
-import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '../components/ui';
+import { Card, EmptyState, ErrorState, LoadingState, PageHeader } from '../components/ui';
 import { CheckStatusBadge, EscalationStatusBadge } from '../components/StatusBadge';
 
-// RP-FE-02: live-варианты очереди buddy и ответа на обращение.
+// v3: внутренние обращения стажёров к наставнику отключены — стажёры пишут в Telegram.
+// Старые обращения остаются только для чтения по прежним правам доступа.
 
 export function LiveBuddyEscalationsPage() {
   const escalations = useLiveData(() => listEscalations(), [], []);
   return (
     <>
-      <PageHeader title="Обращения стажёров" subtitle="Только назначенные вам стажёры · live API" />
+      <PageHeader title="Архив обращений" subtitle="Обращения до перехода на Telegram · только чтение" />
       {escalations.state === 'loading' && <Card><LoadingState /></Card>}
       {escalations.state === 'error' && (
         <ErrorState message={userMessage(escalations.error)} onRetry={escalations.refetch} />
       )}
       {escalations.state === 'empty' && (
-        <EmptyState title="Обращений нет" message="Когда стажёр передаст вопрос, он появится здесь с диагностикой." />
+        <EmptyState title="Обращений нет" message="Новые вопросы стажёры присылают вам в Telegram, здесь хранятся только старые." />
       )}
       {escalations.state === 'data' && escalations.data && (
         <ul className="space-y-3">
@@ -50,9 +50,6 @@ export function LiveBuddyEscalationsPage() {
 
 export function LiveBuddyEscalationDetailPage({ id }: { id: string }) {
   const escalation = useLiveData(() => getEscalation(id), [id], null as Escalation | null);
-  const [answer, setAnswer] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
 
   if (escalation.state === 'loading') return <Card><LoadingState /></Card>;
   if (escalation.state === 'error') {
@@ -63,19 +60,6 @@ export function LiveBuddyEscalationDetailPage({ id }: { id: string }) {
   }
   const e = escalation.data;
   const snap = e.diagnostic_snapshot;
-
-  const send = async () => {
-    setBusy(true);
-    setNotice(null);
-    try {
-      await replyEscalation(e.id, { answer, expected_version: e.version });
-      escalation.refetch();
-    } catch (err) {
-      setNotice(userMessage(err, 'Ответ не отправлен.'));
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <>
@@ -140,8 +124,6 @@ export function LiveBuddyEscalationDetailPage({ id }: { id: string }) {
           )}
         </Card>
 
-        {notice && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-error" role="alert">{notice}</p>}
-
         {e.status === 'resolved' ? (
           <Card>
             <h3 className="mb-2 font-medium">Ваш ответ</h3>
@@ -150,24 +132,8 @@ export function LiveBuddyEscalationDetailPage({ id }: { id: string }) {
           </Card>
         ) : (
           <Card>
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium">Ответ стажёру</span>
-              <textarea
-                value={answer}
-                onChange={(ev) => setAnswer(ev.target.value)}
-                rows={4}
-                maxLength={4000}
-                className="w-full rounded-xl border border-border px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-primary"
-                placeholder="Например: включи sslmode=require и повтори проверку"
-              />
-            </label>
-            <div className="mt-3">
-              <Button disabled={!answer.trim() || busy} onClick={send}>
-                {busy ? 'Отправляем…' : 'Ответить и закрыть'}
-              </Button>
-            </div>
-            <p className="mt-2 text-xs text-text-secondary">
-              Ответ не делает шаг проверенным — стажёр повторяет проверку сам.
+            <p className="text-sm text-text-secondary">
+              Обращение осталось без ответа до перехода на Telegram. Ответить здесь больше нельзя — напишите стажёру напрямую.
             </p>
           </Card>
         )}

@@ -24,6 +24,25 @@ const api = vi.hoisted(() => ({
 
 vi.mock('./lib/endpoints', () => api);
 
+const STATS = {
+  view: 'mentor', source_kind: 'technical', as_of: '2026-11-13T10:00:00Z', timezone: 'Europe/Moscow',
+  window: { from: '2026-10-15T21:00:00Z', to: '2026-11-13T10:00:00Z', days: 30 }, privacy_threshold: 2,
+  summary: { affected_interns: 0, observations: 0, open_items: 0, suppressed: false }, rows: [], daily: [], next_cursor: null,
+};
+const v3 = vi.hoisted(() => ({
+  listGoalSummaries: vi.fn(),
+  getMentorContact: vi.fn(),
+  listMessageOrigins: vi.fn(),
+  listAssignments: vi.fn(),
+  getAssignment: vi.fn(),
+  listBriefs: vi.fn(),
+  getBrief: vi.fn(),
+  listReports: vi.fn(),
+  getReport: vi.fn(),
+  getStatistics: vi.fn(),
+}));
+vi.mock('./lib/v3', () => v3);
+
 const CONV = { id: '00000030-0000-4000-8000-000000000030', goal_id: null, step_id: null, created_at: '2026-11-11T09:00:00Z' };
 
 function go(hash: string) {
@@ -110,7 +129,9 @@ describe('App', () => {
     render(<App />);
     await screen.findByRole('heading', { name: 'Моя цель' });
     fireEvent.change(screen.getByLabelText('Демо-аккаунт'), { target: { value: 'buddy-a' } });
-    expect(await screen.findByRole('link', { name: 'Обращения стажёров' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Понятность заданий' })).toBeInTheDocument();
+    // Разделы v3 в fixtures не подделываются данными: предлагаем Live API.
+    expect(await screen.findByRole('heading', { name: 'Раздел доступен в режиме Live API' })).toBeInTheDocument();
   });
 });
 
@@ -133,6 +154,16 @@ describe('App · live-режим', () => {
     api.createConversation.mockResolvedValue(CONV);
     api.listMessages.mockResolvedValue([]);
     api.me.mockRejectedValue(new Error('anon'));
+    v3.listGoalSummaries.mockResolvedValue({ items: [], next_cursor: null });
+    v3.getMentorContact.mockResolvedValue({ status: 'missing' });
+    v3.listMessageOrigins.mockResolvedValue([]);
+    v3.listAssignments.mockResolvedValue([]);
+    v3.listBriefs.mockResolvedValue([]);
+    v3.listReports.mockResolvedValue([]);
+    v3.getAssignment.mockRejectedValue(new Error('not found'));
+    v3.getBrief.mockRejectedValue(new Error('not found'));
+    v3.getReport.mockRejectedValue(new Error('not found'));
+    v3.getStatistics.mockResolvedValue(STATS);
   });
 
   it('переключение в live делает demo-login и показывает живой чат', async () => {
@@ -162,7 +193,24 @@ describe('App · live-режим', () => {
     expect(await screen.findByText('Нет заявок на согласование')).toBeInTheDocument();
 
     go('#/buddy/escalations');
-    expect(await screen.findByRole('heading', { name: 'Обращения стажёров' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Архив обращений' })).toBeInTheDocument();
+
+    go('#/tasks');
+    expect(await screen.findByText('Заданий пока нет')).toBeInTheDocument();
+    go('#/tasks/00000031-0000-4000-8000-000000000031');
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    go('#/mentor/briefs');
+    expect(await screen.findByText('ТЗ пока нет')).toBeInTheDocument();
+    go('#/mentor/briefs/00000032-0000-4000-8000-000000000032');
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    go('#/mentor/reports');
+    expect(await screen.findByText('Отчётов нет')).toBeInTheDocument();
+    go('#/mentor/reports/00000033-0000-4000-8000-000000000033');
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    go('#/mentor/stats');
+    expect(await screen.findByText('Затруднений нет')).toBeInTheDocument();
+    go('#/docs/stats');
+    expect(await screen.findByRole('heading', { name: 'Статистика затруднений' })).toBeInTheDocument();
 
     go('#/knowledge-gaps');
     expect(await screen.findByRole('heading', { name: 'Пробелы знаний' })).toBeInTheDocument();

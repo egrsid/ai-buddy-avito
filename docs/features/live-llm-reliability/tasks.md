@@ -2,6 +2,8 @@
 
 **Факт 13.11 (ветка feature/backend-v3):** Сделано: AI шлёт `response.origin`, Go сохраняет его в `messages.origin` и отдаёт в SSE `message.origin` и `GET /api/v3/conversations/{id}/message-origins` (V3-LLM-OBS-01, часть BE/AI). Открыто: FE-метка из этого поля вместо поиска по тексту, fault-прогоны V3-T21…T24. API: [backend-api](../../v3/backend-api.md).
 
+**Факт FE 13.11:** FE готов: бейдж «ИИ / резервная модель / без ИИ» берётся из `message.origin` и истории `message-origins`; разбор текста остался только для старых сообщений без метки. E2E: `frontend/e2e/v3-browser-mentor-loop.spec.ts`.
+
 V3-LLM-DIAG-01, V3-LLM-LIVE-01, V3-LLM-OBS-01 — TODO. [Owner/dependencies/allowed directories/DoD](../../v3/delivery.md).
 
 - [ ] Согласовать DTO/semantic fixtures и consumer review в V3-CONTRACT-01.
