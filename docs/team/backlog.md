@@ -1,5 +1,26 @@
 # Backlog — назначения пяти участников
 
+Текущее поручение владельца: TL + QA + AI доводят local demo, только в своих branches.
+В TL checkout выполнены consumer integration fixes и полная QA browser приемка:
+4 PASS, включая A/B/C/restart/ACL; 475 FE tests/94.34%, 57 shared tests, 5 AI DB tests.
+Стандартный чистый стенд готов: `make demo-offline`, http://localhost:15173.
+BE/FE branches/refs не менялись; исходный RP-QA-01 сохранен. [Факты и границы](tl-readiness.md).
+Историческое ограничение QA только двумя smoke ниже этим новым поручением расширено.
+
+
+## RP-DEMO-UX-01 · замечания владельца · 13 ноября
+
+DONE локально в TL: читаемые Markdown-инструкции и ответы AI со ссылками;
+recovery UI учитывает open blocker + актуальный Go allowlist; 4 основные роли без
+технических суффиксов, дополнительные участники отдельно. Владелец интеграции TL/QA/AI,
+зоны FE consumer/AI prompting/fallback/tests/docs; новые BE схемы/миграции не нужны.
+Зависимости RP-FE-02/03 → текущие Step.available_actions/blockers и Source → knowledge ACL,
+RP-AI-CORE-01 → readable string/citations; Go по-прежнему проверяет draft/confirm.
+FE 482 tests/94.50%, AI 445/99.61%, browser 4/4, KB DB 5/5, shared 57 PASS.
+Live acceptance RP-AI-02 и formal consumer approval этим не закрыты.
+[Матрица FE/BE зависимостей и evidence](tl-readiness.md).
+
+
 ## Актуальный checkpoint · 13 ноября
 
 BE ea2cfbe, AI aa6ff38, FE 3ea1d01, QA f88228c импортированы в TL без commit/merge.
@@ -66,7 +87,7 @@ EXTERNAL — внешний ресурс; DONE — фактическая при
 | RP-FE-01 | 2 | Frontend | IN_PROGRESS | RP-CONTRACT-01 | Goal-first reference layout и states на agreed DTO fixtures (явно mock); component tests/responsiveness | [спецификация](../features/onboarding-journey/spec.md) |
 | RP-FE-02 | 3–4 | Frontend | IN_PROGRESS | RP-FE-01; по поставке RP-JOURNEY-01, RP-CHAT-01, RP-ACCESS-01, RP-VERIFY-01, RP-BLOCKER-01 | Go integration goal/chat/preview/requests/approvals/checks, refresh; принимать API поставки поэтапно | [спецификация](../features/access-request/spec.md) |
 | RP-FE-03 | 4–5 | Frontend | IN_PROGRESS | RP-FE-02, RP-BUDDY-01, RP-REVERSE-01 | Buddy и documentation-owner UI, safe snapshot/count/hypothesis/review; no hidden fixture runtime | [спецификация](../features/reverse-onboarding/spec.md) |
-| RP-E2E-01 | 2–6 | Frontend | TODO | RP-CONTRACT-01; полный прогон после RP-FE-03 | Браузерный A/B/C путь и UI/security assertions, reload; реальный backend restart с TL, без route interception | [спецификация](../testing/strategy.md) |
+| RP-E2E-01 | 2–6 | QA/TL, текущий проход | DONE | RP-CONTRACT-01; полный прогон после RP-FE-03 | Браузерный A/B/C путь и UI/security assertions, reload; реальный backend restart с TL, без route interception | [спецификация](../testing/strategy.md) |
 | RP-QA-01 | 2–3 | Fullstack–QA–Integration | DONE | v2 auth/journey | Два авторских v2 API tests сохранены и выполнены TL: 2 PASS; ownership/reread/401/CSRF. Это не browser A/B/C | [evidence](tl-readiness.md) |
 | RP-INTEGRATION-01 | 6 | TL | IN_PROGRESS | RP-INF-01, RP-DATA-01, RP-AI-01, RP-REVERSE-01, RP-BUDDY-01, RP-FE-03, RP-E2E-01, RP-QA-01 | Свести component reports и full A/B/C/security/offline/restart результаты; дефекты исправляют владельцы, QA не переписывает всё | [спецификация](../product/demo.md) |
 | RP-DEMO-01 | 7 | TL | TODO | RP-INTEGRATION-01, RP-TL-02 | README/clean seed rehearsal/PDF/video, пять минут и честный mock/live; Frontend даёт UI capture в рамках E2E | [спецификация](../product/demo.md) |

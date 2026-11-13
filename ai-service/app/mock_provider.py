@@ -61,35 +61,79 @@ def goal_part(goal_context: dict) -> list[str]:
     parts = []
     step = current_step(goal_context)
     if step is not None:
-        parts.append(f"Сейчас твой шаг: «{step['title']}».")
+        parts.append(f"### Сейчас: {step['title']}")
+        if step["status"] == "verified":
+            parts.append("Этот шаг уже проверен. Вернись к цели и открой следующий доступный шаг.")
         for blocker in step["blockers"]:
             if blocker["status"] == "open":
-                parts.append(f"На шаге открыт блокер {blocker['error_code']}.")
-    if goal_context["next_actions"]:
-        actions = ", ".join(goal_context["next_actions"])
-        parts.append(f"Допустимые следующие действия: {actions}.")
+                parts.append(f"Проверке мешает ошибка `{blocker['error_code']}`.")
+    guidance = {
+        "create_access_request": (
+            "Нажми **«Запросить доступ»** в карточке шага. Укажи основание, проверь "
+            "ресурс и роль в черновике, затем подтверди отправку. Дождись решения "
+            "согласующего; одобрение ещё не означает, что доступ выдан."
+        ),
+        "retry_check": "Нажми **«Повторить проверку»** в карточке шага и посмотри результат.",
+        "escalate_to_buddy": (
+            "Если нужна помощь, нажми **«Спросить наставника»**. Проверь диагностическую "
+            "карточку и подтверди отправку — без подтверждения она не уйдёт."
+        ),
+    }
+    actions = goal_context["next_actions"]
+    if actions:
+        parts.append("### Что делать дальше")
+        number = 1
+        for action in actions:
+            if action in guidance:
+                parts.append(f"{number}. {guidance[action]}")
+                number += 1
     return parts
 
 
 def mock_answer(llm_input: LlmInput) -> str:
-    """Шаблонный ответ. Сообщения пользователя не цитирует, кроме названий неизвестных терминов."""
-    parts = ["Режим mock, без LLM."]
+    """Offline guidance uses trusted step actions and already ACL-filtered sources."""
+    parts = ["Демо-режим mock: ответ подготовлен без LLM."]
     terms = unknown_terms(llm_input)
     if terms:
         parts.append(
             f"Я не знаю, что такое {', '.join(terms)}: в доступных материалах этого нет. "
-            "Не буду угадывать — уточни у buddy."
+            "Не буду угадывать — уточни у наставника."
         )
     goal_context = llm_input.request.get("goal_context")
     if goal_context is None:
-        parts.append("Цель пока не выбрана: опиши, что нужно сделать, и я подберу маршрут.")
+        parts.extend(
+            [
+                "### С чего начать",
+                "Цель пока не выбрана. Открой **«Моя цель»**, выбери доступный маршрут "
+                "и нажми **«Начать»**.",
+                "1. Открой первый доступный шаг и прочитай инструкцию.",
+                "2. Запусти проверку в карточке шага. Если доступа нет, "
+                "нажми **«Запросить доступ»**, "
+                "проверь черновик и подтверди отправку. Заявку рассматривает человек; "
+                "одобрение ещё не выдаёт доступ.",
+                "3. После согласования повтори проверку доступа. К подключению переходи, "
+                "когда система подтвердит доступ.",
+            ]
+            if llm_input.hits and not terms
+            else [
+                "Цель пока не выбрана. Открой **«Моя цель»** и выбери доступный маршрут. "
+                "Если подходящего маршрута нет, уточни задачу у наставника."
+            ]
+        )
     else:
         parts.extend(goal_part(goal_context))
     if llm_input.hits:
-        titles = "; ".join(f"«{hit.document.title}»" for hit in llm_input.hits[:3])
-        parts.append(f"Подходящие материалы: {titles}.")
+        parts.append("### Подходящие материалы")
+        seen = set()
+        for hit in llm_input.hits:
+            doc = hit.document
+            if doc.id not in seen:
+                parts.append(f"- [{doc.title}](/api/v2/knowledge/{doc.id})")
+                seen.add(doc.id)
+            if len(seen) == 3:
+                break
     parts.append("Выполнение шага подтверждает только проверка системы.")
-    return " ".join(parts)
+    return "\n\n".join(parts)
 
 
 def split_into_chunks(text: str) -> list[str]:

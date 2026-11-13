@@ -13,9 +13,14 @@ const mocks = vi.hoisted(() => ({
   confirmAction: vi.fn(),
   cancelAction: vi.fn(),
   getAction: vi.fn(),
+  getGoal: vi.fn(),
 }));
 
 vi.mock('../lib/endpoints', () => mocks);
+vi.mock('./LiveChatPage', () => ({
+  LiveChatPage: ({ goalId, stepId }: { goalId: string; stepId: string }) =>
+    <div aria-label="Контекст AI" data-goal={goalId} data-step={stepId} />,
+}));
 
 const blockedGoal = goalBlocked;
 const blockedStep = blockedGoal.steps[2];
@@ -41,6 +46,7 @@ describe('LiveStepPage', () => {
       status: 'succeeded',
       result: { escalation_id: '00000052-0000-4000-8000-000000000052' },
     });
+    mocks.getGoal.mockResolvedValue(blockedGoal);
   });
 
   it('data: шаг, блокер, evidence', async () => {
@@ -57,12 +63,40 @@ describe('LiveStepPage', () => {
     expect((await screen.findByRole('dialog')).textContent).toContain('Синтетическая инструкция подключения');
   });
 
+  it('заявка на доступ собирается из цели и подтверждается отдельной карточкой', async () => {
+    const accessStep = {
+      ...blockedStep,
+      id: 'check_access',
+      available_actions: ['create_access_request', 'retry_check'],
+      verification_method: 'iam_permission_present' as const,
+      blockers: [{
+        ...blockedStep.blockers[0],
+        error_code: 'ACCESS_MISSING',
+        recovery_actions: ['create_access_request', 'retry_check'],
+      }],
+    };
+    mocks.getStep.mockResolvedValue(accessStep);
+    render(<LiveStepPage goalId={blockedGoal.id} stepId={accessStep.id} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Запросить доступ' }));
+    await waitFor(() => {
+      expect(mocks.createAction).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'create_access_request',
+        goal_id: blockedGoal.id,
+        step_id: 'check_access',
+        parameters: expect.objectContaining({
+          resource_id: blockedGoal.resource_id,
+          requested_role: 'db_reader',
+        }),
+      }));
+    });
+  });
+
   it('повторная проверка: POST checks с expected_version и refetch', async () => {
     render(<LiveStepPage goalId={blockedGoal.id} stepId={blockedStep.id} />);
     fireEvent.click(await screen.findByRole('button', { name: /Повторить проверку/ }));
     expect(mocks.createCheck).toHaveBeenCalledWith(blockedGoal.id, blockedStep.id, {
       method: 'mock_db_connection',
-      options: { ssl_mode: 'require' },
+      options: { ssl_mode: 'disable' },
       expected_version: blockedStep.version,
     });
   });
@@ -73,7 +107,7 @@ describe('LiveStepPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Запустить проверку/ }));
     expect(mocks.createCheck).toHaveBeenCalledWith(readyGoal.id, readyStep.id, {
       method: 'mock_db_connection',
-      options: { ssl_mode: 'require' },
+      options: { ssl_mode: 'disable' },
       expected_version: readyStep.version,
     });
   });
@@ -103,6 +137,22 @@ describe('LiveStepPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Отмена' }));
     expect(mocks.cancelAction).toHaveBeenCalledWith(escalationPendingAction.id);
     expect(await screen.findByText('Действие отменено и не выполнялось.')).toBeInTheDocument();
+  });
+
+  it('устранённый блокер не предлагает повторную проверку или обращение наставнику', async () => {
+    mocks.getStep.mockResolvedValue({ ...blockedStep, status: 'verified', available_actions: [], blockers: blockedStep.blockers.map(b => ({ ...b, status: 'resolved' })) });
+    render(<LiveStepPage goalId={blockedGoal.id} stepId={blockedStep.id} />);
+    expect(await screen.findByText('Устранён')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Спросить наставника/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Повторить проверку/ })).not.toBeInTheDocument();
+    expect(mocks.createAction).not.toHaveBeenCalled();
+  });
+
+  it('исторические recovery actions не обходят текущий серверный allowlist', async () => {
+    mocks.getStep.mockResolvedValue({ ...blockedStep, available_actions: ['retry_check'] });
+    render(<LiveStepPage goalId={blockedGoal.id} stepId={blockedStep.id} />);
+    expect(await screen.findByRole('button', { name: /Повторить проверку/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Спросить наставника/ })).not.toBeInTheDocument();
   });
 
   it('error: состояние ошибки с retry', async () => {

@@ -91,7 +91,8 @@ describe('userMessage', () => {
     expect(userMessage(new ApiError(403, 'FORBIDDEN', 'x'))).toMatch(/Недостаточно прав/);
   });
   it('прочие ApiError — сообщение сервера, не-ApiError — fallback', () => {
-    expect(userMessage(new ApiError(409, 'VERSION_CONFLICT', 'Обновите данные'))).toBe('Обновите данные');
+    expect(userMessage(new ApiError(409, 'VERSION_CONFLICT', 'Обновите данные'))).toContain('Состояние шага изменилось');
+    expect(userMessage(new ApiError(422, 'TOOL_VALIDATION_ERROR', 'TOOL_VALIDATION_ERROR'))).toContain('выберите доступное действие');
     expect(userMessage(new Error('boom'))).toBe('Сервис временно недоступен.');
   });
 });

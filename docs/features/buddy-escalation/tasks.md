@@ -1,7 +1,10 @@
 # Buddy Debug Bridge — tasks
 
+RP-DEMO-UX-01: readable guidance/citation drawer и recovery UI по текущему Go allowlist
+проверены component/browser tests; [evidence](../../team/tl-readiness.md).
+
 13 ноября: компоненты сведены в TL, настоящий AI/Go/corporate/DB API путь прошёл;
-полные browser/clean image/consumer gates открыты. Текущие source SHA, component checks
+offline browser A/B/C/restart/ACL 4 PASS и image build PASS; cold/CI/formal consumer gates отдельно. Текущие source SHA, component checks
 и конкретные оставшиеся задачи — [TL record](../../team/tl-readiness.md).
 Ниже исходные задачи; их checkbox не заменяет результат указанного integration review.
 

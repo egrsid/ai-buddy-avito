@@ -33,3 +33,14 @@ def test_demo_down_preserves_volume_and_propagates_failure(monkeypatch):
     monkeypatch.setattr("scripts.demo.subprocess.run", run)
     with pytest.raises(subprocess.CalledProcessError):
         main()
+
+
+def test_restart_drains_backend_and_waits_for_dependencies(monkeypatch):
+    monkeypatch.setattr("sys.argv", ["demo", "restart", "--project", "ai-buddy-demo-test"])
+    calls = []
+    monkeypatch.setattr("scripts.demo.subprocess.run", lambda cmd, **kw: calls.append(cmd))
+    main()
+    assert calls[0][-2:] == ["stop", "backend"]
+    assert calls[1][-3:] == ["restart", "ai-service", "mock-services"]
+    assert "--wait" in calls[2] and calls[2][-2:] == ["ai-service", "mock-services"]
+    assert "--wait" in calls[3] and calls[3][-1] == "backend"

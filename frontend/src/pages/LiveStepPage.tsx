@@ -10,6 +10,7 @@ import {
   createCheck,
   createConversation,
   getAction,
+  getGoal,
   getKnowledge,
   getStep,
   getStepActions,
@@ -20,6 +21,7 @@ import { href } from '../lib/router';
 import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '../components/ui';
 import { ActionCard } from '../components/ActionCard';
 import { SourceDrawer } from '../components/SourceDrawer';
+import { LiveChatPage } from './LiveChatPage';
 import { BlockerStatusBadge, CheckStatusBadge, StateBadge } from '../components/StatusBadge';
 
 // RP-FE-02: live-вариант страницы шага.
@@ -34,6 +36,8 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
   const [action, setAction] = useState<Action | null>(null);
   const [drawerDoc, setDrawerDoc] = useState<KnowledgeDocumentT | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [sslMode, setSslMode] = useState<'disable' | 'require'>('disable');
+  const [reason, setReason] = useState('Нужен доступ к синтетической БД команды A.');
 
   // Опрос executing/unknown действия до терминального статуса.
   useEffect(() => {
@@ -64,7 +68,7 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
     try {
       await createCheck(goalId, stepId, {
         method: s.verification_method,
-        options: s.verification_method === 'mock_db_connection' ? { ssl_mode: 'require' } : {},
+        options: s.verification_method === 'mock_db_connection' ? { ssl_mode: sslMode } : {},
         expected_version: s.version,
       });
       step.refetch();
@@ -73,10 +77,33 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
     }
   };
 
+  const requestAccess = async () => {
+    setNotice(null);
+    try {
+      const goal = await getGoal(goalId);
+      const conversation = await createConversation(goalId, s.id);
+      const created = await createAction({
+        conversation_id: conversation.id,
+        goal_id: goalId,
+        step_id: s.id,
+        type: 'create_access_request',
+        parameters: {
+          resource_id: goal.resource_id,
+          requested_role: 'db_reader',
+          reason,
+          additional_fields: {},
+        },
+      });
+      setAction(created);
+    } catch (e) {
+      setNotice(userMessage(e, 'Не удалось подготовить заявку.'));
+    }
+  };
+
   const escalate = async () => {
     setNotice(null);
-    const blocker = s.blockers.find((b) => b.status === 'open') ?? s.blockers[0];
-    if (!blocker) {
+    const blocker = s.blockers.find((b) => b.status === 'open');
+    if (!blocker || !s.available_actions.includes('escalate_to_buddy')) {
       setNotice('Эскалация возможна только из контекста активного блокера.');
       return;
     }
@@ -112,6 +139,7 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
   const confirm = async (id: string) => {
     try {
       setAction(await apiConfirmAction(id));
+      step.refetch();
     } catch (e) {
       setNotice(userMessage(e, 'Подтверждение не прошло.'));
     }
@@ -163,23 +191,50 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
         )}
 
         {s.blockers.map((blocker) => (
-          <Card key={blocker.id} className="border-error/40">
+          <Card key={blocker.id} className={blocker.status === 'open' ? 'border-error/40' : ''}>
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <BlockerStatusBadge status={blocker.status} />
               <code className="rounded bg-red-50 px-1.5 py-0.5 text-xs text-error">{blocker.error_code}</code>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {blocker.recovery_actions.includes('retry_check') && (
+            {blocker.status === 'open' && <div className="flex flex-wrap gap-2">
+              {blocker.recovery_actions.includes('create_access_request') && s.available_actions.includes('create_access_request') && (
+                <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end">
+                  <label className="flex-1 text-sm">
+                    Основание заявки
+                    <input
+                      value={reason}
+                      onChange={(event) => setReason(event.target.value)}
+                      className="mt-1 w-full rounded-xl border border-border px-3 py-2"
+                    />
+                  </label>
+                  <Button onClick={requestAccess}>Запросить доступ</Button>
+                </div>
+              )}
+              {s.verification_method === 'mock_db_connection' && blocker.recovery_actions.includes('retry_check') && s.available_actions.includes('retry_check') && (
+                <label className="text-sm">
+                  SSL
+                  <select
+                    aria-label="Режим SSL"
+                    value={sslMode}
+                    onChange={(event) => setSslMode(event.target.value as 'disable' | 'require')}
+                    className="ml-2 rounded-xl border border-border px-2 py-2"
+                  >
+                    <option value="disable">disable</option>
+                    <option value="require">require</option>
+                  </select>
+                </label>
+              )}
+              {blocker.recovery_actions.includes('retry_check') && s.available_actions.includes('retry_check') && (
                 <Button variant="secondary" onClick={runCheck}>
                   <RefreshCw size={16} className="mr-1 inline" aria-hidden /> Повторить проверку
                 </Button>
               )}
-              {blocker.recovery_actions.includes('escalate_to_buddy') && (
+              {blocker.recovery_actions.includes('escalate_to_buddy') && s.available_actions.includes('escalate_to_buddy') && (
                 <Button variant="secondary" onClick={escalate}>
                   <MessageSquareWarning size={16} className="mr-1 inline" aria-hidden /> Спросить наставника
                 </Button>
               )}
-            </div>
+            </div>}
           </Card>
         ))}
 
@@ -188,6 +243,20 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
             <p className="mb-3 text-sm text-text-secondary">
               Проверка выполняется безопасным способом — без произвольных команд.
             </p>
+            {s.verification_method === 'mock_db_connection' && (
+              <label className="mb-3 block text-sm">
+                SSL
+                <select
+                  aria-label="Режим SSL"
+                  value={sslMode}
+                  onChange={(event) => setSslMode(event.target.value as 'disable' | 'require')}
+                  className="ml-2 rounded-xl border border-border px-2 py-2"
+                >
+                  <option value="disable">disable</option>
+                  <option value="require">require</option>
+                </select>
+              </label>
+            )}
             <Button onClick={runCheck}>
               <FlaskConical size={16} className="mr-1 inline" aria-hidden /> Запустить проверку
             </Button>
@@ -217,6 +286,8 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
           </Card>
         )}
       </div>
+
+      <div className="mt-6"><LiveChatPage goalId={goalId} stepId={s.id} embedded onActionChanged={step.refetch} /></div>
 
       <SourceDrawer
         open={drawerDoc !== null}

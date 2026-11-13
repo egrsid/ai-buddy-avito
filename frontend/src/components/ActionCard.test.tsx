@@ -6,6 +6,29 @@ import { ActionCard } from './ActionCard';
 const byStatus = (status: string) => actions.find((a) => a.status === status)!;
 
 describe('ActionCard', () => {
+  it('перед confirm показывает фактическую диагностику для buddy', () => {
+    render(<ActionCard action={escalationPendingAction} />);
+    expect(screen.getByText('Диагностика для наставника')).toBeInTheDocument();
+    expect(screen.getAllByText(/DB_SSL_REQUIRED/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Вся история чата наставнику не отправляется/)).toBeInTheDocument();
+  });
+
+  it('в preview видны проверки, выполненные действия, цитата и гипотеза', () => {
+    const snapshot = {
+      goal: { id: 'goal', title: 'Доступ к БД' }, step: { id: 'check_connection', title: 'Подключение' },
+      blocker: { id: 'blocker', type: 'db_ssl_required', error_code: 'DB_SSL_REQUIRED' },
+      checks: [{ id: 'check', method: 'mock_db_connection', status: 'failed', error_code: 'DB_SSL_REQUIRED' }],
+      attempted_actions: [{ action_id: 'action', type: 'create_access_request', status: 'succeeded' }],
+      instruction_refs: [{ document_id: 'document', version: 1, title: 'Разрешённая инструкция', url: '/api/v2/knowledge/document', excerpt: 'Синтетическая цитата.' }],
+      hypotheses: [{ text: 'Проверить настройку SSL', confidence: 'medium' }], question: 'Нужна помощь',
+    };
+    render(<ActionCard action={{ ...escalationPendingAction, preview: { ...(escalationPendingAction.preview as Record<string, unknown>), diagnostic_snapshot: snapshot } }} />);
+    expect(screen.getByText('mock_db_connection: failed · DB_SSL_REQUIRED')).toBeInTheDocument();
+    expect(screen.getByText('create_access_request: succeeded')).toBeInTheDocument();
+    expect(screen.getByText(/Разрешённая инструкция/)).toBeInTheDocument();
+    expect(screen.getByText('Синтетическая цитата.')).toBeInTheDocument();
+    expect(screen.getByText(/Проверить настройку SSL/)).toBeInTheDocument();
+  });
   it('pending_confirmation: preview заявки и кнопки confirm/cancel', () => {
     const onConfirm = vi.fn();
     const onCancel = vi.fn();

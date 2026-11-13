@@ -96,7 +96,15 @@ class FailoverStream:
                 break
         self.offline_fallback = True
         yield NOTICE + OFFLINE_NOTICE
-        yield mock_answer(self.llm_input)[:1200]
+        # Keep complete paragraphs/links while reserving space for the notice
+        # inside Go's 4000-character message limit.
+        answer = mock_answer(self.llm_input)
+        parts = []
+        for part in answer.split("\n\n"):
+            if len("\n\n".join([*parts, part])) > 3000:
+                break
+            parts.append(part)
+        yield "\n\n".join(parts)
 
 
 class FailoverProvider:

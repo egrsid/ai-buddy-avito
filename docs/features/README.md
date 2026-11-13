@@ -1,7 +1,7 @@
 # Feature Specifications — target v2
 
 Статус восьми фич: runtime v2 сведен в TL, реальный API A/B/feedback путь проверен;
-полная browser-приемка не выполнена. [Текущие результаты](../team/tl-readiness.md).
+offline browser приемка A/B/C/restart/ACL пройдена (4 PASS), live/CI отдельно. [Текущие результаты](../team/tl-readiness.md).
 AI-часть частично реализована в 3f955322: [review и остаток](../team/ai-review-2026-11-12.md).
 Каждая папка содержит spec.md (поведение/приёмка), design.md (данные/API/границы)
 и tasks.md (задачи с зависимостями). Единственный план приоритетов/владельцев —

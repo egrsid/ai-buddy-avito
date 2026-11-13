@@ -1,5 +1,13 @@
 # Работа пяти участников
 
+Текущее поручение владельца: TL + QA + AI доводят local demo, только в своих branches.
+В TL checkout выполнены consumer integration fixes и полная QA browser приемка:
+4 PASS, включая A/B/C/restart/ACL; 475 FE tests/94.34%, 57 shared tests, 5 AI DB tests.
+Стандартный чистый стенд готов: `make demo-offline`, http://localhost:15173.
+BE/FE branches/refs не менялись; исходный RP-QA-01 сохранен. [Факты и границы](tl-readiness.md).
+Историческое ограничение QA только двумя smoke ниже этим новым поручением расширено.
+
+
 13 ноября владелец разрешил изменения только TL и AI. В TL checkout локально импортированы
 авторские BE/AI/FE/QA snapshots для интеграции; refs/ветки BE/FE/QA не менялись, их runtime
 не исправлялся за авторов. AI changes этого прохода: citations/failover/tests; TL — общая

@@ -1,0 +1,20 @@
+# Opt-in build from cached dependencies; current sources are copied into images.
+services:
+  migrate:
+    build: {context: ., dockerfile: Dockerfile.demo-offline, target: python}
+  seed:
+    build: {context: ., dockerfile: Dockerfile.demo-offline, target: python}
+  ai-ingest:
+    build: {context: ., dockerfile: Dockerfile.demo-offline, target: python}
+  ai-service:
+    build: {context: ., dockerfile: Dockerfile.demo-offline, target: python}
+  mock-services:
+    build: {context: ., dockerfile: Dockerfile.demo-offline, target: python}
+  backend:
+    build: {context: ., dockerfile: Dockerfile.demo-offline, target: backend}
+  frontend:
+    build: {context: ., dockerfile: Dockerfile.demo-offline, target: frontend}
+  ai-db-tests:
+    build: {context: ., dockerfile: Dockerfile.demo-offline, target: test}
+  contract-image-tests:
+    build: {context: ., dockerfile: Dockerfile.demo-offline, target: test}

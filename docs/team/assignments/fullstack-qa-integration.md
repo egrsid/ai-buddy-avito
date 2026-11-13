@@ -1,5 +1,13 @@
 # Назначение: Fullstack–QA–Integration
 
+Текущее поручение владельца: TL + QA + AI доводят local demo, только в своих branches.
+В TL checkout выполнены consumer integration fixes и полная QA browser приемка:
+4 PASS, включая A/B/C/restart/ACL; 475 FE tests/94.34%, 57 shared tests, 5 AI DB tests.
+Стандартный чистый стенд готов: `make demo-offline`, http://localhost:15173.
+BE/FE branches/refs не менялись; исходный RP-QA-01 сохранен. [Факты и границы](../tl-readiness.md).
+Историческое ограничение QA только двумя smoke ниже этим новым поручением расширено.
+
+
 **Одна задача: RP-QA-01.** Минимальный объём — адаптировать два существующих API integration
 теста и один QA-план. Ветка **feature/qa-01-m1 уже есть на GitHub**. Её не заменять и не
 терять работу автора; владелец сначала включает новую общую базу. [Inventory](../branches.md).

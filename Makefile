@@ -58,3 +58,6 @@ demo-up:
 
 demo-down:
 	python3 -m scripts.demo down
+
+demo-offline:
+	python3 -m scripts.demo up --offline
