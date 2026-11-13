@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-buddy.invalid/contracts/v3/ai.schema.json",
+  "title": "AI-buddy v3 internal Go <-> Python additions: task clarity draft and response origin",
+  "$defs": {
+    "TaskClarityDraftRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "brief_title",
+        "brief_version",
+        "section",
+        "reason",
+        "affected_count"
+      ],
+      "properties": {
+        "brief_title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "brief_version": {
+          "$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/PositiveInt"
+        },
+        "section": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "title",
+            "text"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/StableId"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            }
+          }
+        },
+        "reason": {
+          "enum": [
+            "requirement_unclear",
+            "outcome_unclear",
+            "acceptance_unclear"
+          ]
+        },
+        "affected_count": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 100
+        }
+      }
+    },
+    "TaskClarityDraftResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hypothesis",
+        "suggestion"
+      ],
+      "properties": {
+        "hypothesis": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "suggestion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        }
+      }
+    },
+    "ResponseOrigin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "answered_by",
+        "completion"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "live",
+            "mock"
+          ]
+        },
+        "answered_by": {
+          "enum": [
+            "primary",
+            "secondary",
+            "offline"
+          ]
+        },
+        "completion": {
+          "enum": [
+            "complete",
+            "interrupted"
+          ]
+        },
+        "reason_code": {
+          "enum": [
+            "config_mock",
+            "cooldown",
+            "timeout",
+            "model_unavailable",
+            "budget_denied"
+          ]
+        }
+      }
+    },
+    "ResponseOriginEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "origin"
+      ],
+      "properties": {
+        "run_id": {
+          "$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"
+        },
+        "origin": {
+          "$ref": "#/$defs/ResponseOrigin"
+        }
+      }
+    }
+  }
+}
