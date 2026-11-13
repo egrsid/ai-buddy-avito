@@ -61,3 +61,8 @@ demo-down:
 
 demo-offline:
 	python3 -m scripts.demo up --offline
+
+.PHONY: main-demo
+main-demo:
+	@test "$$(git branch --show-current)" = main || (echo 'Run main-demo from the main checkout'; exit 1)
+	python3 -m scripts.demo up --offline

@@ -103,17 +103,17 @@ export function AppShell({
           onChange={(e) => onUserChange(e.target.value)}
           className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-primary"
         >
-          {[...mainAccounts, ...(mode === 'live' ? extra.filter(u => extraAccounts || u.id === user.account_id) : [])].map((u) => (
+          {[...mainAccounts, ...extra.filter(u => extraAccounts || u.id === user.account_id)].map((u) => (
             <option key={u.id} value={u.id}>
               {u.label}
             </option>
           ))}
         </select>
       </label>
-      {mode === 'live' && <label className="mb-4 flex items-center gap-2 px-2 text-xs text-text-secondary">
+      <label className="mb-4 flex items-center gap-2 px-2 text-xs text-text-secondary">
         <input type="checkbox" checked={extraAccounts} onChange={e => setExtraAccounts(e.target.checked)} />
         Дополнительные участники
-      </label>}
+      </label>
 
       <nav aria-label="Основная навигация" className="flex-1 space-y-1">
         {nav.map((item) => {
@@ -145,12 +145,7 @@ export function AppShell({
         </p>
       </div>
 
-      {import.meta.env.VITE_DATA_MODE === 'live' ? (
-        <div className="mt-4 px-2 text-xs text-text-secondary">
-          <p className="font-medium">Учебный стенд</p>
-          <p className="mt-1">Данные и проверки синтетические. AI работает offline.</p>
-        </div>
-      ) : <div className="mt-4 px-2">
+      <div className="mt-4 px-2">
         <span className="mb-1 block text-xs text-text-secondary">Источник данных</span>
         <div className="flex flex-wrap gap-1" role="group" aria-label="Источник данных">
           {(['fixtures', 'live'] as const).map((m) => (
@@ -167,7 +162,7 @@ export function AppShell({
             </button>
           ))}
         </div>
-      </div>}
+      </div>
 
       {mode === 'fixtures' && (
         <div className="mt-4 px-2">

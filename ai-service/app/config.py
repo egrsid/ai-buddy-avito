@@ -25,6 +25,8 @@ DEFAULT_BUDGET_STOP_RUB = 800.0
 EMBEDDING_DIM = 1024
 # files — корпус из data/knowledge/v2 в памяти (тесты, офлайн); db — индекс kb после ingest.
 KNOWLEDGE_SOURCES = ("files", "db")
+# Вектор вопроса: on — гибридный поиск, off — только лексический (без задержки эмбеддингов).
+QUERY_EMBEDDING_MODES = ("on", "off")
 
 
 class ConfigError(Exception):
@@ -55,6 +57,8 @@ class Settings:
     # Эмбеддинги (live) берутся у той же Ollama, что и чат.
     embedding_model: str = "bge-m3"
     knowledge_source: str = "files"
+    # Считать ли вектор вопроса. Корпус от этого не зависит: его векторы делает ingest.
+    query_embeddings: bool = True
     # Платный API (LLM_PROVIDER=openai). Ключ не попадает в repr и логи.
     llm_api_key: str = field(default="", repr=False)
     budget_ledger_path: str = ""
@@ -173,6 +177,9 @@ def load_settings(env: Mapping[str, str]) -> Settings:
     knowledge_source = env.get("KNOWLEDGE_SOURCE") or "files"
     if knowledge_source not in KNOWLEDGE_SOURCES:
         raise ConfigError(f"KNOWLEDGE_SOURCE должен быть одним из {KNOWLEDGE_SOURCES}")
+    query_embeddings = env.get("QUERY_EMBEDDINGS") or "on"
+    if query_embeddings not in QUERY_EMBEDDING_MODES:
+        raise ConfigError(f"QUERY_EMBEDDINGS должен быть одним из {QUERY_EMBEDDING_MODES}")
 
     paid = {}
     if llm_mode == "live" and provider == "openai":
@@ -191,5 +198,6 @@ def load_settings(env: Mapping[str, str]) -> Settings:
         llm_keep_alive=env.get("LLM_KEEP_ALIVE") or "30m",
         embedding_model=embedding_model,
         knowledge_source=knowledge_source,
+        query_embeddings=query_embeddings == "on",
         **paid,
     )
