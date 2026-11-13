@@ -1,0 +1,26 @@
+# Isolated local rehearsal: real Go/AI/corporate/DB, deterministic offline LLM.
+# Run with --env-file .env.example -p ai-buddy-demo; never reuse a legacy volume.
+services:
+  seed:
+    environment:
+      SEED_DATASET: v2
+  ai-ingest:
+    environment:
+      LLM_MODE: mock
+      PYTHONPATH: /workspace/ai-service
+      AI_INGEST_COMMAND: '["python","-m","app.ingest"]'
+  ai-service:
+    environment:
+      APP_ENV: local
+      LLM_MODE: mock
+      KNOWLEDGE_SOURCE: db
+      MOCK_FAULTS_ENABLED: 'false'
+  backend:
+    environment:
+      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:15173}
+      LLM_MODE: mock
+  ai-db-tests:
+    environment:
+      PYTHONPATH: /workspace/ai-service
+      KB_INTEGRATION: '1'
+      AI_DB_TEST_COMMAND: '["python","-m","pytest","ai-service/tests/test_kb_integration.py","-q"]'

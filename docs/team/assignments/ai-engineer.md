@@ -1,5 +1,20 @@
 # Назначение: AI Engineer
 
+## Текущая передача · 13 ноября
+
+Runtime aa6ff38, persistent kb/ingest/readiness и budget/live adapters уже сведены в TL.
+Здесь же реализованы exact-source excerpts и цепочка Pro → 3.5 → offline с chat notice
+и предложением напрямую обратиться к наставнику. Переносить только AI-owned delta из TL
+поверх своей поставки, сохраняя текущую работу. Не начинать заново AI-R1–R4.
+[Изменения/проверки/фактический остаток](../tl-readiness.md),
+[новая policy](../../architecture/ai-design.md).
+
+Остаток RP-AI-02: повтор live safety обеих моделей (у 3.5 сейчас 9/10), actual tariffs/
+account access/latency/cost, проверка failover с реальным endpoint. В этом проходе paid
+calls не выполнялись. Offline API/DB/fault tests не заменяют live quality acceptance.
+Прежнее назначение ниже читается с этими уточнениями.
+
+
 
 Рабочая ветка **feature/ai-mvp-v2 существует на GitHub**. Проверенный head и
 состояние — в [inventory](../branches.md). Текущие TL решения/границы/приемка:

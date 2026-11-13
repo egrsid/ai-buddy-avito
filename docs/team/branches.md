@@ -1,16 +1,21 @@
 # Ветки и текущая база команды
 
-Read-only GitHub snapshot · 2026-11-12. Текущий checkout — feature/team-start-foundation.
+Read-only GitHub snapshot · 2026-11-13. Текущий checkout — feature/team-start-foundation.
 [TL integration record](tl-readiness.md) фиксирует импорт контрактов и результаты.
 
-| Ветка | Head GitHub | Состояние |
+| Ветка | Source SHA на 13 ноября | Проверенное состояние |
 |---|---|---|
-| main | 30c5d08908aace5d10318adc429bbaa837b1a929 | Legacy bootstrap |
-| feature/team-start-foundation | fe870967d98ba6cc93f679a8fb5ca6bea03641ab | TL; прежняя инфраструктура уже в head, текущий повторный review/план локально без commit/push |
-| feature/backend-mvp-v2 | 69fea38237068149a7aa07c840f98e1b280d5ca9 | BE contract package и расширенные fixtures |
-| feature/ai-mvp-v2 | 3f955322eabd2874d5952e160ce1cf5c3898cb0d | Contract package + offline API/retrieval/diagnostics/corpus/evals; kb/ingest/readiness еще нет |
-| feature/frontend-mvp-v2 | 676b81dd0cb1636a3b578459cd6404298f769335 | FE review/bindings/fixture UI |
-| feature/qa-01-m1 | 1d47f6b2d58ded0eacd8e7588270b009663c9388 | Два legacy API-теста, QA-план |
+| main | 30c5d08908aace5d10318adc429bbaa837b1a929 | Локальный legacy ref, remote повторно не проверялся |
+| feature/team-start-foundation | f88441418932d4fa179b7503c55d1d521375c438 | Remote TL snapshot; локальный HEAD c065919, новый integration delta uncommitted |
+| feature/backend-mvp-v2 | ea2cfbe35abb027c921c7e38882f43469e0fdadc | Runtime/migrations/v2 seed; source импортирован в TL |
+| feature/ai-mvp-v2 | aa6ff38d6dbb77ec427991913152cd6b10e311bf | Persistent kb/live adapters/budget/evals; source импортирован, citations/failover delta только в TL |
+| feature/frontend-mvp-v2 | 3ea1d019081e836b9628084183174740c7caa5d9 | Live API/SSE pages и 467 tests; browser blockers в TL record |
+| feature/qa-01-m1 | f88228cb5b1d669f05958c706e2c236c8cc7834f | Два адаптированных API tests; в TL 2 PASS |
+
+Текущий source manifest: [integration-sources.json](integration-sources.json). Чужие refs не менялись.
+
+## История inventory 12 ноября
+
 
 Все назначенные ветки уже существуют. BE/AI/FE имеют общего предка
 `a89be6364192be571f97ae12ad3f51ea53dd568c`: последний BE commit не включен в AI/FE.

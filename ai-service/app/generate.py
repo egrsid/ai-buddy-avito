@@ -109,6 +109,9 @@ async def run_generate(
         return
     llm_input = LlmInput(build_messages(request, hits), request, hits)
     chunks = provider.stream(llm_input, scenario)
+    if hasattr(chunks, "pipeline_deadline"):
+        # Give the local notice time to reach Go before the hard pipeline deadline.
+        chunks.pipeline_deadline = pipeline_deadline - min(1.0, settings.pipeline_timeout / 10)
     pending = None
     try:
         while True:
@@ -158,7 +161,9 @@ async def run_generate(
         if knowledge.get(scope, hit.document.id) is not None:
             sources.append(source_for(hit.document, hit.chunk))
     yield event("message.sources", {"run_id": run_id, "sources": sources})
-    proposal = tool_proposal(request, scenario)
+    # A recovered chat response never turns an interrupted model attempt into an
+    # action proposal. The intern can use the explicit server-side action preview.
+    proposal = None if getattr(chunks, "degraded", False) else tool_proposal(request, scenario)
     if proposal is not None:
         if too_late():
             yield timeout_event()

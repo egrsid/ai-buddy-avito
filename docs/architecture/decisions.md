@@ -54,3 +54,12 @@ step_id нельзя переиспользовать для другого см
 потребителей и TL проверяют изменение до реализации. Старое ADR помечается superseded,
 не удаляется. Публикацию и PR выполняет владелец. Текущая задача — только документация,
 без Git branch операций, JSON/DDL/seed и кода.
+
+## ADR-026 · 2026-11-13 · Ordered model recovery
+
+Прямое поручение владельца заменяет single-live-model/manual-offline-retry policy.
+Порядок: GigaChat/GigaChat-3-Pro → ai-sage/GigaChat3.5-432B-A28B → deterministic offline.
+Буферизация каждой ограниченной попытки исключает публикацию ошибочного partial;
+notice/прямое обращение к наставнику обязательны в самом чате. Degraded run не предлагает
+action; общий ledger/ACL/deadlines/Go validation сохраняются. Реализация и ограничения:
+[AI design](ai-design.md), [TL evidence](../team/tl-readiness.md).

@@ -68,9 +68,9 @@ def make_provider(settings: Settings):
     if settings.llm_mode == "live":
         # Импорт здесь: httpx нужен только live-режиму, mock должен стартовать и без него.
         if settings.llm_provider == "openai":
-            from app.openai_provider import OpenAIProvider
+            from app.failover import FailoverProvider
 
-            return OpenAIProvider(settings)
+            return FailoverProvider(settings)
         from app.ollama_provider import OllamaProvider
 
         return OllamaProvider(settings)

@@ -27,6 +27,10 @@ class ProviderUnavailable(Exception):
     """Провайдер LLM недоступен (сеть, 5xx, неверный ключ)."""
 
 
+class BudgetDenied(ProviderUnavailable):
+    """Не пытаться вызвать другую платную модель после отказа budget guard."""
+
+
 def current_step(goal_context: dict) -> dict | None:
     for step in goal_context["steps"]:
         if step["id"] == goal_context["current_step_id"]:

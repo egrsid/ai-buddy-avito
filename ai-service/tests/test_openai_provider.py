@@ -379,7 +379,11 @@ def test_embedder_warm_up_and_close(ledger):
 
 def test_factories_pick_paid_api_by_provider(tmp_path):
     settings = make_settings(**PAID, budget_ledger_path=str(tmp_path / "b.sqlite"))
-    assert isinstance(make_provider(settings), OpenAIProvider)
+    from app.failover import FailoverProvider
+
+    provider = make_provider(settings)
+    assert isinstance(provider, FailoverProvider)
+    assert len(provider.providers) == 1 and isinstance(provider.providers[0], OpenAIProvider)
     assert isinstance(make_embedder(settings), OpenAIEmbedder)
 
 
@@ -387,3 +391,10 @@ def test_factory_creates_ledger_on_first_start(tmp_path):
     path = tmp_path / "volume" / "budget.sqlite"
     make_provider(make_settings(**PAID, budget_ledger_path=str(path)))
     assert path.exists()
+
+
+def test_eof_without_done_is_not_success_and_keeps_unknown_usage_reserved(ledger):
+    provider = provider_with(answer_with(delta("Оборванный ответ")), ledger)
+    with pytest.raises(ProviderUnavailable):
+        read_stream(provider)
+    assert ledger.status()["unsettled"] == 1

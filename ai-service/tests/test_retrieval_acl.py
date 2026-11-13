@@ -103,6 +103,20 @@ def test_excerpt_is_short_and_without_title():
     text = excerpt(hit.chunk, hit.document)
     assert 0 < len(text) <= 301
     assert not text.startswith(hit.document.title)
+    assert text in hit.document.content
+
+
+def test_all_scoped_citations_match_the_raw_document_as_go_requires():
+    # Regression for real Go/AI integration: normalized Markdown and inserted
+    # ellipses passed AI schema tests but failed Go's anti-fabrication check.
+    from app.knowledge import chunk_document
+
+    kb = knowledge()
+    for document in kb.documents.values():
+        for chunk in chunk_document(document):
+            source = source_for(document, chunk)
+            assert source["excerpt"] and source["excerpt"] in document.content
+            assert is_valid("Source", source, COMMON_SCHEMA_ID)
 
 
 def test_tokenize_stems_and_synonyms():

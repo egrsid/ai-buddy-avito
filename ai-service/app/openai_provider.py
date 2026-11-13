@@ -19,7 +19,7 @@ import httpx
 
 from app.budget import BudgetLedger, BudgetUnavailable, cost_rub, ensure_ledger, upper_tokens
 from app.config import EMBEDDING_DIM, Settings
-from app.mock_provider import ProviderUnavailable
+from app.mock_provider import BudgetDenied, ProviderUnavailable
 from app.prompt import LlmInput
 from app.vectors import EmbeddingError
 
@@ -87,7 +87,7 @@ class OpenAIProvider:
         try:
             reservation = self.ledger.reserve("chat", self.upper_cost(llm_input.messages))
         except BudgetUnavailable as error:
-            raise ProviderUnavailable(f"Платный вызов запрещён: {error}") from error
+            raise BudgetDenied("Платный вызов запрещён") from error
         async for text in self.chat(body, reservation):
             yield text
 
@@ -99,6 +99,7 @@ class OpenAIProvider:
         Поток оборван (отмена, ошибка) — до записи не доходим, резерв остаётся.
         """
         last_usage = None
+        completed = False
         try:
             async with self.client.stream("POST", "/chat/completions", json=body) as response:
                 if response.status_code != 200:
@@ -108,6 +109,7 @@ class OpenAIProvider:
                         continue
                     data = line.removeprefix("data:").strip()
                     if data == "[DONE]":
+                        completed = True
                         break
                     chunk = json.loads(data)
                     if "error" in chunk:
@@ -129,6 +131,8 @@ class OpenAIProvider:
             raise ProviderUnavailable(f"API недоступен: {type(error).__name__}") from error
         except ValueError as error:
             raise ProviderUnavailable("API прислал не JSON") from error
+        if not completed:
+            raise ProviderUnavailable("Поток API прерван до завершения")
         if last_usage is not None:
             self.settle(reservation, last_usage)
 

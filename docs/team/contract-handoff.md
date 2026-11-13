@@ -1,5 +1,13 @@
 # RP-CONTRACT-01 — текущая передача
 
+13 ноября: актуальные BE public schemas (StepActionList/null negatives) импортированы,
+11 shared contract tests и весь FE suite 467 PASS. TL lock обновлен, настоящий
+Go→AI generate/source/action путь PASS после исправления AI excerpts. Явный BE↔AI/
+final consumer approval еще не получен: parent остается IN_PROGRESS.
+Источники и техническая приемка — [TL record](tl-readiness.md).
+Прежние failure counts ниже относятся к 12 ноября.
+
+
 2026-11-12. Parent **IN_PROGRESS**. [TL integration record](tl-readiness.md) содержит
 source SHA, checksum lock, решения по всем замечаниям FE и реальные результаты проверки.
 Схемы BE/AI уже предъявлены и сведены локально в TL; это не поставка runtime и не final acceptance.

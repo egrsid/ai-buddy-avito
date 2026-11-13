@@ -1,5 +1,115 @@
 # TL readiness и решения по интеграции
 
+## Текущий результат · 2026-11-13
+
+**К объединению для полного browser demo пока не готовы.** В TL checkout локально сведены
+авторские BE/AI/FE/QA поставки, исправлены общие startup blockers и AI citations/failover.
+Нет commit/push/PR/merge; ветка остаётся feature/team-start-foundation, чужие refs не менялись.
+Разрешение пользователя этого прохода допускает TL и AI изменения. BE/FE/QA runtime/tests
+импортированы без авторских правок; происхождение и исходные hashes — [manifest](integration-sources.json).
+Предыдущие записи ниже исторические; они не описывают отсутствие нынешнего runtime.
+
+### Проверенные источники
+
+| Область | Source SHA | Поставка |
+|---|---|---|
+| TL base | c0659195c4879a6eedbf70014fb5a6879bb08e63 | Текущий локальный HEAD; дополнительно сохранены .gitattributes и record из remote f88441418932d4fa179b7503c55d1d521375c438 |
+| Backend | ea2cfbe35abb027c921c7e38882f43469e0fdadc | Go auth/journey/checks/actions/approval/SSE/buddy/reverse; app/corporate migrations и v2 seed |
+| AI | aa6ff38d6dbb77ec427991913152cd6b10e311bf | Persistent kb/ingest/readiness, live adapters/budget/hybrid retrieval, offline operations/evals |
+| Frontend | 3ea1d019081e836b9628084183174740c7caa5d9 | Typed API/SSE и live pages; остаются demo blockers ниже |
+| QA | f88228cb5b1d669f05958c706e2c236c8cc7834f | Два адаптированных API-теста и QA-план, сохранены без изменения |
+
+Remote source прочитаны через GitHub connector. Git transport и codeload из локального
+окружения недоступны (reset/TLS timeout); source snapshots скачаны по точным SHA.
+Это импорт файлов в TL, а не Git merge или изменение AI/BE/FE/QA branches.
+
+### Что исправлено в первую очередь
+
+1. RP-INF-01/RP-DATA-TL-01: compose.mvp теперь выбирает v2 seed, реальный AI ingest,
+   PYTHONPATH, persistent kb/readiness и настоящие DB tests с KB_INTEGRATION=1.
+   Канонические argv получены из кода AI; Makefile/.env.example больше не требуют
+   угадывать их. Новый compose.demo.yaml/scripts.demo запускает отдельный
+   ai-buddy-demo-* с mock, 15173/18080, без чтения .env и удаления volumes.
+2. Source consumer blocker: AI excerpt раньше нормализовал Markdown/whitespace и добавлял
+   «…»; Go отвергал его как несуществующую цитату, завершал AI_SCHEMA_INVALID и не давал
+   action. Теперь excerpt — буквальный span исходного документа. Добавлены regression
+   tests всех corpus citations; индекс/embeddings/profile не меняются.
+3. RP-AI-02: существующий OpenAI adapter и общий durable ledger переиспользованы для
+   GigaChat/GigaChat-3-Pro → ai-sage/GigaChat3.5-432B-A28B → deterministic offline.
+   «GigaChat3.5Pro» не подтвержденный ID; точный Pro ID уже есть в AI smoke/report.
+   LLM_MODEL задаёт primary, LLM_FALLBACK_MODEL — secondary, отдельные цены обязательны.
+   Даже без secondary single-model OpenAI режим имеет offline recovery.
+4. Каждая live попытка буферизуется до успешного конца и ограничена 6s (либо меньшим
+   оставшимся budget); максимум две. Это дополнительный demo cap, исходные 20/25/85/90s
+   не увеличены. Ошибочный/оборванный текст не сохраняется как completed instruction.
+   На degraded пути нет tool.proposed; штатный mock по-прежнему поддерживает drafts.
+   EOF без [DONE] больше не считается успехом, cancellation не запускает fallback,
+   budget refusal сразу выбирает offline, неизвестный usage оставляет резервы.
+5. В message.delta всегда добавляется: «Произошла ошибка обращения к LLM. Работает fallback.
+   Обратись к своему наставнику напрямую для решения вопроса». Offline явно помечен.
+   Сообщение проходит существующий Go SSE/history без изменения публичных схем.
+6. v2-aware verify-db больше не ищет legacy app.tasks после v2 seed/AI ingest.
+   CI получил отдельную DB для Go/mock и v2 Compose/API/AI DB stages; запуск CI ещё не предъявлен.
+
+### Фактическая проверка и ограничения
+
+- make check: PASS, 56 shared tests; contract fixtures 11/11, FE typed/fixture/component
+  suite 467/467, frontend build PASS, coverage 94.47%. Lock обновлён после технической
+  проверки общего snapshot; это не замена отсутствующего явного BE↔AI consumer approval.
+- AI component после финальных правок: **443 passed, 5 DB tests skipped, 99.65%**. Отдельные реальные kb/pgvector tests **5/5 PASS**
+  под ai_service, не skipped. Offline evals **29/29**, safety **18/18**.
+- Go точный source собран в локальном Go 1.27.3 build image, go vet PASS; tests PASS,
+  statement 81.1%, принятая line metric **1490/1840 = 80.98%**. Runtime binary совпал
+  с rebuild по SHA-256 b872497833cd33504f3903d2d89b54beced7066671b6425178cc1c072f7fa6f2.
+  Race не запускался: host Go отсутствует, offline Alpine build image без gcc.
+- Corporate mock: **6/6 PASS**, **98.05%** под mock_service с отдельной
+  buddy_test_tl_20261113. Сначала default check не имел DSN, затем read-only test image
+  не мог записать coverage; повтор с настоящей test DB и /tmp coverage прошёл.
+- Настоящий Go→AI→corporate→PostgreSQL API путь **PASS**: draft/SSE/message/sources и
+  pending preview до confirm → submitted → scoped approval → IAM recheck → DB_SSL_REQUIRED →
+  exact buddy snapshot/reply → ssl=require/verified → второй distinct intern →
+  один affected_count=2 candidate → under_review/accepted. Browser этим не заменён.
+  Команда: AI_ACCEPTANCE=1 BACKEND_ACCEPTANCE_URL=http://localhost:18080
+  APP_ORIGIN=http://localhost:15173 uv run --frozen python -m scripts.backend_acceptance.
+  Только для свежего отдельного dataset; повтор на уже пройденных целях не является clean demo.
+- QA: E2E_BASE_URL=http://localhost:15173 APP_ORIGIN=http://localhost:15173
+  npx playwright test e2e/onboarding.spec.ts — **2 PASS**, настоящий API, без interception.
+- Fault acceptance: отдельный внутренний HTTP stub вернул 503 обеим моделям. Настоящий
+  Go сохранил completed fallback message с уведомлением/советом наставника и без actions.
+  Затем Backend реально пересоздан с обычным offline AI: тот же message content и
+  первоначальная verified Goal сохранились. Это local fake API, без paid/live вызовов.
+- Migrate/seed/ingest повторены без сброса demo прогресса. V2 verify-db/role isolation PASS.
+  Host make test остановился на отсутствии go; это не green полного make test.
+- Чистый Compose build BLOCKED внешней сетью: Docker Hub TLS handshake timeout для
+  python:3.12-slim/node:26.13.0-alpine/alpine:3.22. Репетиция реально запущена на уже
+  имеющихся images с read-only mounts нынешнего source и совпадающим Go binary.
+  Она не доказывает clean production image build. Cached override и evidence:
+  /tmp/ai-buddy-audit; основной проект ai-buddy-demo-20261113, сайт http://localhost:15173.
+  Временные fault-сервисы остановлены. Старые volumes не удалялись.
+
+### Остаток до созвона — в таком порядке
+
+| Приоритет / владелец | Блокер и наблюдаемая приемка |
+|---|---|
+| 1 / Frontend RP-FE-02 | Live login race: POST login 200, первые GET goals 401; после «Повторить» GET 200. Ждать session перед mount/fetch и восстанавливать auth/me после reload; не возвращать fixtures как реальный результат |
+| 2 / Frontend RP-FE-02 | Нет create_access_request в LiveStepPage и контекстного live чата шага. Общий LiveChatPage создаёт goal_id/step_id=null, поэтому не может предложить goal-bound заявку. Нужны реальные draft/preview/confirm кликами |
+| 3 / Frontend RP-FE-02 | LiveStepPage всегда посылает ssl_mode=require. Нужны disable → видимый DB_SSL_REQUIRED → buddy → require → trusted success; нельзя подменять это fixture |
+| 4 / Frontend RP-FE-03 | Selector показывает только intern-a/buddy-a/approver-a/docs-owner-a; нет intern-b и intern-c. Нужен второй intern для count=2 и отрицательная команда C, серверные сессии/ACL обязательны |
+| 5 / Frontend RP-E2E-01 | Полный browser A/B/C без route interception, reload/restart, source drawer и реальные permissions. Нынешние 2 QA API tests не закрывают этот gate |
+| 6 / TL RP-INF-01 | Повтор clean image build/up с доступным registry, CI run, race на Go toolchain с gcc; команда demo-up готова, но сетевой отказ не объявлен исправленным |
+| 7 / AI RP-AI-02 | Текущий Pro report 12/13, safety 10/10, один timeout; 3.5 report 12/13, safety 9/10 (unknown term). Tighten prompt и повторить live safety обоих моделей; failover/цены/доступ проверить с реальным account отдельно. В этом проходе paid calls нет |
+| 8 / TL + consumers | Явный общий consumer acceptance, чистая пятиминутная browser репетиция и актуальные demo/materials. RP-INTEGRATION/RP-DEMO не DONE |
+
+Разрешенные изменения этого прохода выполнены в TL checkout и AI modules. FE/BE/QA
+компонентные исходники не исправлялись за авторов. Временный team checklist сохраняется:
+его условия удаления и окончательная приемка ещё не выполнены.
+
+
+---
+
+## Исторические записи до текущего прохода
+
+
 2026-11-12. Владелец поручил выполнить TL-часть в `feature/team-start-foundation`.
 Дедлайн владельца: **2026-11-12 22:00 Europe/Moscow**. Это срок, не утверждение готовности.
 Ни чужие ветки, ни refs, ни remote не изменены. Новая ветка не потребовалась; commit/push/PR нет.
@@ -189,3 +299,30 @@ component/integration findings не закрыты. Новых документ�
 исполняемые файлы/config/contracts/DDL, Git refs/ветка и untracked inventory неизменны.
 Новых документов/коммитов нет, live API/оплата/регистрация/component/E2E не выполнялись;
 это не подтверждение реализации guard/cache или расхода средств.
+
+## Локальная проверка bootstrap и QA API · 2026-11-13
+
+- На Windows `core.autocrlf=true` переводил `scripts/bootstrap-db.sh` в CRLF. Хотя Dockerfile
+  копировал файл с правом 755, Linux не мог разрешить `#!/bin/sh\r` и PostgreSQL выходил 127.
+  В TL checkout добавлено правило `.gitattributes` `scripts/bootstrap-db.sh text eol=lf`;
+  рабочий файл нормализован к LF.
+- Собранный PostgreSQL image проверен на одноразовом контейнере без постоянного volume:
+  bootstrap создал роли/схемы/extension, `pg_isready` вернул accepting connections.
+- Для интеграционного запуска использована временная Compose override с Postgres build context
+  из TL checkout и отдельный project `ai-buddy-api-test` с новой v2 БД. Все сервисы healthy;
+  повторный `migrate` прошёл дважды, `seed` прошёл дважды без сброса прогресса, liveness
+  smoke backend/frontend/AI/mock прошёл. Повторный `npx playwright test e2e/onboarding.spec.ts
+  --reporter=line` против v2 API: **2 passed**. Это только два RP-QA-01 API сценария,
+  не browser E2E/полный P0/restart.
+- `verify-db` запущен, но падает на legacy ожидании `app.tasks`: активный v2 seed не содержит
+  legacy task IDs, а `kb`-данные принадлежат AI. Это несоответствие verifier текущему v2 seed,
+  не подтверждённый дефект сервиса. Отдельный read-only запрос подтвердил отсутствие SELECT
+  через `app_service` в corporate/kb, `ai_service` в app/corporate и `mock_service` в app/kb;
+  полного role-isolation сценария с запретами DDL/DML эта проверка не заменяет.
+- `make check` остановился на contract snapshot guard: требуется consumer review и обновление
+  TL lock. Lock намеренно не перегенерировался, поскольку RP-CONTRACT-REVIEW-01 еще IN_PROGRESS.
+  Отдельные `ruff check`, `ruff format --check` и `pytest tests -q` прошли ранее: 50 tests.
+- Исходный упавший проект `ai-buddy` и его частично инициализированный volume не удалялись.
+  Исправление и отчет зафиксированы локальным коммитом в `feature/team-start-foundation`; push не выполнялся.
+  RP-INF-01 остаётся IN_PROGRESS до v2-aware `verify-db`, CI acceptance и финальной проверки.
+- `git diff --check` прошёл для TL-изменений.
