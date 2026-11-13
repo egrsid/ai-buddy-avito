@@ -111,7 +111,10 @@ async def run_generate(
     chunks = provider.stream(llm_input, scenario)
     if hasattr(chunks, "pipeline_deadline"):
         # Give the local notice time to reach Go before the hard pipeline deadline.
-        chunks.pipeline_deadline = pipeline_deadline - min(1.0, settings.pipeline_timeout / 10)
+        reserve = min(1.0, settings.pipeline_timeout / 10)
+        chunks.pipeline_deadline = pipeline_deadline - reserve
+        # Буферизованный ответ целиком должен прийти до срока первого токена.
+        chunks.answer_deadline = token_deadline - reserve
     pending = None
     try:
         while True:

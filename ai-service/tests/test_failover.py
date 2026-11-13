@@ -1,6 +1,7 @@
 """Failure recovery, chat notices, budget isolation and cancellation without paid calls."""
 
 import asyncio
+import time
 from dataclasses import replace
 
 import httpx
@@ -9,22 +10,24 @@ from ai_test_support import collect, events, generate_request, knowledge, make_s
 from app.api import create_app, make_provider
 from app.config import ConfigError, load_settings
 from app.contracts import is_valid
-from app.failover import NOTICE, FailoverProvider
+from app.failover import MOCK_PREFIX, NOTICE, OFFLINE_LIMIT, FailoverProvider, offline_text
 from app.generate import run_generate
 from app.mock_provider import BudgetDenied, ProviderUnavailable
 from fastapi.testclient import TestClient
 
 
 class Scripted:
-    def __init__(self, chunks=(), error=None, hang=False):
-        self.chunks, self.error, self.hang = chunks, error, hang
+    def __init__(self, chunks=(), error=None, hang=False, pause=0.0):
+        self.chunks, self.error, self.hang, self.pause = chunks, error, hang, pause
         self.calls = 0
         self.closed = False
 
     async def stream(self, llm_input, scenario):
         self.calls += 1
         try:
-            for chunk in self.chunks:
+            for number, chunk in enumerate(self.chunks):
+                if number:
+                    await asyncio.sleep(self.pause)
                 yield chunk
             if self.hang:
                 await asyncio.Event().wait()
@@ -227,3 +230,77 @@ def test_http_sse_notice_has_no_new_wire_fields():
         )
     assert response.status_code == 200
     assert NOTICE in response.text and "generation.completed" in response.text
+
+
+def stream_text(provider, request=None):
+    """Весь текст одного запроса напрямую через FailoverProvider, без generate."""
+    from app.prompt import LlmInput
+
+    async def read():
+        llm_input = LlmInput([], request or generate_request(), [])
+        stream = provider.stream(llm_input, "normal")
+        try:
+            return "".join([piece async for piece in stream])
+        finally:
+            await stream.aclose()
+
+    return asyncio.run(read())
+
+
+def test_slow_healthy_answer_is_not_cut_after_first_token_window():
+    # Окно первого куска 0.5 с, а весь ответ идёт 0.65 с: это не сбой, запасная не нужна.
+    primary = Scripted(["Начало ответа. ", "Конец ответа."], pause=0.65)
+    secondary = Scripted(["Резервный ответ"])
+    items = run(primary, secondary, first_token_timeout=1.5, pipeline_timeout=2.0)
+    assert text(items) == "Начало ответа. Конец ответа."
+    assert (primary.calls, secondary.calls) == (1, 0)
+
+
+def test_broken_model_is_skipped_until_cooldown_ends_then_retried():
+    now = [100.0]
+    primary = Scripted(error=ProviderUnavailable())
+    secondary = Scripted(["Резервный ответ"])
+    provider = FailoverProvider(make_settings(), (primary, secondary), clock=lambda: now[0])
+    assert "Резервный ответ" in stream_text(provider)
+    # Второй запрос во время паузы основную модель не трогает, но о резерве предупреждает.
+    output = stream_text(provider)
+    assert NOTICE in output and "Резервный ответ" in output
+    assert (primary.calls, secondary.calls) == (1, 2)
+    # Пауза кончилась, модель починилась: снова отвечает основная, без уведомления.
+    now[0] += provider.cooldown
+    primary.error, primary.chunks = None, ["Основная снова в строю"]
+    assert stream_text(provider) == "Основная снова в строю"
+    assert primary.calls == 2 and provider.is_available(0)
+
+
+def test_all_models_in_cooldown_answer_offline_without_calls():
+    a, b = Scripted(error=ProviderUnavailable()), Scripted(hang=True)
+    provider = FailoverProvider(
+        make_settings(first_token_timeout=0.3), (a, b), clock=time.monotonic
+    )
+    assert "без LLM" in stream_text(provider)
+    started = time.monotonic()
+    assert "без LLM" in stream_text(provider)
+    assert (a.calls, b.calls) == (1, 1)
+    assert time.monotonic() - started < 0.05
+
+
+def test_budget_refusal_does_not_put_model_in_cooldown():
+    a, b = Scripted(error=BudgetDenied()), Scripted()
+    provider = FailoverProvider(make_settings(), (a, b))
+    stream_text(provider)
+    assert provider.is_available(0) and b.calls == 0
+
+
+def test_offline_text_drops_mock_prefix_and_cuts_at_sentence(monkeypatch):
+    import app.failover as failover
+    from app.prompt import LlmInput
+
+    llm_input = LlmInput([], generate_request(), [])
+    assert not offline_text(llm_input).startswith(MOCK_PREFIX.strip())
+    monkeypatch.setattr(failover, "mock_answer", lambda _: MOCK_PREFIX + "Короткая фраза. " * 200)
+    cut = offline_text(llm_input)
+    assert len(cut) <= OFFLINE_LIMIT and cut.endswith("фраза.")
+    monkeypatch.setattr(failover, "mock_answer", lambda _: "слово " * 400)
+    cut = offline_text(llm_input)
+    assert len(cut) <= OFFLINE_LIMIT + 1 and cut.endswith("слово…")
