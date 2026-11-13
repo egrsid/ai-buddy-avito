@@ -72,6 +72,10 @@ func TestMentorContactPreviewAndExport(t *testing.T) {
 			t.Fatalf("leak %q in %s", leak, text)
 		}
 	}
+	// The AI digest sits right under the greeting and survives the export rebuild unchanged.
+	if lines := strings.Split(text, "\n"); len(lines) < 2 || lines[1] != "Кратко: стажёр застрял на шаге и спрашивает про доступ. (сводка ИИ)" {
+		t.Fatal(text)
+	}
 	export := Object{"preview_id": preview["id"], "content_hash": preview["content_hash"], "contact_revision": preview["contact_revision"]}
 	copied := intern.call("POST", "/api/v3/mentor-contact-export", export, 200)
 	if copied["text"] != text || copied["telegram_url"] != "https://t.me/ai_buddy_demo_mentor_a" {
@@ -84,6 +88,14 @@ func TestMentorContactPreviewAndExport(t *testing.T) {
 	if after := intern.call("GET", "/goals/"+str(g["id"]), nil, 200); num(after["version"]) != num(g["version"]) {
 		t.Fatal("contact changed goal state")
 	}
+	// Without the AI service the message simply has no digest, and export still matches.
+	f.setStream("ai_unavailable")
+	plain := intern.call("POST", "/api/v3/mentor-contact-preview", Object{"goal_id": g["id"], "step_id": "check_access"}, 201)
+	if strings.Contains(str(plain["text"]), "Кратко:") {
+		t.Fatal("digest without AI")
+	}
+	intern.call("POST", "/api/v3/mentor-contact-export", Object{"preview_id": plain["id"], "content_hash": plain["content_hash"], "contact_revision": 1}, 200)
+	f.setStream("")
 	f.browser("intern-b").call("POST", "/api/v3/mentor-contact-export", export, 404)
 	f.browser("intern-b").call("POST", "/api/v3/mentor-contact-preview", Object{"goal_id": g["id"], "step_id": "check_access"}, 404)
 	intern.call("POST", "/api/v3/mentor-contact-preview", Object{"goal_id": g["id"], "step_id": "unknown"}, 404)

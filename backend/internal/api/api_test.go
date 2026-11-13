@@ -190,6 +190,14 @@ func (f *fixture) intelligence(w http.ResponseWriter, r *http.Request) {
 			f.t.Error("PII in aggregate")
 		}
 		writeJSON(w, 200, Object{"hypothesis": "В инструкции не хватает SSL.", "proposed_fix": "Добавить ssl_mode=require после human review.", "source_refs": d["instruction_refs"]})
+	case strings.HasSuffix(r.URL.Path, "/contact-summary"):
+		var d Object
+		_ = json.NewDecoder(r.Body).Decode(&d)
+		raw := string(encode(d))
+		if f.s.Validate("v3/ai/ContactSummaryRequest", d) != nil || strings.Contains(raw, "t.me") || strings.Contains(raw, "ai_buddy_demo") || strings.Contains(raw, "Здравствуйте") {
+			f.t.Error("unsafe contact summary input")
+		}
+		writeJSON(w, 200, Object{"summary": "Кратко: стажёр застрял на шаге и спрашивает про доступ."})
 	case strings.HasSuffix(r.URL.Path, "/task-clarity-draft"):
 		var d Object
 		_ = json.NewDecoder(r.Body).Decode(&d)
