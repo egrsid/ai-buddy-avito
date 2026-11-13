@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { escalationPendingAction, goalBlocked, goalReady, knowledgeDoc } from '../fixtures/all-states';
+import { actions, escalationPendingAction, goalBlocked, goalReady, knowledgeDoc } from '../fixtures/all-states';
 import { LiveStepActionsHint, LiveStepPage } from './LiveStepPage';
 
 const mocks = vi.hoisted(() => ({
@@ -77,7 +77,16 @@ describe('LiveStepPage', () => {
     };
     mocks.getStep.mockResolvedValue(accessStep);
     render(<LiveStepPage goalId={blockedGoal.id} stepId={accessStep.id} />);
+    mocks.createAction.mockResolvedValueOnce(actions[0]);
+    mocks.confirmAction.mockResolvedValueOnce({
+      ...actions[0],
+      status: 'succeeded',
+      result: { access_request_id: '00000048-0000-4000-8000-000000000048' },
+    });
     fireEvent.click(await screen.findByRole('button', { name: 'Запросить доступ' }));
+    expect(await screen.findByText('db-team-a-test')).toBeInTheDocument();
+    expect(screen.getByText('Нужен доступ к синтетической БД команды A.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Подтвердить' }));
     await waitFor(() => {
       expect(mocks.createAction).toHaveBeenCalledWith(expect.objectContaining({
         type: 'create_access_request',
@@ -88,6 +97,19 @@ describe('LiveStepPage', () => {
           requested_role: 'db_reader',
         }),
       }));
+    });
+    expect(mocks.confirmAction).toHaveBeenCalledWith(actions[0].id);
+    expect(await screen.findByText(/Заявка создана/)).toBeInTheDocument();
+  });
+
+  it('проверка подключения умеет отправить ssl_mode=require после disable', async () => {
+    render(<LiveStepPage goalId={blockedGoal.id} stepId={blockedStep.id} />);
+    fireEvent.change(await screen.findByLabelText('Режим SSL'), { target: { value: 'require' } });
+    fireEvent.click(screen.getByRole('button', { name: /Повторить проверку/ }));
+    expect(mocks.createCheck).toHaveBeenCalledWith(blockedGoal.id, blockedStep.id, {
+      method: 'mock_db_connection',
+      options: { ssl_mode: 'require' },
+      expected_version: blockedStep.version,
     });
   });
 
@@ -110,6 +132,28 @@ describe('LiveStepPage', () => {
       options: { ssl_mode: 'disable' },
       expected_version: readyStep.version,
     });
+  });
+
+  it('повторный check заблокирован до загрузки актуальной версии шага', async () => {
+    let finishCheck!: (value: object) => void;
+    let finishRefresh!: (value: typeof blockedStep) => void;
+    mocks.createCheck.mockReturnValueOnce(new Promise(resolve => { finishCheck = resolve; }));
+    mocks.getStep.mockResolvedValueOnce(blockedStep).mockReturnValueOnce(new Promise(resolve => { finishRefresh = resolve; }));
+    render(<LiveStepPage goalId={blockedGoal.id} stepId={blockedStep.id} />);
+    const retry = await screen.findByRole('button', { name: /Повторить проверку/ });
+    fireEvent.click(retry);
+    expect(retry).toBeDisabled();
+    expect(screen.getByLabelText('Режим SSL')).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Спросить наставника/ })).toBeDisabled();
+    fireEvent.click(retry);
+    expect(mocks.createCheck).toHaveBeenCalledTimes(1);
+    await act(async () => { finishCheck({}); });
+    expect(screen.queryByRole('button', { name: /Повторить проверку/ })).not.toBeInTheDocument();
+    await act(async () => { finishRefresh({ ...blockedStep, version: blockedStep.version + 1 }); });
+    const refreshed = await screen.findByRole('button', { name: /Повторить проверку/ });
+    expect(refreshed).toBeEnabled();
+    fireEvent.click(refreshed);
+    expect(mocks.createCheck).toHaveBeenLastCalledWith(blockedGoal.id, blockedStep.id, expect.objectContaining({ expected_version: blockedStep.version + 1 }));
   });
 
   it('эскалация: conversation → action → confirm → опрос до succeeded', async () => {

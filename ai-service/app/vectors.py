@@ -6,6 +6,8 @@
 
 import asyncio
 import logging
+import time
+from collections.abc import Callable
 
 from app.config import EMBEDDING_DIM, Settings
 from app.knowledge import Document, chunk_document
@@ -15,6 +17,8 @@ logger = logging.getLogger(__name__)
 BATCH_SIZE = 16
 # Вектор вопроса тёплой моделью — ~50 мс. Дольше ждать нельзя: это время первого токена.
 QUERY_TIMEOUT = 3.0
+# Сколько секунд после сбоя искать без вектора вопроса.
+QUERY_COOLDOWN = 30.0
 
 
 # Версия подготовки текста перед эмбеддингом (очистка секретов и т. п.; нарезку учитывает
@@ -52,14 +56,25 @@ async def embed_corpus(embedder, documents: list[Document]) -> dict[tuple[str, i
     return vectors
 
 
-async def embed_query(embedder, query: str) -> list[float] | None:
-    """Вектор вопроса или None: тогда поиск только лексический, а ответ не падает."""
+async def embed_query(
+    embedder, query: str, clock: Callable[[], float] = time.monotonic
+) -> list[float] | None:
+    """Вектор вопроса или None: тогда поиск только лексический, а ответ не падает.
+
+    После сбоя эмбеддинги не спрашиваем QUERY_COOLDOWN секунд: иначе во время сбоя
+    провайдера каждый вопрос зря ждал бы QUERY_TIMEOUT из 20 с до первого токена.
+    """
     if embedder is None or not query.strip():
+        return None
+    if clock() < getattr(embedder, "query_skip_until", 0.0):
         return None
     try:
         # Вопрос уходит провайдеру, поэтому секреты вычищаем, как и в промпте.
         vectors = await asyncio.wait_for(embedder.embed([redact(query)]), QUERY_TIMEOUT)
     except (EmbeddingError, TimeoutError):
-        logger.warning("Вектор вопроса не получен: поиск только лексический")
+        embedder.query_skip_until = clock() + QUERY_COOLDOWN
+        logger.warning(
+            "Вектор вопроса не получен: поиск только лексический ближайшие %.0f с", QUERY_COOLDOWN
+        )
         return None
     return vectors[0]

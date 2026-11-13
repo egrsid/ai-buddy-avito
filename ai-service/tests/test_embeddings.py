@@ -124,3 +124,18 @@ def test_embed_query_timeout_falls_back_to_none(monkeypatch):
             await asyncio.sleep(1)
 
     assert run(embed_query(SlowEmbedder(), "вопрос")) is None
+
+
+def test_embed_query_skips_provider_during_cooldown_then_retries():
+    now = [0.0]
+    fake = FakeEmbedder(error=EmbeddingError("down"))
+    assert run(embed_query(fake, "вопрос", clock=lambda: now[0])) is None
+    # Во время паузы провайдера не спрашиваем: вопрос сразу ищется лексически.
+    now[0] += vectors.QUERY_COOLDOWN - 1
+    assert run(embed_query(fake, "вопрос", clock=lambda: now[0])) is None
+    assert len(fake.calls) == 1
+    # Пауза прошла, провайдер ожил — снова получаем вектор.
+    now[0] += 1
+    fake.error = None
+    assert run(embed_query(fake, "вопрос", clock=lambda: now[0])) is not None
+    assert len(fake.calls) == 2

@@ -325,6 +325,18 @@ export const users: Record<string, User> = {
     assignments: [{ resource_id: 'db-team-a-test', role: 'db_reader' }],
     buddy_id: u('04'),
   },
+  'intern-b': {
+    id: '10000000-0000-4000-8000-000000000004', account_id: 'intern-b', display_name: 'Стажёр B', roles: ['intern'],
+    team_id: 'team-a',
+    assignments: [{ resource_id: 'db-team-a-test', role: 'db_reader' }],
+    buddy_id: '10000000-0000-4000-8000-000000000001',
+  },
+  'intern-c': {
+    id: '10000000-0000-4000-8000-000000000005', account_id: 'intern-c', display_name: 'Стажёр C', roles: ['intern'],
+    team_id: 'team-b',
+    assignments: [],
+    buddy_id: '10000000-0000-4000-8000-000000000002',
+  },
   'buddy-a': {
     id: u('04'), account_id: 'buddy-a', display_name: 'Бадди A', roles: ['buddy'],
     team_id: 'team-a', assignments: [], buddy_id: null,
