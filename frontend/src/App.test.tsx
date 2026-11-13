@@ -19,6 +19,7 @@ const api = vi.hoisted(() => ({
   listConversations: vi.fn(),
   createConversation: vi.fn(),
   listMessages: vi.fn(),
+  me: vi.fn().mockRejectedValue(new Error('anon')),
 }));
 
 vi.mock('./lib/endpoints', () => api);
@@ -34,7 +35,9 @@ function go(hash: string) {
 
 async function switchToLive() {
   fireEvent.click(screen.getByRole('button', { name: 'Live API' }));
-  await act(async () => undefined);
+  await act(async () => {
+    await Promise.resolve();
+  });
 }
 
 describe('App', () => {
@@ -129,6 +132,7 @@ describe('App · live-режим', () => {
     api.listConversations.mockResolvedValue([CONV]);
     api.createConversation.mockResolvedValue(CONV);
     api.listMessages.mockResolvedValue([]);
+    api.me.mockRejectedValue(new Error('anon'));
   });
 
   it('переключение в live делает demo-login и показывает живой чат', async () => {
