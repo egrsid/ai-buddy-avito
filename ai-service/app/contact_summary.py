@@ -82,7 +82,15 @@ def parse_summary(text: str) -> dict | None:
         return None
     if not isinstance(data, dict):
         return None
-    return tidy({"summary": str(data.get("summary", "")).strip()})
+    # Модель часто пишет «**Кратко**:» или пропускает слово — префикс ставим сами.
+    summary = str(data.get("summary", "")).strip().strip("*").strip()
+    for prefix in ("Кратко:", "Кратко -", "Кратко —", "Кратко"):
+        if summary.startswith(prefix):
+            summary = summary[len(prefix) :].strip(" *:—-")
+            break
+    if not summary:
+        return None
+    return tidy({"summary": "Кратко: " + summary})
 
 
 def rejection(draft: dict | None) -> str | None:
