@@ -272,3 +272,18 @@ def test_pipeline_counts_from_request_acceptance():
     items = collect(stream)
     assert names(items) == ["run.started", "run.failed"]
     assert events(items)[-1]["data"]["code"] == "LLM_TIMEOUT"
+
+
+def test_query_embeddings_off_skips_question_vector():
+    from ai_test_support import FakeEmbedder
+    from test_hybrid_search import HYBRID
+
+    for enabled, expected_calls in [(True, 1), (False, 0)]:
+        embedder = FakeEmbedder()
+        settings = make_settings(query_embeddings=enabled)
+        stream = run_generate(
+            generate_request(), MockProvider(0.0), HYBRID, settings, "normal", embedder=embedder
+        )
+        items = collect(stream)
+        assert events(items)[-1]["event"] == "generation.completed"
+        assert len(embedder.calls) == expected_calls

@@ -101,12 +101,16 @@ describe('LiveChatPage', () => {
     expect(mocks.createRun).toHaveBeenCalledWith(CONV, { content: 'Повтори проверку' });
 
     await waitFor(() => expect(mocks.streamRunEvents).toHaveBeenCalled());
+    // До первого слова видно, что ИИ уже работает.
+    expect(screen.getByText('ИИ готовит ответ…')).toBeInTheDocument();
     const handlers = mocks.streamRunEvents.mock.calls[0][1] as RunStreamHandlers;
     act(() => {
       handlers.onEvent({ type: 'run.started', data: { run_id: RUN } }, 1);
       handlers.onEvent({ type: 'message.delta', data: { run_id: RUN, text: 'Проверяю…' } }, 2);
     });
     expect(screen.getByText('Проверяю…')).toBeInTheDocument();
+    expect(screen.getByText('Сгенерировано ИИ')).toBeInTheDocument();
+    expect(screen.queryByText('ИИ готовит ответ…')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Остановить генерацию' })).toBeInTheDocument();
 
     act(() => {
@@ -114,6 +118,23 @@ describe('LiveChatPage', () => {
     });
     // после терминала — refetch сообщений (истина — GET)
     expect(mocks.listMessages.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('помечает ответ ИИ и fallback без служебного текста в ответе', async () => {
+    const fallback = {
+      ...assistantMessage,
+      id: '00000034-0000-4000-8000-000000000034',
+      content: 'Произошла ошибка обращения к LLM. Работает fallback. Обратись к своему наставнику напрямую для решения вопроса. '
+        + 'Ответ ниже подготовлен без LLM по разрешённому контексту и шаблонам. Он не подтверждает выполнение шага.\n\n'
+        + 'Шаблонная подсказка.',
+    };
+    mocks.listMessages.mockResolvedValue([userMessage, assistantMessage, fallback]);
+    await renderChat();
+    expect(await screen.findByText('Нужен sslmode=require.')).toBeInTheDocument();
+    expect(screen.getByText('Сгенерировано ИИ')).toBeInTheDocument();
+    expect(screen.getByText('Fallback · без ИИ')).toBeInTheDocument();
+    expect(screen.getByText('Шаблонная подсказка.')).toBeInTheDocument();
+    expect(screen.queryByText(/Произошла ошибка обращения к LLM/)).not.toBeInTheDocument();
   });
 
   it('action.proposed → ActionCard, confirm → executing → опрос до succeeded', async () => {

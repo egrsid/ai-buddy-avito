@@ -1,17 +1,17 @@
 """Two bounded paid attempts, then deterministic help using the same scoped input.
 
-Each run owns its stream state. Cancellation never starts a fallback call. Each live
-attempt is buffered until a successful EOF, so failed partial text never enters chat.
-Fallback notices are ordinary message.delta text: Go persists them in chat without
-new public DTOs, and source/tool checks remain in the existing generate pipeline.
+Each run owns its stream state. Cancellation never starts a fallback call. Fallback
+notices are ordinary message.delta text: Go persists them in chat without new public
+DTOs, and source/tool checks remain in the existing generate pipeline.
 
-Время попытки. Пока ответ буферизуется, Go не видит ни одного куска, поэтому весь
-ответ (а не только первый токен) обязан уложиться в первые 20 с пайплайна:
-- первый кусок модель должна прислать за first_wait (≤6 с) — так мёртвая или
-  зависшая модель распознаётся быстро;
-- дописывать ответ попытка может до answer_deadline, но не последняя попытка
-  оставляет first_wait запасной модели. Полный ответ GigaChat — p95 5.7 с, поэтому
-  обрезать его по 6 с нельзя: здоровый ответ уходил бы в запасную модель и стоил вдвое.
+Потоковая отдача. Текст модели уходит в чат сразу, кусок за куском: стажёр видит
+первые слова через 1.5–3.5 с, а не через весь ответ (раньше ответ буферизовался целиком).
+- первый кусок модель должна прислать за first_wait (≤6 с). Не прислала или упала до
+  него — в чат ещё ничего не ушло, поэтому пробуем запасную модель, затем offline;
+- после первого куска модель уже не меняем: если поток оборвался или затих дольше
+  next_wait, уже показанный текст остаётся, а в конце добавляется INTERRUPTED.
+Пометки (NOTICE, OFFLINE_NOTICE, INTERRUPTED, MOCK_PREFIX) — фиксированные фразы:
+по ним фронтенд отличает ответ ИИ от fallback, не меняя публичный контракт.
 
 Автомат (circuit breaker). Упавшая модель пропускается COOLDOWN_SECONDS: во время
 сбоя Cloud.ru запросы не ждут её заново, а сразу идут в запасную или offline. После
@@ -36,6 +36,8 @@ NOTICE = (
     "Произошла ошибка обращения к LLM. Работает fallback. "
     "Обратись к своему наставнику напрямую для решения вопроса. "
 )
+RESERVE_NOTICE = "Используется резервная модель.\n\n"
+INTERRUPTED = "\n\n_Ответ модели прервался. Повтори вопрос или обратись к наставнику._"
 OFFLINE_NOTICE = (
     "Ответ ниже подготовлен без LLM по разрешённому контексту и шаблонам. "
     "Он не подтверждает выполнение шага.\n\n"
@@ -44,6 +46,8 @@ OFFLINE_NOTICE = (
 COOLDOWN_SECONDS = 30.0
 # Предел длины offline-ответа: вместе с уведомлением влезает в 4000 символов Go.
 OFFLINE_LIMIT = 3000
+# Предел текста модели: с уведомлением о резерве и об обрыве влезает в 4000 символов Go.
+LIVE_LIMIT = 3500
 # Начало шаблонного ответа mock-режима: здесь о режиме уже сказано в OFFLINE_NOTICE.
 MOCK_PREFIX = "Демо-режим mock: ответ подготовлен без LLM.\n\n"
 
@@ -95,7 +99,8 @@ class FailoverStream:
         reserve = min(1.0, settings.pipeline_timeout / 10)
         self.pipeline_deadline = now + settings.pipeline_timeout - reserve
         # generate.py переписывает оба срока от момента приёма запроса.
-        self.answer_deadline = now + settings.first_token_timeout - reserve
+        # token_deadline — до него должен прийти первый кусок текста любой из моделей.
+        self.token_deadline = now + settings.first_token_timeout - reserve
         self.iterator = self._run()
 
     def __aiter__(self):
@@ -107,62 +112,54 @@ class FailoverStream:
     async def aclose(self):
         await self.iterator.aclose()
 
-    def attempt_deadline(self, index: int, first_wait: float, first_deadline: float) -> float:
-        """До какого момента попытка может дописывать ответ."""
-        deadline = min(self.answer_deadline, self.pipeline_deadline)
-        later = range(index + 1, len(self.providers))
-        if any(self.owner.is_available(i) for i in later):
-            # Не последняя живая попытка: оставляем запасной модели время на первый кусок,
-            # но и у этой попытки не отнимаем её окно первого куска.
-            deadline = max(deadline - first_wait, first_deadline)
-        return deadline
-
     async def _run(self) -> AsyncIterator[str]:
         clock = self.owner.clock
         # Leave time for retrieval and offline text inside the existing first-token
         # budget. Attempts do not extend the outer 85s pipeline / Go 90s deadline.
         first_wait = min(6.0, self.settings.first_token_timeout / 3)
+        # Пауза между кусками уже начатого ответа, после которой считаем поток оборванным.
+        next_wait = self.settings.stream_idle_timeout / 2
         for index, provider in enumerate(self.providers):
             if not self.owner.is_available(index):
                 self.degraded = True
                 continue
             name = model_name(provider, index)
             chunks = provider.stream(self.llm_input, self.scenario)
-            buffered = []
+            started = False
             live_chars = 0
             budget_denied = False
-            first_deadline = clock() + first_wait
-            answer_deadline = self.attempt_deadline(index, first_wait, first_deadline)
+            first_deadline = min(clock() + first_wait, self.token_deadline, self.pipeline_deadline)
             try:
                 while True:
-                    if buffered:
-                        deadline = answer_deadline
+                    if started:
+                        deadline = min(clock() + next_wait, self.pipeline_deadline)
                     else:
-                        deadline = min(first_deadline, answer_deadline)
+                        deadline = first_deadline
                     left = deadline - clock()
                     if left <= 0:
                         raise TimeoutError
                     try:
                         text = await asyncio.wait_for(anext(chunks), left)
                     except StopAsyncIteration:
-                        if not buffered:
+                        if not started:
                             raise ProviderUnavailable("Пустой ответ") from None
                         self.owner.mark_ok(index)
-                        if self.degraded:
-                            yield NOTICE + "Используется резервная модель.\n\n"
-                        for piece in buffered:
-                            yield piece
                         return
-                    if clock() >= deadline:
-                        raise TimeoutError
                     if not text:
                         continue
-                    # Go permits 4000 characters per message. Keep room for a
-                    # durable failure notice and bounded deterministic guidance.
-                    if live_chars + len(text) > 2000:
-                        raise ProviderUnavailable("Ответ слишком длинный")
+                    if not started:
+                        started = True
+                        if self.degraded:
+                            yield NOTICE + RESERVE_NOTICE
+                    # Go permits 4000 characters per message: длинный ответ обрезаем,
+                    # а не отбрасываем — его начало стажёр уже видит.
+                    room = LIVE_LIMIT - live_chars
+                    if len(text) >= room:
+                        yield text[:room] + "…"
+                        self.owner.mark_ok(index)
+                        return
                     live_chars += len(text)
-                    buffered.append(text)
+                    yield text
             except (BudgetDenied, BudgetUnavailable):
                 budget_denied = True
                 logger.warning("LLM %s: платный вызов запрещён журналом расходов", name)
@@ -177,6 +174,10 @@ class FailoverStream:
             finally:
                 await chunks.aclose()
             self.degraded = True
+            if started:
+                # Начало ответа уже в чате: другую модель не зовём, только помечаем обрыв.
+                yield INTERRUPTED
+                return
             if budget_denied or clock() >= self.pipeline_deadline:
                 # A budget refusal cannot be bypassed with another paid model.
                 break
