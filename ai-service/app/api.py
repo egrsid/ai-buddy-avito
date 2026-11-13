@@ -110,7 +110,7 @@ def create_app(
         source = make_knowledge_source(settings, embedder)
 
     async def warm_up_models() -> None:
-        if embedder is None:
+        if embedder is None or not settings.query_embeddings:
             await provider.warm_up()
         else:
             await asyncio.gather(provider.warm_up(), embedder.warm_up())
@@ -228,7 +228,7 @@ def create_app(
     async def search_knowledge(body: dict) -> dict:
         knowledge = await source.current()
         query_vector = None
-        if knowledge.vectors:
+        if knowledge.vectors and settings.query_embeddings:
             query_vector = await embed_query(embedder, body["query"])
         scope = body["access_scope"]
         hits = knowledge.search(scope, body["query"], body.get("top_k", 5), query_vector)

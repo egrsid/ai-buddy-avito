@@ -23,6 +23,8 @@ import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '
 import { ActionCard } from '../components/ActionCard';
 import { FormattedText } from '../components/FormattedText';
 import { SourceDrawer } from '../components/SourceDrawer';
+import { AnswerOriginBadge } from '../components/AnswerOriginBadge';
+import { classifyAnswer } from '../lib/answerOrigin';
 
 // RP-FE-02: live-чат. Диалог goal_id/step_id = null (общий).
 // Run запускается POST /runs, стрим — GET /runs/{id}/events (SSE).
@@ -123,6 +125,8 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
       const run = await createRun(conversationId, { content });
       setActiveRun(run);
       setDraft('');
+      // Вопрос уже сохранён Go: показываем его сразу, не дожидаясь ответа.
+      messages.refetch();
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
@@ -187,13 +191,23 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
             {messages.data?.map((m) => (
               <ChatMessage key={m.id} message={m} onDocument={openDocument} />
             ))}
+            {activeRun && !streamText && (
+              <div className="flex max-w-[85%] gap-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-light" aria-hidden>
+                  <Bot size={18} className="text-primary" />
+                </span>
+                <div className="rounded-2xl rounded-tl-md bg-surface-muted px-4 py-3">
+                  <p className="animate-pulse text-sm text-text-secondary" role="status">ИИ готовит ответ…</p>
+                </div>
+              </div>
+            )}
             {streamText && (
               <div className="flex max-w-[85%] gap-3">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-light" aria-hidden>
                   <Bot size={18} className="text-primary" />
                 </span>
                 <div className="rounded-2xl rounded-tl-md bg-surface-muted px-4 py-3">
-                  <FormattedText text={streamText} documents={streamSources} onDocument={openDocument} />
+                  <StreamingAnswer text={streamText} sources={streamSources} onDocument={openDocument} />
                   <p className="mt-1 text-[11px] text-text-secondary" role="status">генерация…</p>
                 </div>
               </div>
@@ -254,6 +268,18 @@ function DocumentLink({ source, onDocument }: { source: SourceT; onDocument: (id
   return <a href={source.url} className="text-primary underline underline-offset-4" onClick={e => { e.preventDefault(); onDocument(source.document_id); }}>{source.title}</a>;
 }
 
+function StreamingAnswer({ text, sources, onDocument }: {
+  text: string; sources: SourceT[]; onDocument: (id: string) => void;
+}) {
+  const answer = classifyAnswer(text);
+  return (
+    <>
+      <AnswerOriginBadge origin={answer.origin} interrupted={answer.interrupted} />
+      <FormattedText text={answer.text} documents={sources} onDocument={onDocument} />
+    </>
+  );
+}
+
 function ChatMessage({ message: m, onDocument }: { message: MessageT; onDocument: (id: string) => void }) {
   if (m.role === 'user') {
     return (
@@ -263,13 +289,15 @@ function ChatMessage({ message: m, onDocument }: { message: MessageT; onDocument
       </div>
     );
   }
+  const answer = classifyAnswer(m.content);
   return (
     <div className="flex max-w-[85%] gap-3">
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-light" aria-hidden>
         <Bot size={18} className="text-primary" />
       </span>
       <div className="rounded-2xl rounded-tl-md bg-surface-muted px-4 py-3">
-        <FormattedText text={m.content} documents={m.sources} onDocument={onDocument} />
+        <AnswerOriginBadge origin={answer.origin} interrupted={answer.interrupted} />
+        <FormattedText text={answer.text} documents={m.sources} onDocument={onDocument} />
         {m.sources.length > 0 && (
           <ul className="mt-2 space-y-0.5 text-xs text-text-secondary">
             {m.sources.filter(s => !m.content.includes(`](${s.url})`)).map((s) => (

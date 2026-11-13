@@ -2,8 +2,9 @@ import { expect, test } from '@playwright/test';
 
 test('live launch restores the server session after reload', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Учебный стенд', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Fixtures', exact: true })).toHaveCount(0);
+  // Демо-стенд стартует в Live API, но источник данных можно переключить.
+  await expect(page.getByRole('button', { name: 'Live API', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Fixtures', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Моя цель', exact: true })).toBeVisible();
   const before = (await page.context().cookies()).find(c => c.name === 'buddy_session');
   expect(before).toBeDefined();

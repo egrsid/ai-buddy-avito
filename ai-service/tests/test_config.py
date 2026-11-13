@@ -93,7 +93,15 @@ def test_knowledge_and_embedding_defaults_survive_empty_compose_values():
     assert load_settings(env).knowledge_source == "db"
 
 
-@pytest.mark.parametrize("extra", [{"EMBEDDING_DIM": "768"}, {"KNOWLEDGE_SOURCE": "s3"}])
+def test_query_embeddings_on_by_default_and_can_be_switched_off():
+    assert load_settings(LIVE).query_embeddings is True
+    assert load_settings({**LIVE, "QUERY_EMBEDDINGS": "off"}).query_embeddings is False
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [{"EMBEDDING_DIM": "768"}, {"KNOWLEDGE_SOURCE": "s3"}, {"QUERY_EMBEDDINGS": "yes"}],
+)
 def test_bad_knowledge_settings_stop_startup(extra):
     with pytest.raises(ConfigError):
         load_settings({**LIVE, **extra})

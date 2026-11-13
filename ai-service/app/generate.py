@@ -99,7 +99,7 @@ async def run_generate(
     scope = request["access_scope"]
     query = search_query(request)
     query_vector = None
-    if knowledge.vectors:
+    if knowledge.vectors and settings.query_embeddings:
         query_vector = await embed_query(embedder, query)
     # Фильтр прав внутри search — до ранжирования и до модели.
     hits = knowledge.search(scope, query, GENERATE_TOP_K, query_vector)
@@ -113,8 +113,8 @@ async def run_generate(
         # Give the local notice time to reach Go before the hard pipeline deadline.
         reserve = min(1.0, settings.pipeline_timeout / 10)
         chunks.pipeline_deadline = pipeline_deadline - reserve
-        # Буферизованный ответ целиком должен прийти до срока первого токена.
-        chunks.answer_deadline = token_deadline - reserve
+        # Первый кусок текста должен успеть к сроку первого токена.
+        chunks.token_deadline = token_deadline - reserve
     pending = None
     try:
         while True:

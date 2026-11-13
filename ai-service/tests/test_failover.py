@@ -10,7 +10,15 @@ from ai_test_support import collect, events, generate_request, knowledge, make_s
 from app.api import create_app, make_provider
 from app.config import ConfigError, load_settings
 from app.contracts import is_valid
-from app.failover import MOCK_PREFIX, NOTICE, OFFLINE_LIMIT, FailoverProvider, offline_text
+from app.failover import (
+    INTERRUPTED,
+    MOCK_PREFIX,
+    NOTICE,
+    OFFLINE_LIMIT,
+    RESERVE_NOTICE,
+    FailoverProvider,
+    offline_text,
+)
 from app.generate import run_generate
 from app.mock_provider import BudgetDenied, ProviderUnavailable
 from fastapi.testclient import TestClient
@@ -90,12 +98,15 @@ def test_both_models_fail_use_existing_offline_context_without_raw_error():
             assert is_valid("MessageDeltaEvent", i["data"])
 
 
-def test_empty_frames_do_not_extend_attempt_and_oversized_text_leaves_room_for_notice():
+def test_empty_frames_do_not_extend_attempt_and_oversized_text_is_cut_not_dropped():
     primary = Scripted([""] * 5, error=ProviderUnavailable())
     secondary = Scripted(["x" * 5000])
     items = run(primary, secondary)
-    assert NOTICE in text(items) and "без LLM" in text(items)
-    assert len(text(items)) < 4000
+    output = text(items)
+    assert output.startswith(NOTICE + RESERVE_NOTICE)
+    assert "xxx" in output and output.endswith("…")
+    assert "без LLM" not in output
+    assert len(output) < 4000
 
 
 def test_two_attempt_timeouts_leave_budget_for_local_notice():
@@ -105,13 +116,36 @@ def test_two_attempt_timeouts_leave_budget_for_local_notice():
 
 
 @pytest.mark.parametrize("error,hang", [(ProviderUnavailable(), False), (None, True)])
-def test_failed_partial_is_discarded_before_trying_secondary(error, hang):
+def test_started_answer_stays_and_ends_with_interruption_notice(error, hang):
+    # Начало ответа уже показано стажёру: другую модель не зовём, только помечаем обрыв.
     a, b = Scripted(["Частичный ответ"], error=error, hang=hang), Scripted(["Второй LLM"])
     items = run(a, b)
-    assert "Частичный ответ" not in text(items)
-    assert NOTICE in text(items) and "Второй LLM" in text(items)
-    assert b.calls == 1 and a.closed
+    output = text(items)
+    assert output.startswith("Частичный ответ") and output.endswith(INTERRUPTED)
+    assert NOTICE not in output and "Второй LLM" not in output
+    assert b.calls == 0 and a.closed
     assert items[-1]["event"] == "generation.completed"
+    assert not any(i["event"] == "tool.proposed" for i in items)
+
+
+def test_first_chunk_is_streamed_before_the_answer_ends():
+    async def first_piece_delay():
+        from app.prompt import LlmInput
+
+        primary = Scripted(["Начало. ", "Конец."], pause=0.5)
+        settings = make_settings(first_token_timeout=3.0, stream_idle_timeout=3.0)
+        provider = FailoverProvider(settings, (primary, Scripted()))
+        stream = provider.stream(LlmInput([], generate_request(), []), "normal")
+        started = time.monotonic()
+        first = await anext(stream)
+        delay = time.monotonic() - started
+        rest = "".join([piece async for piece in stream])
+        await stream.aclose()
+        return first, delay, rest
+
+    first, delay, rest = asyncio.run(first_piece_delay())
+    assert first == "Начало. " and rest == "Конец."
+    assert delay < 0.3
 
 
 def test_budget_refusal_skips_all_further_paid_calls():
@@ -251,7 +285,9 @@ def test_slow_healthy_answer_is_not_cut_after_first_token_window():
     # Окно первого куска 0.5 с, а весь ответ идёт 0.65 с: это не сбой, запасная не нужна.
     primary = Scripted(["Начало ответа. ", "Конец ответа."], pause=0.65)
     secondary = Scripted(["Резервный ответ"])
-    items = run(primary, secondary, first_token_timeout=1.5, pipeline_timeout=2.0)
+    items = run(
+        primary, secondary, first_token_timeout=1.5, stream_idle_timeout=1.5, pipeline_timeout=2.0
+    )
     assert text(items) == "Начало ответа. Конец ответа."
     assert (primary.calls, secondary.calls) == (1, 0)
 

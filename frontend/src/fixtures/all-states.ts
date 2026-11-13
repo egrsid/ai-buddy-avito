@@ -341,6 +341,10 @@ export const users: Record<string, User> = {
     id: u('04'), account_id: 'buddy-a', display_name: 'Бадди A', roles: ['buddy'],
     team_id: 'team-a', assignments: [], buddy_id: null,
   },
+  'buddy-b': {
+    id: '10000000-0000-4000-8000-000000000002', account_id: 'buddy-b', display_name: 'Бадди B', roles: ['buddy'],
+    team_id: 'team-b', assignments: [], buddy_id: null,
+  },
   'approver-a': {
     id: u('06'), account_id: 'approver-a', display_name: 'Аппрувер A', roles: ['access_approver'],
     team_id: 'team-a',
