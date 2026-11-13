@@ -55,3 +55,9 @@ make check, frontend component check/typecheck/build/tests; после реал�
 restart. Реальный restart/setup согласовать с TL без сброса данных, записать outcome.
 Отчёт TL: файлы/команды/coverage, browser результат, скриншоты и ограничения. Для demo
 передать TL готовый UI capture в рамках RP-E2E-01, без отдельной задачи Fullstack.
+
+## Дополнение к v3 очереди
+
+V3-GOALS-FE-01 (goal cards/expand/progress), V3-STATS-FE-01 (два scoped кабинета), server-owned origin UI в V3-LLM-OBS-01.
+Общие зависимости/каталоги/DoD — [delivery](../../v3/delivery.md), [матрица](../../v3/testing.md).
+Текущий проход остаётся docs-only; эти runtime задачи TODO.

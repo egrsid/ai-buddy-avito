@@ -99,3 +99,22 @@ contact_link_clicked — необязательная UI telemetry, не дос�
    До появления новых данных — empty state, не fixture-история. Четыре роли сохраняются.
 5. v2 documentation candidates, IAM/evidence, бюджет и synthetic DB loop регрессионно защищены.
    Staged rollout/feature capability согласовать на gate, не вводить скрытый dual-write.
+
+## Дополнительные границы v3: список целей, origin LLM, статистика
+
+Список целей/подзадач использует existing Go-owned Goal/Step/Progress. Summary/pagination
+согласуются в contracts, проценты не вычисляются по частично загруженным steps в React.
+UI expansion — только состояние представления. [Goals design](../features/goal-subtask-disclosure/design.md).
+
+ResponseOrigin/безопасная operational telemetry — AI producer → Go validation/persistence →
+FE rendering; фактический origin сохраняется в SSE/REST/history, а не определяется текстом
+ответа. Разделить launch mode, actual answering provider и reason. Primary readiness,
+index profile и budget ledger не заменяют друг друга. [LLM design](../features/live-llm-reliability/design.md).
+
+Statistical aggregation выполняет Go/app, не LLM/браузер. Новые read-only endpoints и
+DTO summary/rows/daily/as_of/suppressed/pagination относятся к V3-CONTRACT-BE/FE.
+Для наставника и владельца документации разные server-derived scopes; фильтры/границы
+окна/счётчики/privacy rules описаны в [statistics design](../features/intern-difficulty-statistics/design.md).
+Экспорт raw событий и production retention не добавлены; отсутствующие исторические
+exposure/assignment данные не восстанавливаются предположениями. Порог отчёта и видимость
+статистики независимы. Новые DB поля — только будущими migrations владельца.

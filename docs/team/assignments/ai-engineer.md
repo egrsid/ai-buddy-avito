@@ -127,3 +127,9 @@ AI Engineer, без ожидания подтверждения TL.** Общие
 Прямой API Сбера и GigaChat-3-Pro — только запасные варианты, новый адаптер сейчас не нужен.
 A-Vibe — после MVP. Live и offline отчёты отдельны; AI-R1–R4 и остальные integration gates
 этим документом не закрываются, guard/cache/live RAG не считаются уже реализованными.
+
+## Дополнение к v3 очереди
+
+V3-LLM-DIAG-01 первым: mock launch отличить от provider outage; V3-LLM-LIVE-01 и OBS-01, actual primary smoke после настройки guard, не скрывать fallback.
+Общие зависимости/каталоги/DoD — [delivery](../../v3/delivery.md), [матрица](../../v3/testing.md).
+Текущий проход остаётся docs-only; эти runtime задачи TODO.

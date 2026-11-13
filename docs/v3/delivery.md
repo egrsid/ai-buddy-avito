@@ -8,8 +8,8 @@
 | ID | Owner / reviewer | Зависимости | Каталоги при реализации | Результат / gate |
 |---|---|---|---|---|
 | V3-TL-01 | TL / владелец продукта | main audit | docs/, AGENTS.md | DONE docs: Product/Telegram/task editor/reports/SDD/ADR/план; consumer approval ещё открыт |
-| V3-CONTRACT-BE-01 | BE / TL, FE, AI | TL-01 | contracts/v3 proposed public/common/events, backend contract tests | Исполняемые schemas/fixtures: contact preview/export, brief/version/assignment/friction/report/review/errors/retirement |
-| V3-CONTRACT-AI-01 | AI / BE, TL | TL-01, согласованные common refs | contracts/v3 internal AI, AI contract tests | Safe aggregate/input/output bounds, no identity/raw chat, deterministic fallback |
+| V3-CONTRACT-BE-01 | BE / TL, FE, AI | TL-01 | contracts/v3 proposed public/common/events, backend contract tests | Исполняемые schemas/fixtures: contact preview/export, brief/version/assignment/friction/report/review/errors/retirement + Goal summaries/pagination, ResponseOrigin, statistics |
+| V3-CONTRACT-AI-01 | AI / BE, TL | TL-01, согласованные common refs | contracts/v3 internal AI, AI contract tests | Safe aggregate/input/output bounds, no identity/raw chat, deterministic fallback + origin/reason |
 | V3-CONTRACT-FE-01 | FE / BE, TL | BE/AI proposals | frontend/src/contracts/ | Typed parsing всех positive/negative DTO, null/empty/error/version cases; конкретный consumer review |
 | V3-CONTRACT-01 | TL / BE+AI+FE | три contract задачи | docs/team/contract-handoff.md | Принятый общий lock/baseline и migration/retirement plan; до него runtime DTO не фиксируются |
 | V3-DATA-01 | BE / TL, AI | CONTRACT-01 | backend/migrations/, data/seed/, mock-services/ при необходимости | Только новые миграции app; synthetic Telegram/brief/assignments; существующие данные сохранены |
@@ -22,6 +22,13 @@
 | V3-MIGRATE-01 | BE / TL, QA | CONTACT-01, TASK-01, REVIEW-01 | backend/migrations/, backend/ | Старые pending/unknown/history, no dual-write, backfill task refs не выдумывает контекст |
 | V3-QA-01 | QA / BE, FE, TL | План сейчас; прогон после runtime | docs/testing/, frontend/e2e/v3-api-*.spec.ts | Негативная матрица, разные версии/owners/teams, replay/concurrent/ACL; новые QA файлы не затирают legacy smoke |
 | V3-E2E-01 | FE / QA, TL | FE-01, MIGRATE-01, component reports | frontend/e2e/v3-browser-*.spec.ts | Полный пользовательский путь v3 + регрессия DB/docs; screenshot/keyboard/mobile/reload |
+| V3-LLM-DIAG-01 | AI / TL, BE | main baseline, существующий budget guard; не ждать нового UI | ai-service/, docs/operations/ в implementation task | P0 первым для AI: effective launch/config → reproduce cause → bounded remediation plan; mock preset не считать provider outage; safe reason/latency evidence |
+| V3-LLM-LIVE-01 | AI + TL / BE, QA | LLM-DIAG-01; CONTRACT-01 для новых DTO | ai-service/, LLM env/Compose/scripts по ownership agreement | Однозначный live launch без принудительного mock; primary healthy smoke и secondary/offline recovery; preserve ledger/deadlines; operator runbook |
+| V3-LLM-OBS-01 | AI + BE / FE, TL | CONTRACT-01, LLM-DIAG-01 | AI internal schema/service; backend/ run persistence; frontend/ origin rendering | Server-owned origin/reason/complete status, bounded telemetry; нет фальшивой метки по regex, нет key/chat в логах |
+| V3-GOALS-BE-01 | BE / FE, TL | CONTRACT-01 | backend/, public contracts/tests | Полный scoped список целей/summary/pagination, корректный Goal progress; ownership/empty/stale fixtures |
+| V3-GOALS-FE-01 | FE / BE, QA | GOALS-BE-01, FE contract review | frontend/ | Goal cards/progress, независимое раскрытие steps, не goals[0]; keyboard/mobile/multi-goal/account switch/pending guard |
+| V3-STATS-BE-01 | BE / QA, FE, TL | CONTRACT-01, DATA-01, FRICTION-01 | backend/, новые app migrations если нужны, synthetic data | Deterministic scoped aggregation, dedup/window/as_of/denominator/privacy, separate mentor/docs views; неизменность report thresholds |
+| V3-STATS-FE-01 | FE / BE, QA | STATS-BE-01, GOALS-FE-01 | frontend/ | Статистика двух ролей, фильтры/графики/таблицы/empty/error/suppressed/no-history, без клиентского подсчёта сырых событий |
 | V3-INTEGRATION-01 | TL / все consumers | все delivery задачи | scripts/, Compose/CI/docs | Clean isolated dataset, ingest/readiness, настоящий restart, >80% каждый компонент, v2 regressions; main release только после evidence |
 
 CONTRACT-BE и CONTRACT-AI согласуют общие refs параллельно; FE review не ждёт готового
@@ -46,13 +53,26 @@ AI: работать только с переданным разрешённым
 разделять факты/предположение/предложение, использовать выбранный fallback и бюджет.
 FE: выбранный стиль main, goal/step context, явные labels copy/open/publish, no delivered badge;
 наставник получает редактор и агрегаты вместо inbox. Backend остаётся единственным API.
-QA: V3-T01…T14 из [матрицы](testing.md), изолированный dataset, подтверждения реальных
+QA: V3-T01…T30 из [матрицы](testing.md), изолированный dataset, подтверждения реальных
 операций, отсутствие личных сообщений наружу. Компонентные tests принадлежат авторам.
+
+## Приоритет дополнения и владельцы
+
+В этом проходе всё ещё только Markdown. В следующих задачах AI начинает с
+V3-LLM-DIAG-01: это не блокируется редактором ТЗ. TL/AI проверяют live launch wiring,
+BE/AI согласуют origin/status, FE отображает подтверждённый источник. Сначала измерение
+причины и текущих сроков, а не платные повторные прогоны без budget upper bound.
+FE/BE параллельно прорабатывают Goal list DTO и expandable layout; статистика получает
+данные после DATA/FRICTION и контрактов. QA дополняет expected counters/negative matrix.
+Задачи GOALS/LLM/STATS входят в V3-INTEGRATION-01, V3-E2E-01 и общий contract gate,
+не считаются автоматически выполненными существующим green CI/offline demo.
+V3-DATA-01 включает только необходимые новые attribution/exposure поля, не фиктивный
+backfill. В review живого provider отчёта не раскрывать ключи или реальные переписки.
 
 ## Gate перед выпуском
 
 Нельзя считать v3 DONE по одним schemas, fixture UI или green make check. Нужны все
-V3-T01…T14, >=20 AI evals/all safety, coverage >80% per component, persistence/ACL/
+V3-T01…T30, >=20 AI evals/all safety, coverage >80% per component, persistence/ACL/
 version/replay/concurrency/retirement, клики в браузере и отдельный Go↔AI review.
 Открытые настройки до contract gate: final DTO names, стабильные permission codes,
 retention для реальных данных. Telegram уже выбран владельцем; это не открытый вопрос.

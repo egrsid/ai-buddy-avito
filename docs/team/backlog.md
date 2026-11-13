@@ -234,3 +234,12 @@ Parent RP-AI-01 IN_PROGRESS; высокий coverage не закрывает д�
 RP-CONTRACT-01 остается IN_PROGRESS: StepActionList/null cases, FE retest и явное BE↔AI
 approval не заменены тестами AI. FE/QA scope прежний. Срочный порядок и срок 22:00 —
 [временный список](MVP_UNBLOCK_DELETE_AFTER_RESOLUTION.md).
+
+## Дополнение P0 v3: цели / live LLM / статистика
+
+PLANNED, только docs. Источник: [расширенный delivery](../v3/delivery.md).
+V3-GOALS-BE-01/FE-01 — список всех своих целей с progress и раскрываемыми steps;
+V3-LLM-DIAG-01/LIVE-01/OBS-01 — effective mode и primary evidence перед настройкой
+таймаутов, origin/status в contracts; V3-STATS-BE-01/FE-01 — scoped mentor/docs statistics.
+Все входят в contract/QA/E2E/integration gate V3-T01…T30. Существующие v3 задачи сохраняются.
+Текущий demo runner принудительно mock; фактическая причина иных live fallback не исследована.

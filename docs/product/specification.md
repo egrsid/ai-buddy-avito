@@ -1,5 +1,9 @@
 # Avito AI-buddy — Product Specification
 
+Дополнение v3: раскрываемые карточки целей, достоверный primary live LLM и отдельная
+статистика трудностей наставнику/владельцу документов. [Актуальный target](../v3/product.md),
+не реализовано этим docs-проходом.
+
 **V3 target:** [Product Spec v3](../v3/product.md), [пакет команды](../v3/README.md).
 Ниже сохранена спецификация работающего v2. Её внутренние Escalation/inbox/reply заменяются
 в v3 прямым Telegram-контактом; feedback по инструкциям сохраняется, feedback по ТЗ добавляется

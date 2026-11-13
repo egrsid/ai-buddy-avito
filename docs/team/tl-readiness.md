@@ -1,5 +1,19 @@
 # TL readiness и решения по интеграции
 
+## Дополнение планирования v3 · цели / live LLM / статистика
+
+Прямое поручение владельца: в docs/v3-planning добавлены три SDD (spec/design/tasks),
+задачи GOALS/LLM/STATS, расширены Product/architecture/contracts/handoffs/QA до V3-T30.
+Текущий проход docs-only, код/JSON/SQL/seed/env/CI/Docker/БД не менялись.
+Проверены исходники только read-only: scripts/demo.py задаёт mock и очищает API key,
+compose.demo.yaml также mock. Это подтверждённый фактор offline запуска; остальные причины
+live fallback пока не диагностированы. Paid calls не выполнялись, live gate не закрыт.
+Статистика разделяет технические попытки и сообщения о неясности, считает Go с ACL до
+aggregation; нет фиктивного исторического denominator. Goals progress — Go evidence.
+Проверки документации: make check 57 PASS, ссылки/lint/format/schema/SQL/YAML PASS;
+новые V3-T15…T30 — план, не отчёт о реализации. Демо main сохранено.
+
+
 ## Передача к v3 · 13 ноября · документация
 
 Владелец опубликовал main b6f940d: [remote audit/CI/tree comparison](repository-audit-2026-11-13.md).

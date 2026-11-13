@@ -61,3 +61,11 @@ Common определения и helper не дублируются. `$id`/`$ref
 approval. До final gate можно проектировать и готовить component tests; runtime общих
 DTO не закрепляется на расходящихся копиях. Подробные решения уже даны, повторного
 устного выбора provider/framework/архитектуры от TL команде не требуется.
+
+## Дополнение V3-CONTRACT-01
+
+Добавить Goal summary/list pagination и progress semantics, server-owned ResponseOrigin/
+reason/completion в AI→Go→FE, отдельные mentor/documentation statistics response/filters/
+suppression/as_of/source-kind. Условия: [Goals](../features/goal-subtask-disclosure/design.md),
+[LLM](../features/live-llm-reliability/design.md), [Stats](../features/intern-difficulty-statistics/design.md).
+BE/AI — авторы schemas, FE — consumer fixtures, TL — общий gate; сейчас JSON не меняются.

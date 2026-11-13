@@ -1,5 +1,9 @@
 # Avito AI-buddy — System Architecture
 
+Дополнение v3: раскрываемые карточки целей, достоверный primary live LLM и отдельная
+статистика трудностей наставнику/владельцу документов. [Актуальный target](docs/v3/architecture.md),
+не реализовано этим docs-проходом.
+
 **Изменения target v3:** [архитектура и переход](docs/v3/architecture.md),
 [Product v3](docs/v3/product.md). Ниже — baseline v2/main. V3 заменяет внутреннюю
 эскалацию Telegram-переходом, добавляет app-owned versioned TaskBrief/assignments и

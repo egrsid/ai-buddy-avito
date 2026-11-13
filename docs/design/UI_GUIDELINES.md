@@ -136,3 +136,12 @@ feature spec → guidelines → image. Reference — концепт, не раб
 HR, полноценный мессенджер, загрузка файлов, push и обещания реальных доступов вне MVP.
 Расширенный граф/evidence UI/history — P1 после стабильного P0, не повод задерживать
 основной workflow. Fixtures/красивый экран не заменяют Go/mock integration.
+
+## V3: цель как основной блок, две статистические панели
+
+[Goals SDD](../features/goal-subtask-disclosure/spec.md): карточка цели с прогрессом над
+раскрываемым списком подзадач, accessible кнопка, независимые раскрытия. Выбранный main
+стиль сохраняется. [Stats SDD](../features/intern-difficulty-statistics/spec.md): таблица/
+дневной график с разными server scopes двух ролей, не персональные рейтинги. Источник
+ответа AI показывать по проверенному [ResponseOrigin](../features/live-llm-reliability/design.md),
+не смешивать режим данных Fixtures/Go API с источником LLM.

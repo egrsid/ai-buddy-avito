@@ -34,3 +34,31 @@ Telegram URL/clipboard можно проверить browser spy без исхо
 Наставник открывает гипотезу, редактирует критерий в новом draft, публикует v2, связывает
 resolved reference. Показать прежнее назначение на v1, explicit adopt v2 и отсутствие
 автоматического verified. Затем отдельно показать существующий documentation candidate.
+
+## Дополнительная приёмка — цели, live LLM и статистика
+
+Это TODO проверки будущей реализации, в текущем docs-проходе не выполняются.
+
+| ID | Проверка и ожидаемый результат | Ответственный |
+|---|---|---|
+| V3-T15 | 0/1/несколько целей, paging: каждая цель отдельная карточка/свой progress; нет потери goals после первой | FE + BE |
+| V3-T16 | Expand/collapse независимо, Enter/Space/aria-expanded, mobile, refresh/poll/возврат к шагу; при смене пользователя expansion сброшен | FE |
+| V3-T17 | Progress только trusted Go: 0 steps=0, optional не mandatory, claim/Telegram/LLM не verified, invalidated evidence уменьшает процент | BE + FE |
+| V3-T18 | Lazy/detail error, stale version, foreign goal ACL и total/title leaks, состояние pending не даёт повторный POST | BE + FE + QA |
+| V3-T19 | Effective offline/live profile: demo runner mock/key-empty выявлены; live не наследует overlay, неправильный config fail before paid call | AI + TL |
+| V3-T20 | Healthy endpoint: 10 последовательных primary live ответов с разрешёнными sources; фактический provider/correlation/usage и latency evidence, без offline текста | AI + BE |
+| V3-T21 | Основная до первого content недоступна → secondary; обе отказали → offline notice + Telegram; cooldown recovery → primary | AI |
+| V3-T22 | Budget denied/unknown usage, auth/model/429/timeout/empty/schema/source failure различимы; guard/deadlines не ослаблены, частичный текст не смешан с другой моделью/proposal | AI + BE |
+| V3-T23 | Origin/reason/status одинаковы SSE/history/REST после reload/restart; UI не принимает слова модели «я ИИ» за доверенный origin | AI + BE + FE |
+| V3-T24 | Cancel/disconnect/interrupted, ledger restart; в logs/operator telemetry нет key/chat/PII; CI без paid provider, live smoke отдельно в рамках бюджета | AI + TL + QA |
+| V3-T25 | Фиксированный dataset: distinct users/accepted observations/attempts/open blockers и related reports дают точные ожидаемые числа по каждому source kind | BE + QA |
+| V3-T26 | Duplicate/retry/out-of-order event, repeated same intern, per-doc overlap не удваивают total; observations отдельно от active report count | BE + QA |
+| V3-T27 | [from,to), 7/30/90 days, daily timezone/as_of, границы версий/owners/teams, cursor stable; нет history/exposure/denominator=0 → нет выдуманного процента | BE + FE |
+| V3-T28 | Mentor cohort/own task и docs-owner scopes различаются; revoke/foreign role/filter/cache hit не раскрывают title/count/refs | BE + FE + QA |
+| V3-T29 | Small-cell suppression в rows/totals/daily/percent, no raw intern drill-down; CHECK_UNAVAILABLE/LLM/Telegram не проблема качества ТЗ | BE + QA |
+| V3-T30 | Две role dashboards: фильтры/empty/loading/error/suppressed, drill-down только в доступный report; просмотр не создаёт friction/report, human edit/publication сохранены | FE + QA |
+
+Live smoke — не fake-provider test: fake tests остаются CI gate для ветвлений, а actual
+primary цепочка требует отдельного помеченного отчёта AI. При недоступном account/key/
+бюджете gate V3-T20 остаётся OPEN, а не «PASS на fallback». Реальные платные вызовы
+не выполняются из общего make check и не требуются для этой документационной поставки.

@@ -70,3 +70,9 @@ Reviewer QA smoke — Backend: проверить семантику adapted v2 
 После поставки: изменённые файлы, sample requests/results, реальные команды/coverage,
 известные ограничения; TL обновляет общий backlog. No fake success, real corporate API,
 произвольный SQL, direct Python app write, автоматический grant от LLM.
+
+## Дополнение к v3 очереди
+
+V3-GOALS-BE-01, V3-STATS-BE-01; ResponseOrigin persistence/validation с AI в V3-LLM-OBS-01; новые schemas до FE runtime.
+Общие зависимости/каталоги/DoD — [delivery](../../v3/delivery.md), [матрица](../../v3/testing.md).
+Текущий проход остаётся docs-only; эти runtime задачи TODO.

@@ -5,7 +5,7 @@ main b6f940d. Ветка текущей документации — docs/v3-pla
 Основание — новые требования владельца после созвона и выбор Telegram в этой сессии.
 Этот пакет заменяет прежний план только в затронутых областях; S1–S4 не возобновляются.
 
-Порядок источников: требования владельца → [Product v3](product.md) → три SDD →
+Порядок источников: требования владельца → [Product v3](product.md) → шесть SDD →
 [границы/контракты](architecture.md) → [задачи и handoff](delivery.md) → [приёмка](testing.md).
 Исполняемые contracts/v2 и код описывают v2, не готовые v3 schemas.
 
@@ -14,6 +14,9 @@ main b6f940d. Ветка текущей документации — docs/v3-pla
 | Telegram вместо внутреннего обращения | [Контакт](../features/telegram-mentor-contact/spec.md) | BE + FE, AI для текста |
 | Наставник редактирует и публикует версии ТЗ | [ТЗ](../features/mentor-task-authoring/spec.md) | BE + FE |
 | Повторная неясность ТЗ → отчёт наставнику | [Обратная связь](../features/mentor-task-feedback/spec.md) | BE + AI + FE |
+| Цели-карточки с progress-bar и раскрытием подзадач | [Цели](../features/goal-subtask-disclosure/spec.md) | FE + BE |
+| Реальный primary live LLM вместо штатного offline ответа | [LLM](../features/live-llm-reliability/spec.md) | AI + TL + BE/FE |
+| Статистика проблем по разрешённым областям | [Статистика](../features/intern-difficulty-statistics/spec.md) | BE + FE, QA |
 
 Сохраняются: DB journey, separate approval/IAM/evidence, RAG/ACL, offline/failover,
 Go как владелец состояния, Python как AI/knowledge, documentation-owner feedback loop.

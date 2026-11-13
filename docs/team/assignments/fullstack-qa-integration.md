@@ -83,3 +83,9 @@ Mock IAM/DB/access, SQL/seed/knowledge, Compose/CI, contract schema implementati
 Приёмка Backend + TL: два адаптированных теста и план, успешный прогон против настоящего
 Go/DB/mock на готовом checkpoint, точные команды/выходы и ограничения. При обнаружении
 дефекта представить воспроизведение владельцу компонента; не переписывать его код.
+
+## Дополнение к v3 очереди
+
+V3-T15…T30: multi-goal/progress, reason-specific fallback и actual live evidence, expected stats counters/ACL/window/suppression; legacy smoke не затирать.
+Общие зависимости/каталоги/DoD — [delivery](../../v3/delivery.md), [матрица](../../v3/testing.md).
+Текущий проход остаётся docs-only; эти runtime задачи TODO.

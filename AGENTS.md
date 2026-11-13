@@ -13,10 +13,13 @@ Only Markdown documentation/agent instructions may change in this assignment.
 Do not change executable files, schemas/fixtures, migrations/seed, env, CI/Docker or DB.
 main remains the canonical v2 demo/build branch. No push/PR/remote merge.
 Read docs/v3/README.md, product.md, architecture.md, delivery.md, testing.md and the
-three new feature SDDs before v3 work. Runtime implementation belongs to subsequent component tasks, not this docs-only turn.
+six v3 feature SDDs before v3 work. Runtime implementation belongs to subsequent component tasks, not this docs-only turn.
 V3 replaces internal intern-to-buddy tickets with direct Telegram personal messaging
 (manual send, scoped copy/preview); adds mentor-owned versioned task briefs and a
-separate task-clarity feedback report. Docs-owner feedback/evidence/authorization remain.
+separate task-clarity feedback report. V3 also plans goal cards with collapsible steps,
+primary live LLM recovery/diagnostics, and scoped difficulty statistics for mentors/docs owners.
+Do not implement these in the current Markdown-only assignment.
+Docs-owner feedback/evidence/authorization remain.
 Legacy v2 handoffs below v3 banners and S1–S4 are not the current implementation plan.
 
 ## Product direction

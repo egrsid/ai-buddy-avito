@@ -80,3 +80,12 @@ scoped report to its owner, with distinct/window/dedup determined by Go. No empl
 rating or automatic blame/publish/verified. Extends ADR-019/020 with a separate group
 model; original documentation candidates retain their semantics. Design proposed for
 contract review, runtime not implemented. [Product](../v3/product.md), [model](../v3/architecture.md).
+
+## ADR-029 · дополнение v3: иерархия целей и достоверные источники ответа/статистики
+
+Статус target design, не реализация. Goal-first раскрытие — FE presentation, Go единственный
+источник progress/state. Live pipeline сначала диагностирует effective mode и actual
+provider outcome, сохраняет честный fallback и server-owned origin. Статистика — Go
+aggregation с ACL до count, отдельными technical/task semantics, suppression и явным
+отсутствием denominator. Архитектурные границы не меняются; новые DTO должны пройти
+V3-CONTRACT-01. [План](../v3/delivery.md), [приёмка](../v3/testing.md).

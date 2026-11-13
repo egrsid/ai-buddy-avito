@@ -75,3 +75,9 @@ changes — tests/Makefile по области, для INF — реальные 
 2026-11-12 22:00 МСК. TL imports/checks/policy/infra preparation выполнены; final
 contract/data/target infra/integration/demo приемка требует поставок авторов. Не отмечать
 их DONE на основании bootstrap или обещанного срока. Commit/push/PR не выполнялись.
+
+## Дополнение к v3 очереди
+
+V3-LLM-LIVE-01 (launch с AI), V3-LLM-OBS-01 review, общий contract/integration gate целей и статистики.
+Общие зависимости/каталоги/DoD — [delivery](../../v3/delivery.md), [матрица](../../v3/testing.md).
+Текущий проход остаётся docs-only; эти runtime задачи TODO.

@@ -10,6 +10,9 @@ V2 ниже — baseline работающего main, не очередь нов
 | Telegram-контакт | [spec](telegram-mentor-contact/spec.md), [design](telegram-mentor-contact/design.md), [tasks](telegram-mentor-contact/tasks.md) |
 | Редактор/версии ТЗ | [spec](mentor-task-authoring/spec.md), [design](mentor-task-authoring/design.md), [tasks](mentor-task-authoring/tasks.md) |
 | Понятность ТЗ | [spec](mentor-task-feedback/spec.md), [design](mentor-task-feedback/design.md), [tasks](mentor-task-feedback/tasks.md) |
+| Цели и раскрываемые подзадачи | [spec](goal-subtask-disclosure/spec.md), [design](goal-subtask-disclosure/design.md), [tasks](goal-subtask-disclosure/tasks.md) |
+| Реальная LLM и fallback | [spec](live-llm-reliability/spec.md), [design](live-llm-reliability/design.md), [tasks](live-llm-reliability/tasks.md) |
+| Статистика затруднений | [spec](intern-difficulty-statistics/spec.md), [design](intern-difficulty-statistics/design.md), [tasks](intern-difficulty-statistics/tasks.md) |
 
 Старая buddy-escalation superseded для v3. Reverse-onboarding по документации сохраняется;
 новый task feedback независим от него. Стадия v3 — PLANNED, схем/миграций/кода пока нет.
