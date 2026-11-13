@@ -23,6 +23,7 @@ def configuration(project: str, cached_overlay: str | None = None):
         "BACKEND_PORT": "18080",
         "FRONTEND_PORT": "15173",
         "LLM_MODE": "mock",
+        "LLM_API_KEY": "",
         "MOCK_FAULTS_ENABLED": "false",
         "AI_MOCK_SCENARIO": "normal",
     }
@@ -36,19 +37,57 @@ def configuration(project: str, cached_overlay: str | None = None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("up", "down", "status", "ai-db-test", "api-test"))
+    parser.add_argument(
+        "action", choices=("up", "down", "status", "restart", "ai-db-test", "api-test")
+    )
     parser.add_argument("--project", default="ai-buddy-demo-local")
     parser.add_argument("--cached-overlay")
+    parser.add_argument(
+        "--offline", action="store_true", help="Rebuild from locally cached dependencies"
+    )
     args = parser.parse_args()
     command, env = configuration(args.project, args.cached_overlay)
+    if args.offline:
+        for image in (
+            "ai-buddy-tl-20261111-contract-image-tests:latest",
+            "ai-buddy-tl-20261111-frontend:latest",
+            "ai-buddy-demo-go-build:local",
+            "ai-buddy-be-v2-api:local",
+        ):
+            subprocess.run(
+                ["docker", "image", "inspect", image], stdout=subprocess.DEVNULL, check=True
+            )
+        command += ["-f", str(ROOT / "compose.offline.yaml")]
+        print(
+            "OFFLINE dependency-cache build; current sources are copied into new images.",
+            flush=True,
+        )
     if args.action == "up":
         command += ["up", "--no-build" if args.cached_overlay else "--build", "-d", "--wait"]
     elif args.action == "down":
         command += ["down"]
     elif args.action == "status":
         command += ["ps", "-a"]
+    elif args.action == "restart":
+        # Drain the consumer before restarting its dependencies. Otherwise a
+        # browser read can observe a temporarily unavailable IAM during restart.
+        subprocess.run(command + ["stop", "backend"], env=env, cwd=ROOT, check=True)
+        subprocess.run(
+            command + ["restart", "ai-service", "mock-services"], env=env, cwd=ROOT, check=True
+        )
+        subprocess.run(
+            command
+            + ["up", "--no-build", "--no-deps", "-d", "--wait", "ai-service", "mock-services"],
+            env=env,
+            cwd=ROOT,
+            check=True,
+        )
+        command += ["up", "--no-build", "--no-deps", "-d", "--wait", "backend"]
     elif args.action == "ai-db-test":
-        command += ["--profile", "acceptance", "run", "--rm", "--no-deps", "ai-db-tests"]
+        command += ["--profile", "acceptance", "run", "--rm", "--no-deps"]
+        if not args.cached_overlay:
+            command += ["--build"]
+        command += ["ai-db-tests"]
     else:
         command += [
             "--profile",
@@ -56,6 +95,7 @@ def main():
             "run",
             "--rm",
             "--no-deps",
+            *([] if args.cached_overlay else ["--build"]),
             "-e",
             "BACKEND_ACCEPTANCE_URL=http://backend:8080",
             "-e",

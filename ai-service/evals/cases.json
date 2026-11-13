@@ -441,7 +441,7 @@
    "expect": {
     "tool": null,
     "required_text": [
-     "retry_check"
+     "Повторить проверку"
     ],
     "expected_sources": [
      "0000000a-0000-4000-8000-00000000000a"

@@ -94,6 +94,31 @@ def test_chunks_join_back_to_text():
     assert "".join(chunks) == text
 
 
+def test_guidance_names_buttons_and_links_only_retrieved_documents():
+    request = generate_request()
+    request["goal_context"]["next_actions"] = ["retry_check", "escalate_to_buddy"]
+    llm_input = make_input(request)
+    answer = mock_answer(llm_input)
+    assert "1. Нажми **«Повторить проверку»**" in answer
+    assert "2. Если нужна помощь" in answer
+    assert "retry_check" not in answer
+    assert "escalate_to_buddy" not in answer
+    for hit in llm_input.hits[:3]:
+        assert f"](/api/v2/knowledge/{hit.document.id})" in answer
+
+
+def test_verified_step_does_not_offer_historical_recovery():
+    request = generate_request()
+    step = request["goal_context"]["steps"][-1]
+    step["status"] = "verified"
+    step["blockers"] = []
+    request["goal_context"]["current_step_id"] = step["id"]
+    request["goal_context"]["next_actions"] = []
+    answer = mock_answer(make_input(request))
+    assert "Этот шаг уже проверен" in answer
+    assert "Нажми **«Спросить наставника»**" not in answer
+
+
 def test_normal_and_slow_stream_give_same_text():
     assert "".join(read_chunks("normal")) == mock_answer(make_input(generate_request()))
     assert read_chunks("slow_stream") == read_chunks("normal")

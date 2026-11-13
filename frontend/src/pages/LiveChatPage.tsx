@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Bot, Send, Square } from 'lucide-react';
 import type { z } from 'zod';
 import type { Action } from '../fixtures/all-states';
-import { Message, Run } from '../contracts/public';
+import { KnowledgeDocument, Message, Run } from '../contracts/public';
 import { Source } from '../contracts/common';
 import {
   cancelAction as apiCancelAction,
@@ -11,6 +11,7 @@ import {
   createConversation,
   createRun,
   getAction,
+  getKnowledge,
   listConversations,
   listMessages,
 } from '../lib/endpoints';
@@ -20,6 +21,8 @@ import { userMessage } from '../lib/api';
 import { useLiveData } from '../lib/live';
 import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '../components/ui';
 import { ActionCard } from '../components/ActionCard';
+import { FormattedText } from '../components/FormattedText';
+import { SourceDrawer } from '../components/SourceDrawer';
 
 // RP-FE-02: live-чат. Диалог goal_id/step_id = null (общий).
 // Run запускается POST /runs, стрим — GET /runs/{id}/events (SSE).
@@ -30,7 +33,9 @@ type MessageT = z.infer<typeof Message>;
 type RunT = z.infer<typeof Run>;
 type SourceT = z.infer<typeof Source>;
 
-export function LiveChatPage() {
+export function LiveChatPage({ goalId = null, stepId = null, embedded = false, onActionChanged }: {
+  goalId?: string | null; stepId?: string | null; embedded?: boolean; onActionChanged?: () => void;
+}) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [setupError, setSetupError] = useState<string | null>(null);
 
@@ -38,8 +43,9 @@ export function LiveChatPage() {
     let cancelled = false;
     (async () => {
       try {
-        const existing = (await listConversations()).find((c) => c.goal_id === null);
-        const conversation = existing ?? (await createConversation(null, null));
+        const existing = goalId === null
+          ? (await listConversations()).find((c) => c.goal_id === null) : null;
+        const conversation = existing ?? (await createConversation(goalId, stepId));
         if (!cancelled) setConversationId(conversation.id);
       } catch (e) {
         if (!cancelled) setSetupError(userMessage(e, 'Не удалось открыть диалог.'));
@@ -48,14 +54,16 @@ export function LiveChatPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [goalId, stepId]);
 
   if (setupError) return <ErrorState title="Диалог недоступен" message={setupError} />;
   if (!conversationId) return <Card><LoadingState /></Card>;
-  return <LiveChatConversation conversationId={conversationId} />;
+  return <LiveChatConversation conversationId={conversationId} embedded={embedded} onActionChanged={onActionChanged} />;
 }
 
-function LiveChatConversation({ conversationId }: { conversationId: string }) {
+function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
+  conversationId: string; embedded: boolean; onActionChanged?: () => void;
+}) {
   const messages = useLiveData(() => listMessages(conversationId), [conversationId], []);
   const [draft, setDraft] = useState('');
   const [streamText, setStreamText] = useState('');
@@ -63,7 +71,14 @@ function LiveChatConversation({ conversationId }: { conversationId: string }) {
   const [activeRun, setActiveRun] = useState<RunT | null>(null);
   const [action, setAction] = useState<Action | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [document, setDocument] = useState<z.infer<typeof KnowledgeDocument> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const openDocument = async (id: string) => {
+    setNotice(null);
+    setDocument(null);
+    try { setDocument(await getKnowledge(id)); }
+    catch (e) { setNotice(userMessage(e, 'Не удалось открыть документ. Возможно, доступ изменился.')); }
+  };
 
   // Опрос executing/unknown действия до терминала.
   useEffect(() => {
@@ -141,6 +156,7 @@ function LiveChatConversation({ conversationId }: { conversationId: string }) {
   const confirm = async (id: string) => {
     try {
       setAction(await apiConfirmAction(id));
+      onActionChanged?.();
     } catch (e) {
       setNotice(userMessage(e, 'Подтверждение не прошло.'));
     }
@@ -156,19 +172,20 @@ function LiveChatConversation({ conversationId }: { conversationId: string }) {
 
   return (
     <>
-      <PageHeader title="AI-помощник" subtitle="Ответы опираются на разрешённые источники · live API" />
+      <PageHeader title={embedded ? 'Помощь с этим шагом' : 'AI-помощник'} subtitle="Следующее действие и подходящие инструкции" />
+      <SourceDrawer open={document !== null} title={document?.title ?? ''} content={document?.content ?? ''} version={document?.version ?? 1} onClose={() => setDocument(null)} />
       {messages.state === 'loading' && <Card><LoadingState /></Card>}
       {messages.state === 'error' && (
         <ErrorState message={userMessage(messages.error)} onRetry={messages.refetch} />
       )}
       {(messages.state === 'empty' || messages.state === 'data') && (
-        <Card className="flex min-h-[60vh] flex-col">
+        <Card className={`flex ${embedded ? 'min-h-64' : 'min-h-[60vh]'} flex-col`}>
           <div className="flex-1 space-y-4 overflow-y-auto" aria-live="polite">
             {messages.state === 'empty' && (
               <EmptyState title="Сообщений пока нет" message="Спросите про цель, шаг, ошибку или следующее действие." />
             )}
             {messages.data?.map((m) => (
-              <ChatMessage key={m.id} message={m} />
+              <ChatMessage key={m.id} message={m} onDocument={openDocument} />
             ))}
             {streamText && (
               <div className="flex max-w-[85%] gap-3">
@@ -176,15 +193,15 @@ function LiveChatConversation({ conversationId }: { conversationId: string }) {
                   <Bot size={18} className="text-primary" />
                 </span>
                 <div className="rounded-2xl rounded-tl-md bg-surface-muted px-4 py-3">
-                  <p className="text-sm leading-6">{streamText}</p>
+                  <FormattedText text={streamText} documents={streamSources} onDocument={openDocument} />
                   <p className="mt-1 text-[11px] text-text-secondary" role="status">генерация…</p>
                 </div>
               </div>
             )}
             {streamSources.length > 0 && (
               <ul className="max-w-[85%] space-y-1 text-xs text-text-secondary" aria-label="Источники ответа">
-                {streamSources.map((s) => (
-                  <li key={s.document_id}>· {s.title} (v{s.version})</li>
+                {streamSources.filter(s => !streamText.includes(`](${s.url})`)).map((s) => (
+                  <li key={s.document_id}><DocumentLink source={s} onDocument={openDocument} /></li>
                 ))}
               </ul>
             )}
@@ -233,7 +250,11 @@ function LiveChatConversation({ conversationId }: { conversationId: string }) {
   );
 }
 
-function ChatMessage({ message: m }: { message: MessageT }) {
+function DocumentLink({ source, onDocument }: { source: SourceT; onDocument: (id: string) => void }) {
+  return <a href={source.url} className="text-primary underline underline-offset-4" onClick={e => { e.preventDefault(); onDocument(source.document_id); }}>{source.title}</a>;
+}
+
+function ChatMessage({ message: m, onDocument }: { message: MessageT; onDocument: (id: string) => void }) {
   if (m.role === 'user') {
     return (
       <div className="ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-primary-light px-4 py-3">
@@ -248,11 +269,11 @@ function ChatMessage({ message: m }: { message: MessageT }) {
         <Bot size={18} className="text-primary" />
       </span>
       <div className="rounded-2xl rounded-tl-md bg-surface-muted px-4 py-3">
-        <p className="text-sm leading-6">{m.content}</p>
+        <FormattedText text={m.content} documents={m.sources} onDocument={onDocument} />
         {m.sources.length > 0 && (
           <ul className="mt-2 space-y-0.5 text-xs text-text-secondary">
-            {m.sources.map((s) => (
-              <li key={s.document_id}>· {s.title} (v{s.version})</li>
+            {m.sources.filter(s => !m.content.includes(`](${s.url})`)).map((s) => (
+              <li key={s.document_id}><DocumentLink source={s} onDocument={onDocument} /></li>
             ))}
           </ul>
         )}
