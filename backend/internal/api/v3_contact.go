@@ -94,9 +94,28 @@ func getMentorContact(q *request) (response, error) {
 	return out3("MentorContact", Object{"status": "available", "display_name": m.user["display_name"], "telegram_url": m.url(), "contact_revision": m.revision}), nil
 }
 
-// contactText rebuilds the copyable text from current app state and current ACL.
-// It contains no logs, raw chat, secrets, IDs of people or documents the mentor cannot read.
+// contactText is the copyable message: the facts plus the optional AI digest that was stored
+// with the preview, so the same facts give exactly the same text on export.
 func (q *request) contactText(context Object, m *mentorInfo) (string, error) {
+	facts, e := q.contactFacts(context, m)
+	if e != nil {
+		return "", e
+	}
+	summary := str(context["summary"])
+	if summary == "" {
+		return facts, nil
+	}
+	greeting, rest, _ := strings.Cut(facts, "\n")
+	text := greeting + "\n" + summary + " (сводка ИИ)\n" + rest
+	if len([]rune(text)) > 4000 {
+		text = string([]rune(text)[:4000])
+	}
+	return text, nil
+}
+
+// contactFacts rebuilds the facts from current app state and current ACL. They contain no
+// logs, raw chat, secrets, IDs of people or documents the mentor cannot read.
+func (q *request) contactFacts(context Object, m *mentorInfo) (string, error) {
 	lines := []string{"Здравствуйте! Нужна помощь по онбордингу."}
 	refs := []any{}
 	if context["kind"] == "goal" {
@@ -195,6 +214,13 @@ func createContactPreview(q *request) (response, error) {
 	if question := strings.TrimSpace(clean(str(q.body["question"]))); question != "" {
 		context["question"] = question
 	}
+	facts, e := q.contactFacts(context, m)
+	if e != nil {
+		return response{}, e
+	}
+	if summary := q.contactSummary(facts, str(context["question"])); summary != "" {
+		context["summary"] = summary
+	}
 	text, e := q.contactText(context, m)
 	if e != nil {
 		return response{}, e
@@ -237,4 +263,44 @@ func exportContact(q *request) (response, error) {
 		return response{}, fail(409, "VERSION_CONFLICT")
 	}
 	return out3("ContactExport", Object{"text": text, "telegram_url": m.url()}), nil
+}
+
+// contactSummary asks the AI service for a one-line digest of the already safe facts. It is
+// optional: any failure leaves the message without it. The Telegram contact is never sent.
+func (q *request) contactSummary(facts, question string) string {
+	lines := []any{}
+	for i, line := range strings.Split(facts, "\n") {
+		if i == 0 || strings.HasPrefix(line, "Вопрос: ") || len(lines) == 12 {
+			continue
+		}
+		runes := []rune(line)
+		if len(runes) > 300 {
+			runes = runes[:300]
+		}
+		lines = append(lines, string(runes))
+	}
+	if len(lines) == 0 {
+		return ""
+	}
+	input := Object{"facts": lines}
+	if question != "" {
+		runes := []rune(question)
+		if len(runes) > 500 {
+			runes = runes[:500]
+		}
+		input["question"] = string(runes)
+	}
+	previous := q.client
+	q.client = &http.Client{Transport: q.s.Client.Transport, CheckRedirect: q.s.Client.CheckRedirect, Timeout: 12 * time.Second}
+	defer func() { q.client = previous }()
+	draft, e := q.call(q.s.Config.AIURL, "POST", "/internal/v3/contact-summary", "v3/ai/ContactSummaryResponse", input, nil)
+	if e != nil {
+		return ""
+	}
+	summary := clean(strings.TrimSpace(str(draft["summary"])))
+	lower := strings.ToLower(summary)
+	if !strings.HasPrefix(summary, "Кратко:") || strings.Contains(lower, "http") || strings.Contains(lower, "t.me") {
+		return ""
+	}
+	return summary
 }

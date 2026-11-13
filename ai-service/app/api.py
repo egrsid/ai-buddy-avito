@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from app import operations
 from app.config import Settings
+from app.contact_summary import contact_summary
 from app.contracts import AI_SCHEMA_ID, AI_V3_SCHEMA_ID, error_fields
 from app.drafts import access_request_draft
 from app.errors import ApiError, error_response
@@ -279,6 +280,19 @@ def create_app(
             "TaskClarityDraftRequest",
             "TaskClarityDraftResponse",
             draft_task_clarity,
+            AI_V3_SCHEMA_ID,
+        )
+
+    async def summarize_contact(body: dict) -> dict:
+        return await contact_summary(body, provider, settings)
+
+    @app.post(f"{PREFIX_V3}/contact-summary")
+    async def contact_summary_route(request: Request):
+        return await structured(
+            request,
+            "ContactSummaryRequest",
+            "ContactSummaryResponse",
+            summarize_contact,
             AI_V3_SCHEMA_ID,
         )
 
