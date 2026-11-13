@@ -7,6 +7,7 @@ const v3 = vi.hoisted(() => ({
   listAssignments: vi.fn(),
   getAssignment: vi.fn(),
   adoptVersion: vi.fn(),
+  getLatestVersion: vi.fn(),
   reportFriction: vi.fn(),
 }));
 vi.mock('../lib/v3', () => v3);
@@ -99,8 +100,13 @@ describe('InternTaskDetailPage', () => {
   it('новая версия: явный переход с expected_revision', async () => {
     v3.getAssignment.mockResolvedValue(fx.assignment({ latest_published_version: 2 }));
     v3.adoptVersion.mockResolvedValue(fx.assignment({ brief_version: 2, latest_published_version: 2, revision: 2, content: { ...fx.content, title: 'ТЗ: отчёт v2' } }));
+    v3.getLatestVersion.mockResolvedValue(fx.version(2, 'published', { content: { ...fx.content, title: 'ТЗ: отчёт v2' } }));
     render(<InternTaskDetailPage id={fx.ASSIGNMENT_ID} />);
-    fireEvent.click(await screen.findByRole('button', { name: /Перейти на версию 2/ }));
+    // Сначала можно прочитать новую версию, сама она ничего не меняет.
+    fireEvent.click(await screen.findByRole('button', { name: 'Посмотреть версию 2' }));
+    expect(await screen.findByLabelText('Текст версии 2')).toHaveTextContent('ТЗ: отчёт v2');
+    expect(v3.adoptVersion).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /Перейти на версию 2/ }));
     expect(await screen.findByRole('heading', { name: 'ТЗ: отчёт v2' })).toBeInTheDocument();
     expect(v3.adoptVersion).toHaveBeenCalledWith(fx.ASSIGNMENT_ID, 2, 1);
     expect(screen.queryByRole('button', { name: /Перейти на версию/ })).not.toBeInTheDocument();
@@ -117,6 +123,15 @@ describe('InternTaskDetailPage', () => {
     render(<InternTaskDetailPage id={fx.ASSIGNMENT_ID} />);
     expect(await screen.findByText(/перенёс это ТЗ в архив/)).toBeInTheDocument();
     expect(screen.getByText('Критерии не заданы.')).toBeInTheDocument();
+  });
+
+  it('новая версия не загрузилась — сообщение, переход доступен', async () => {
+    v3.getAssignment.mockResolvedValue(fx.assignment({ latest_published_version: 2 }));
+    v3.getLatestVersion.mockRejectedValue(new Error('down'));
+    render(<InternTaskDetailPage id={fx.ASSIGNMENT_ID} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Посмотреть версию 2' }));
+    expect(await screen.findByText(/Сервис временно недоступен|не удалось загрузить/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Перейти на версию 2/ })).toBeEnabled();
   });
 
   it('ошибка загрузки', async () => {

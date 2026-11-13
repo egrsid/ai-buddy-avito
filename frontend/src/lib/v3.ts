@@ -15,6 +15,7 @@ import {
   TaskAssignmentList,
   TaskBrief,
   TaskBriefList,
+  TaskBriefVersion,
   TaskClarityReport,
   TaskClarityReportList,
   TaskClarityReviewRequest,
@@ -37,6 +38,7 @@ export type MentorContactT = z.infer<typeof MentorContact>;
 export type ContactPreviewT = z.infer<typeof ContactPreview>;
 export type BriefContentT = z.infer<typeof BriefContent>;
 export type TaskBriefT = z.infer<typeof TaskBrief>;
+export type TaskBriefVersionT = z.infer<typeof TaskBriefVersion>;
 export type TaskAssignmentT = z.infer<typeof TaskAssignment>;
 export type TaskClarityReportT = z.infer<typeof TaskClarityReport>;
 export type FrictionReasonT = z.infer<typeof FrictionReason>;
@@ -103,6 +105,10 @@ export async function assignBrief(briefId: string, briefVersion: number, internI
 
 export const listAssignments = async () => parse(TaskAssignmentList, await apiFetch(`${V3}/task-assignments`)).items;
 export const getAssignment = async (id: string) => parse(TaskAssignment, await apiFetch(`${V3}/task-assignments/${id}`));
+
+// Новая опубликованная версия для стажёра до перехода (права проверяются через назначение).
+export const getLatestVersion = async (id: string) =>
+  parse(TaskBriefVersion, await apiFetch(`${V3}/task-assignments/${id}/latest-version`));
 
 export const adoptVersion = async (id: string, briefVersion: number, expectedRevision: number) =>
   parse(TaskAssignment, await apiFetch(`${V3}/task-assignments/${id}/adopt-version`, {

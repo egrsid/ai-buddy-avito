@@ -57,6 +57,7 @@ revision, created_at, updated_at}`. Любое изменение увеличи
 | `GET /api/v3/task-assignments` | стажёр — свои, автор — по своим ТЗ | `TaskAssignmentList` |
 | `GET /api/v3/task-assignments/{id}` | они же | `TaskAssignment` |
 | `POST /api/v3/task-assignments/{id}/adopt-version` `{brief_version, expected_revision}` | стажёр или автор | перейти на более новую опубликованную версию |
+| `GET /api/v3/task-assignments/{id}/latest-version` | стажёр или автор | `TaskBriefVersion` — текст последней опубликованной версии до перехода; ссылки на документы только читаемые смотрящим |
 
 `TaskAssignment` = `{id, brief_id, brief_version, brief_state, latest_published_version,
 content (текст закреплённой версии), intern, author, reported_sections, verification:
@@ -103,6 +104,8 @@ floor(verified/total×100), 0 шагов — 0%.
   `technical` — упавшие проверки назначенных ему стажёров; `task_clarity` — отметки по его ТЗ.
 - `GET /api/v3/statistics/documentation?days=...` — роль documentation_owner: проблемы шагов
   с его инструкциями (по версиям инструкции) и связанные карточки.
+
+Дополнительные фильтры (TL, 14.11): `journey_id, step_id, error_code, document_id, document_version, brief_id, brief_version, section_id, reason, status=open|closed|<состояние отчёта>`. Курсор фиксирует `as_of` первой страницы (действует 24 ч). Технические трудности наставника считаются по наставнику на момент события (`friction_mentor_attribution`, миграции 008/009, без выдуманного backfill для старых событий). Итог скрыт, если скрыта хотя бы одна группа.
 
 Ответ `Statistics`: `{view, source_kind, as_of, timezone: "Europe/Moscow", window:{from,to,days},
 privacy_threshold: 2, summary, rows[], daily[], next_cursor}`. Метрики:

@@ -84,6 +84,9 @@ describe('v3: ТЗ и назначения', () => {
       method: 'POST', body: { brief_id: fx.BRIEF_ID, brief_version: 1, intern_id: fx.INTERN_A }, idempotencyKey: KEY,
     });
     await api.getAssignment(fx.ASSIGNMENT_ID);
+    apiFetchMock.mockResolvedValueOnce(fx.version(2, 'published'));
+    expect((await api.getLatestVersion(fx.ASSIGNMENT_ID)).version).toBe(2);
+    expect(apiFetchMock).toHaveBeenLastCalledWith(`/api/v3/task-assignments/${fx.ASSIGNMENT_ID}/latest-version`);
     await api.adoptVersion(fx.ASSIGNMENT_ID, 2, 1);
     expect(apiFetchMock).toHaveBeenLastCalledWith(`/api/v3/task-assignments/${fx.ASSIGNMENT_ID}/adopt-version`, { method: 'POST', body: { brief_version: 2, expected_revision: 1 } });
     apiFetchMock.mockResolvedValue({ items: [fx.assignment()] });
