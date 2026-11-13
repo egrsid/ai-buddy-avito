@@ -297,6 +297,54 @@ def test_prompt_marks_data_and_redacts_messages():
     assert "Результат действия create_access_request: succeeded" in messages[1]["content"]
 
 
+def test_dialog_starts_with_user_and_alternates():
+    # Окно Go из 20 сообщений: начинается с ответа, после сбоя — два вопроса подряд.
+    request = generate_request()
+    request["messages"] = [
+        {"role": "assistant", "content": "старый ответ"},
+        {"role": "user", "content": "вопрос 1"},
+        {"role": "assistant", "content": "ответ 1"},
+        {"role": "user", "content": "вопрос без ответа"},
+        {"role": "user", "content": "вопрос 2, пароль: hunter2"},
+    ]
+    dialog = build_messages(request, [])[2:]
+    assert [m["role"] for m in dialog] == ["user", "assistant", "user"]
+    assert "старый ответ" not in str(dialog)
+    assert dialog[-1]["content"].startswith("вопрос без ответа\n\nвопрос 2")
+    assert "hunter2" not in dialog[-1]["content"]
+
+
+def test_dialog_drops_service_notes_from_past_answers():
+    # Иначе модель копирует пометку fallback, и чат навсегда выглядит упавшим.
+    from app.notices import INTERRUPTED, NOTICE, OFFLINE_NOTICE, RESERVE_NOTICE
+
+    request = generate_request()
+    request["messages"] = [
+        {"role": "user", "content": "вопрос 1"},
+        {"role": "assistant", "content": NOTICE + RESERVE_NOTICE + "## Ответ резервной модели"},
+        {"role": "user", "content": "вопрос 2"},
+        {"role": "assistant", "content": "Начало ответа" + INTERRUPTED},
+        {"role": "user", "content": "вопрос 3"},
+        {"role": "assistant", "content": NOTICE + OFFLINE_NOTICE},
+        {"role": "user", "content": "вопрос 4"},
+    ]
+    dialog = build_messages(request, [])[2:]
+    text = str(dialog)
+    for phrase in ("Произошла ошибка", "резервная модель", "прервался", "без LLM"):
+        assert phrase not in text
+    assert dialog[1]["content"] == "## Ответ резервной модели"
+    assert dialog[3]["content"] == "Начало ответа"
+    # Ответ из одних пометок выпал, вопросы 3 и 4 склеены — чередование сохранено.
+    assert [m["role"] for m in dialog] == ["user", "assistant", "user", "assistant", "user"]
+    assert dialog[-1]["content"] == "вопрос 3\n\nвопрос 4"
+
+
+def test_dialog_of_only_assistant_messages_is_empty():
+    request = generate_request()
+    request["messages"] = [{"role": "assistant", "content": "ответ"}]
+    assert len(build_messages(request, [])) == 2
+
+
 def test_prompt_without_goal():
     request = generate_request()
     del request["goal_context"]

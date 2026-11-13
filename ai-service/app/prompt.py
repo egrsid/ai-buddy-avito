@@ -8,6 +8,7 @@
 import re
 from dataclasses import dataclass
 
+from app.notices import strip_service_notes
 from app.redaction import redact
 from app.retrieval import Hit
 
@@ -134,14 +135,40 @@ def build_context(request: dict, hits: list[Hit]) -> str:
     return "\n".join(parts)
 
 
+def alternate_dialog(messages: list[dict]) -> list[dict]:
+    """Диалог строго «user → assistant → user …», как требует GigaChat-3-Pro.
+
+    Go присылает последние 20 сообщений чата. В длинном чате окно начинается с ответа
+    ассистента, а после упавшего запуска два вопроса стоят подряд. GigaChat-3-Pro на это
+    отвечает 400 («Unexpected assistant / user message»), и каждый следующий вопрос в чате
+    уходил в запасную модель. Поэтому ответы до первого вопроса отбрасываем, а подряд идущие
+    сообщения одной роли склеиваем — текст не теряется.
+
+    Из прошлых ответов вырезаем служебные пометки (fallback, резерв, обрыв): увидев их в
+    истории, модель начинает сама писать «Произошла ошибка обращения к LLM».
+    """
+    dialog = []
+    for message in messages:
+        content = redact(message["content"])
+        if message["role"] == "assistant":
+            content = strip_service_notes(content)
+            if not content:
+                continue
+        if not dialog and message["role"] != "user":
+            continue
+        if dialog and dialog[-1]["role"] == message["role"]:
+            dialog[-1]["content"] += "\n\n" + content
+            continue
+        dialog.append({"role": message["role"], "content": content})
+    return dialog
+
+
 def build_messages(request: dict, hits: list[Hit]) -> list[dict]:
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "system", "content": build_context(request, hits)},
     ]
-    for message in request["messages"]:
-        messages.append({"role": message["role"], "content": redact(message["content"])})
-    return messages
+    return messages + alternate_dialog(request["messages"])
 
 
 def last_user_message(request: dict) -> str:
