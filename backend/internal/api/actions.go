@@ -83,17 +83,8 @@ func (q *request) draft(d Object, run string) (Object, error) {
 		params["reason"] = clean(str(params["reason"]))
 		preview = Object{"initiator_id": q.user["id"], "recipient_id": recipient, "resource_id": params["resource_id"], "requested_role": params["requested_role"], "reason": params["reason"]}
 	} else {
-		if !has(st["available_actions"], "escalate_to_buddy") || q.user["buddy_id"] == nil {
-			return nil, fail(422, "TOOL_VALIDATION_ERROR")
-		}
-		recipient = str(q.user["buddy_id"])
-		snapshot, e := q.snapshot(g, st, clean(str(params["question"])), recipient)
-		if e != nil {
-			return nil, e
-		}
-		snapshot = q.enrichSnapshot(snapshot, recipient)
-		params = Object{"question": snapshot["question"], "diagnostic_snapshot": snapshot}
-		preview = Object{"initiator_id": q.user["id"], "recipient_id": recipient, "question": snapshot["question"], "diagnostic_snapshot": snapshot}
+		// v3 retired internal escalations: the intern writes to the mentor in Telegram.
+		return nil, fail(422, "TOOL_VALIDATION_ERROR")
 	}
 	scope, e := q.scope(q.user)
 	if e != nil {
@@ -108,47 +99,6 @@ func (q *request) draft(d Object, run string) (Object, error) {
 		return nil, e
 	}
 	return q.action(id)
-}
-func (q *request) snapshot(g, st Object, question, recipient string) (Object, error) {
-	buddy, e := q.one(userSQL, recipient)
-	if e != nil || !has(buddy["roles"], "buddy") || buddy["team_id"] != q.user["team_id"] || !hasResource(buddy, str(g["resource_id"])) {
-		return nil, fail(404, "NOT_FOUND")
-	}
-	var block Object
-	for _, v := range list(st["blockers"]) {
-		if obj(v)["status"] == "open" {
-			block = obj(v)
-			break
-		}
-	}
-	if block == nil {
-		return nil, fail(409, "VERSION_CONFLICT")
-	}
-	checks, e := q.many("SELECT jsonb_strip_nulls(jsonb_build_object('id',id,'goal_id',goal_id,'step_id',step_id,'method',method,'status',status,'error_code',error_code,'observed_at',observed_at)) FROM app.verification_checks WHERE goal_id=$1 AND step_id=$2 ORDER BY created_at DESC LIMIT 20", g["id"], st["id"])
-	if e != nil {
-		return nil, e
-	}
-	attempts, e := q.many("SELECT jsonb_build_object('action_id',id,'type',type,'status',status) FROM app.actions WHERE goal_id=$1 AND step_id=$2 AND status<>'pending_confirmation' ORDER BY created_at DESC LIMIT 5", g["id"], st["id"])
-	if e != nil {
-		return nil, e
-	}
-	refs := []any{}
-	ref := obj(st["instruction_reference"])
-	yes, e := q.canRead(str(ref["document_id"]), buddy)
-	if e != nil {
-		return nil, e
-	}
-	if yes {
-		sources, e := q.sources([]any{ref}, q.user)
-		if e == nil {
-			refs = sources
-		}
-	}
-	snapshot := Object{"goal": Object{"id": g["id"], "title": "Доступ к тестовой БД"}, "step": Object{"id": st["id"], "title": st["title"]}, "blocker": Object{"id": block["id"], "type": block["type"], "error_code": block["error_code"]}, "checks": checks, "attempted_actions": attempts, "instruction_refs": refs, "hypotheses": []any{}, "question": question}
-	if q.s.Validate("common/DiagnosticSnapshot", snapshot) != nil {
-		return nil, fail(422, "VALIDATION_ERROR")
-	}
-	return snapshot, nil
 }
 func hasResource(user Object, resource string) bool {
 	for _, v := range list(user["assignments"]) {
@@ -215,6 +165,9 @@ func confirmAction(q *request) (response, error) {
 	if e != nil {
 		return response{}, e
 	}
+	if a["type"] == retiredAction && a["status"] == "pending_confirmation" {
+		return q.retireAction(str(a["id"]))
+	}
 	g, e := q.goal(str(a["goal_id"]))
 	if e != nil {
 		return response{}, e
@@ -243,41 +196,6 @@ func confirmAction(q *request) (response, error) {
 	}
 	if a["scope_hash"] != scope["policy_revision"] || num(a["goal_version"]) != num(g["version"]) {
 		return response{}, fail(409, "VERSION_CONFLICT")
-	}
-	if a["type"] == "escalate_to_buddy" {
-		if a["recipient_id"] != q.user["buddy_id"] {
-			return response{}, fail(409, "VERSION_CONFLICT")
-		}
-		st, e := findStep(g, str(a["step_id"]))
-		if e != nil {
-			return response{}, e
-		}
-		snapshot, e := q.snapshot(g, st, str(obj(a["parameters"])["question"]), str(a["recipient_id"]))
-		if e != nil {
-			return response{}, e
-		}
-		approvedSnapshot := obj(obj(a["preview"])["diagnostic_snapshot"])
-		approvedFacts := clone(approvedSnapshot)
-		delete(approvedFacts, "hypotheses")
-		freshFacts := clone(snapshot)
-		delete(freshFacts, "hypotheses")
-		if digest(encode(freshFacts)) != digest(encode(approvedFacts)) {
-			return response{}, fail(409, "VERSION_CONFLICT")
-		}
-		snapshot = approvedSnapshot
-		eid := uuid()
-		if e = q.exec("INSERT INTO app.escalations(id,action_id,intern_id,buddy_id,question,summary,source_ids,status,goal_id,step_id,blocker_id,diagnostic_snapshot) VALUES ($1,$2,$3,$4,$5,'Trusted diagnostic snapshot','[]','open',$6,$7,$8,$9::jsonb)", eid, a["id"], q.user["id"], a["recipient_id"], snapshot["question"], g["id"], a["step_id"], obj(snapshot["blocker"])["id"], string(encode(snapshot))); e != nil {
-			return response{}, e
-		}
-		e = q.exec("UPDATE app.actions SET status='succeeded',result=$2::jsonb,updated_at=$3 WHERE id=$1", a["id"], string(encode(Object{"escalation_id": eid})), q.s.Now())
-		if e != nil {
-			return response{}, e
-		}
-		if e = q.event(uuid(), "buddy_escalated", "go_buddy_workflow", "escalation", eid, str(a["id"]), Object{"escalation_id": eid, "blocker_id": obj(snapshot["blocker"])["id"], "action_id": a["id"]}); e != nil {
-			return response{}, e
-		}
-		v, e := q.action(str(a["id"]))
-		return out("Action", v), e
 	}
 	var unknown bool
 	if e = q.tx.QueryRow(q.Context, "SELECT EXISTS(SELECT 1 FROM app.actions WHERE intern_id=$1 AND goal_id=$2 AND step_id=$3 AND type=$4 AND id<>$5 AND status IN ('executing','unknown'))", q.user["id"], g["id"], a["step_id"], a["type"], a["id"]).Scan(&unknown); e != nil {
@@ -484,6 +402,14 @@ func (s *Server) Recover(ctx context.Context) error {
 	if e != nil {
 		return e
 	}
+	if e = s.retireEscalations(ctx); e != nil {
+		return e
+	}
+	// Enrichment that was running when the process stopped will not finish: keep the
+	// deterministic text and say so instead of leaving the report pending forever.
+	if _, e = s.Pool.Exec(ctx, "UPDATE app.task_clarity_reports SET enrichment_status='failed' WHERE enrichment_status='pending'"); e != nil {
+		return e
+	}
 	return s.reconcilePending(ctx)
 }
 func (s *Server) reconcilePending(ctx context.Context) error {
@@ -510,78 +436,6 @@ func (s *Server) reconcilePending(ctx context.Context) error {
 	return tx.Commit(ctx)
 }
 
-// Enrich only the preview; confirmation rechecks authoritative facts, never regenerates model text.
-func (q *request) enrichSnapshot(snapshot Object, recipient string) Object {
-	buddy, e := q.one(userSQL, recipient)
-	if e != nil {
-		return snapshot
-	}
-	scope, e := q.scope(q.user)
-	if e != nil {
-		return snapshot
-	}
-	allowedDocs := map[string]bool{}
-	for _, item := range list(snapshot["instruction_refs"]) {
-		allowedDocs[str(obj(item)["document_id"])] = true
-	}
-	docs := []any{}
-	for _, item := range list(scope["document_permissions"]) {
-		d := obj(item)
-		yes, e := q.canRead(str(d["document_id"]), buddy)
-		if e == nil && yes && allowedDocs[str(d["document_id"])] && has(d["permissions"], "knowledge.read") {
-			docs = append(docs, Object{"document_id": d["document_id"], "permissions": []any{"knowledge.read"}})
-		}
-	}
-	scope["document_permissions"] = docs
-	resources := []any{}
-	for _, item := range list(scope["resource_permissions"]) {
-		r := obj(item)
-		if hasResource(buddy, str(r["resource_id"])) {
-			resources = append(resources, Object{"resource_id": r["resource_id"], "permissions": []any{"resource.view", "knowledge.read"}})
-		}
-	}
-	scope["resource_permissions"] = resources
-	scope["policy_revision"] = digest(encode(scope))
-	refs := []any{}
-	for _, item := range list(snapshot["instruction_refs"]) {
-		r := obj(item)
-		refs = append(refs, Object{"document_id": r["document_id"], "version": r["version"]})
-	}
-	input := Object{"access_scope": scope, "goal": snapshot["goal"], "step": snapshot["step"], "blocker": snapshot["blocker"], "checks": snapshot["checks"], "attempted_actions": snapshot["attempted_actions"], "instruction_refs": refs, "intern_question": snapshot["question"]}
-	if q.s.Validate("ai/DiagnosticSummaryRequest", input) != nil {
-		return snapshot
-	}
-	value, e := q.call(q.s.Config.AIURL, "POST", "/internal/v2/diagnostic-summary", "ai/DiagnosticSummaryResponse", input, nil)
-	if e != nil {
-		return snapshot
-	}
-	authoritative := func(v Object) Object { c := clone(v); delete(c, "hypotheses"); delete(c, "instruction_refs"); return c }
-	if digest(encode(authoritative(value))) != digest(encode(authoritative(snapshot))) {
-		return snapshot
-	}
-	for _, item := range list(value["instruction_refs"]) {
-		r := obj(item)
-		found := false
-		for _, allowed := range refs {
-			a := obj(allowed)
-			if r["document_id"] == a["document_id"] && num(r["version"]) == num(a["version"]) {
-				found = true
-			}
-		}
-		if !found {
-			return snapshot
-		}
-	}
-	hypotheses := []any{}
-	for _, item := range list(value["hypotheses"]) {
-		h := clone(item)
-		h["text"] = clean(str(h["text"]))
-		hypotheses = append(hypotheses, h)
-	}
-	snapshot["hypotheses"] = hypotheses
-	return snapshot
-}
-
 // Expiry is a durable server-clock transition even when the confirmation returns 409.
 func (q *request) expireAction(id, code string) (response, error) {
 	if e := q.exec("UPDATE app.actions SET status='expired',updated_at=$2 WHERE id=$1 AND status='pending_confirmation'", id, q.s.Now()); e != nil {
@@ -592,4 +446,47 @@ func (q *request) expireAction(id, code string) (response, error) {
 	}
 	q.tx = nil
 	return response{}, fail(409, code)
+}
+
+// retiredAction is the v2 internal escalation. v3 replaces it with a Telegram link and a copy of
+// the context; old escalations stay readable, new ones are never created or confirmed.
+const retiredAction = "escalate_to_buddy"
+
+// retireAction cancels a leftover pending escalation durably and refuses the confirmation.
+func (q *request) retireAction(id string) (response, error) {
+	if e := q.exec("UPDATE app.actions SET status='cancelled',updated_at=$2 WHERE id=$1 AND status='pending_confirmation'", id, q.s.Now()); e != nil {
+		return response{}, e
+	}
+	if e := q.taskEvent("escalation_retired", "go_v3_migration", "action", id, Object{"action_id": id}); e != nil {
+		return response{}, e
+	}
+	if e := q.tx.Commit(q.Context); e != nil {
+		return response{}, e
+	}
+	q.tx = nil
+	return response{}, fail(409, "ACTION_NOT_PENDING")
+}
+
+// retireEscalations cancels pending v2 escalations once at startup, with an audit event each.
+func (s *Server) retireEscalations(ctx context.Context) error {
+	tx, e := s.Pool.Begin(ctx)
+	if e != nil {
+		return e
+	}
+	defer tx.Rollback(ctx)
+	q := &request{Context: ctx, s: s, tx: tx, requestID: uuid()}
+	rows, e := q.many("SELECT jsonb_build_object('id',id) FROM app.actions WHERE type=$1 AND status='pending_confirmation' FOR UPDATE", retiredAction)
+	if e != nil {
+		return e
+	}
+	for _, row := range rows {
+		id := str(obj(row)["id"])
+		if e = q.exec("UPDATE app.actions SET status='cancelled',updated_at=now() WHERE id=$1", id); e != nil {
+			return e
+		}
+		if e = q.taskEvent("escalation_retired", "go_v3_migration", "action", id, Object{"action_id": id}); e != nil {
+			return e
+		}
+	}
+	return tx.Commit(ctx)
 }

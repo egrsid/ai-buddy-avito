@@ -9,6 +9,7 @@ RUN apk add --no-cache ca-certificates && adduser -D app
 USER app
 COPY --from=build /api /api
 COPY --chown=app:app contracts/v2/ /contracts/v2/
+COPY --chown=app:app contracts/v3/ /contracts/v3/
 ENV CONTRACTS_DIR=/contracts/v2
 EXPOSE 8080
 CMD ["/api"]

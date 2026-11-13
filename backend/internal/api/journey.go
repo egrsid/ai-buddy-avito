@@ -160,7 +160,7 @@ func (q *request) goal(id string) (Object, error) {
 		actions := []any{}
 		if s["status"] != "unverified" && s["status"] != "verified" {
 			for _, action := range list(s["available_actions"]) {
-				if action == "create_access_request" && outstanding {
+				if action == "create_access_request" && outstanding || action == retiredAction {
 					continue
 				}
 				actions = append(actions, action)
@@ -169,7 +169,7 @@ func (q *request) goal(id string) (Object, error) {
 		s["available_actions"] = actions
 		steps = append(steps, s)
 	}
-	return Object{"id": id, "journey_id": g["journey_id"], "journey_version": g["journey_version"], "resource_id": g["resource_id"], "status": g["status"], "version": g["version"], "steps": steps, "progress": Object{"verified": verified, "total": len(steps), "percent": verified * 100 / len(steps)}, "updated_at": g["updated_at"]}, nil
+	return Object{"id": id, "journey_id": g["journey_id"], "journey_version": g["journey_version"], "resource_id": g["resource_id"], "status": g["status"], "version": g["version"], "steps": steps, "progress": progress(verified, len(steps)), "updated_at": g["updated_at"]}, nil
 }
 func listGoals(q *request) (response, error) {
 	rows, e := q.many("SELECT jsonb_build_object('id',id) FROM app.goals WHERE intern_id=$1 ORDER BY updated_at DESC LIMIT 100", q.user["id"])
@@ -410,9 +410,8 @@ func (q *request) performCheck(g, t Object, sid string, options Object, allowInv
 		bid := uuid()
 		kind := strings.ToLower(code)
 		actions := []any{"retry_check"}
-		if code == "DB_SSL_REQUIRED" {
-			actions = append(actions, "escalate_to_buddy")
-		} else if code == "CHECK_UNAVAILABLE" {
+		// v3: help from the mentor goes through Telegram, not an internal escalation action.
+		if code == "CHECK_UNAVAILABLE" {
 			kind = "check_unavailable"
 		} else if sid == "check_access" {
 			actions = append(actions, "create_access_request")
@@ -511,4 +510,13 @@ func (q *request) publicGoal(id string) (Object, error) {
 		return nil, e
 	}
 	return q.goal(id)
+}
+
+// progress is floor(verified mandatory / total mandatory * 100); no steps means 0%, never 100%.
+func progress(verified, total int) Object {
+	percent := 0
+	if total > 0 {
+		percent = verified * 100 / total
+	}
+	return Object{"verified": verified, "total": total, "percent": percent}
 }

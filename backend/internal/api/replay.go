@@ -31,27 +31,6 @@ func (q *request) authorizeReplay(pattern string, value any) error {
 		if a["scope_hash"] != scope["policy_revision"] {
 			return fail(404, "NOT_FOUND")
 		}
-		if a["type"] == "escalate_to_buddy" {
-			if a["recipient_id"] != q.user["buddy_id"] {
-				return fail(404, "NOT_FOUND")
-			}
-			buddy, e := q.one(userSQL, a["recipient_id"])
-			if e != nil {
-				return e
-			}
-			if !has(buddy["roles"], "buddy") || buddy["team_id"] != q.user["team_id"] {
-				return fail(404, "NOT_FOUND")
-			}
-			for _, item := range list(obj(obj(a["preview"])["diagnostic_snapshot"])["instruction_refs"]) {
-				yes, e := q.canRead(str(obj(item)["document_id"]), buddy)
-				if e != nil {
-					return e
-				}
-				if !yes {
-					return fail(404, "NOT_FOUND")
-				}
-			}
-		}
 		return nil
 	case "POST /api/v2/access-requests/{id}/decision":
 		a, e := q.allowedRequest(q.r.PathValue("id"))
@@ -62,17 +41,32 @@ func (q *request) authorizeReplay(pattern string, value any) error {
 			return fail(403, "FORBIDDEN")
 		}
 		return nil
-	case "POST /api/v2/escalations/{id}/reply":
-		current, e := q.escalation(q.r.PathValue("id"))
+	case "POST /api/v2/knowledge-gaps/{id}/review":
+		_, e := q.candidate(q.r.PathValue("id"))
+		return e
+	case "POST /api/v3/task-briefs":
+		_, e := q.brief(str(v["id"]))
+		return e
+	case "POST /api/v3/task-assignments":
+		a, e := q.assignment(str(v["id"]))
 		if e != nil {
 			return e
 		}
-		if obj(current["buddy"])["id"] != q.user["id"] || digest(encode(current)) != digest(encode(v)) {
+		if a["owner_id"] != q.user["id"] {
 			return fail(404, "NOT_FOUND")
 		}
 		return nil
-	case "POST /api/v2/knowledge-gaps/{id}/review":
-		_, e := q.candidate(q.r.PathValue("id"))
+	case "POST /api/v3/task-assignments/{id}/frictions":
+		a, e := q.assignment(q.r.PathValue("id"))
+		if e != nil {
+			return e
+		}
+		if a["viewer_is_intern"] != true {
+			return fail(404, "NOT_FOUND")
+		}
+		return nil
+	case "POST /api/v3/task-clarity-reports/{id}/review":
+		_, e := q.report(q.r.PathValue("id"))
 		return e
 	default:
 		return fail(403, "FORBIDDEN")

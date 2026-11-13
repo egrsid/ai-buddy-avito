@@ -30,7 +30,8 @@ import (
 type Object = map[string]any
 type Config struct {
 	Env, Origin, Token, AIURL, MockURL, Contracts string
-	RunTimeout, SubscribeTimeout                  time.Duration
+	ContractsV3                                   string
+	RunTimeout, SubscribeTimeout, EnrichTimeout   time.Duration
 }
 type Server struct {
 	Pool        *pgxpool.Pool
@@ -50,6 +51,10 @@ type request struct {
 	user      Object
 	body      Object
 	requestID string
+	// after runs in the background once the transaction has committed (slow AI enrichment).
+	after []func()
+	// client overrides the short JSON client for calls allowed to take longer.
+	client *http.Client
 }
 type response struct {
 	status     int
@@ -61,10 +66,20 @@ type problem struct {
 	code   string
 }
 
-func (p problem) Error() string          { return p.code }
-func fail(status int, code string) error { return problem{status, code} }
-func out(def string, v any) response     { return response{200, v, "public/" + def} }
-func created(def string, v any) response { return response{201, v, "public/" + def} }
+func (p problem) Error() string           { return p.code }
+func fail(status int, code string) error  { return problem{status, code} }
+func out(def string, v any) response      { return response{200, v, "public/" + def} }
+func created(def string, v any) response  { return response{201, v, "public/" + def} }
+func out3(def string, v any) response     { return response{200, v, "v3/public/" + def} }
+func created3(def string, v any) response { return response{201, v, "v3/public/" + def} }
+
+// requestSchema keeps v2 request names short and lets v3 routes name "v3/public/...".
+func requestSchema(definition string) string {
+	if strings.HasPrefix(definition, "v3/") {
+		return definition
+	}
+	return "public/" + definition
+}
 func uuid() string {
 	var b [16]byte
 	if _, e := rand.Read(b[:]); e != nil {
@@ -156,11 +171,26 @@ func New(pool *pgxpool.Pool, c Config) (*Server, error) {
 	if c.SubscribeTimeout == 0 {
 		c.SubscribeTimeout = 30 * time.Second
 	}
+	if c.EnrichTimeout == 0 {
+		c.EnrichTimeout = 30 * time.Second
+	}
+	if c.ContractsV3 == "" {
+		c.ContractsV3 = filepath.Join(filepath.Dir(filepath.Clean(c.Contracts)), "v3")
+	}
 	compiler := js.NewCompiler()
 	compiler.AssertFormat = true
-	defs := map[string][]string{}
+	// v2 definitions keep their historic keys ("public/Goal"); v3 additions are "v3/public/...".
+	type schemaFile struct{ dir, prefix, name string }
+	files := []schemaFile{}
 	for _, name := range []string{"common", "public", "journey", "corporate", "ai", "events"} {
-		data, e := os.ReadFile(filepath.Join(c.Contracts, name+".schema.json"))
+		files = append(files, schemaFile{c.Contracts, "", name})
+	}
+	for _, name := range []string{"public", "events", "ai"} {
+		files = append(files, schemaFile{c.ContractsV3, "v3/", name})
+	}
+	refs := map[string]string{}
+	for _, f := range files {
+		data, e := os.ReadFile(filepath.Join(f.dir, f.name+".schema.json"))
 		if e != nil {
 			return nil, e
 		}
@@ -175,18 +205,16 @@ func New(pool *pgxpool.Pool, c Config) (*Server, error) {
 			return nil, e
 		}
 		for d := range doc.Defs {
-			defs[name] = append(defs[name], d)
+			refs[f.prefix+f.name+"/"+d] = doc.ID + "#/$defs/" + d
 		}
 	}
 	schemas := map[string]*js.Schema{}
-	for n, ds := range defs {
-		for _, d := range ds {
-			schema, e := compiler.Compile("https://ai-buddy.invalid/contracts/v2/" + n + ".schema.json#/$defs/" + d)
-			if e != nil {
-				return nil, e
-			}
-			schemas[n+"/"+d] = schema
+	for key, ref := range refs {
+		schema, e := compiler.Compile(ref)
+		if e != nil {
+			return nil, e
 		}
+		schemas[key] = schema
 	}
 	return &Server{Pool: pool, Config: c, schemas: schemas, Client: &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{DialContext: (&net.Dialer{Timeout: 3 * time.Second}).DialContext, TLSHandshakeTimeout: 3 * time.Second, ResponseHeaderTimeout: 5 * time.Second}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, Now: time.Now, runs: map[string]context.CancelFunc{}}, nil
 }
@@ -236,7 +264,7 @@ func (s *Server) route(mux *http.ServeMux, pattern, definition string, role stri
 			return
 		}
 		defer func() { _ = tx.Rollback(context.Background()) }()
-		q := &request{r.Context(), s, tx, r, nil, Object{}, rid}
+		q := &request{Context: r.Context(), s: s, tx: tx, r: r, body: Object{}, requestID: rid}
 		defer func() {
 			if q.tx != nil {
 				_ = q.tx.Rollback(context.Background())
@@ -274,7 +302,7 @@ func (s *Server) route(mux *http.ServeMux, pattern, definition string, role stri
 				s.writeError(w, rid, fail(400, "INVALID_JSON"))
 				return
 			}
-			if definition != "" && s.Validate("public/"+definition, q.body) != nil {
+			if definition != "" && s.Validate(requestSchema(definition), q.body) != nil {
 				s.writeError(w, rid, fail(422, "VALIDATION_ERROR"))
 				return
 			}
@@ -325,6 +353,9 @@ func (s *Server) route(mux *http.ServeMux, pattern, definition string, role stri
 		if e != nil {
 			s.writeError(w, rid, e)
 			return
+		}
+		for _, work := range q.after {
+			go work()
 		}
 		if login {
 			cookie := result.body.(Object)["_cookie"].(string)
@@ -413,7 +444,7 @@ func normalizeTimes(v any) {
 	case map[string]any:
 		for k, value := range x {
 			switch k {
-			case "created_at", "updated_at", "observed_at", "invalidated_at", "expires_at", "resolved_at":
+			case "created_at", "updated_at", "observed_at", "invalidated_at", "expires_at", "resolved_at", "published_at", "last_seen", "last_seen_at", "first_seen":
 				if parsed, e := time.Parse(time.RFC3339Nano, str(value)); e == nil {
 					x[k] = stamp(parsed)
 				}

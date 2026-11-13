@@ -55,7 +55,7 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal("test DB name required")
 	}
 	t.Cleanup(admin.Close)
-	_, e = admin.Exec(context.Background(), "TRUNCATE app.goals,app.conversations,app.sessions,app.idempotency_keys,app.friction_events,app.knowledge_gap_candidates CASCADE; UPDATE app.users SET policy_revision=1")
+	_, e = admin.Exec(context.Background(), "TRUNCATE app.goals,app.conversations,app.sessions,app.idempotency_keys,app.friction_events,app.knowledge_gap_candidates,app.task_briefs,app.contact_previews CASCADE; UPDATE app.users SET policy_revision=1; UPDATE app.mentor_contacts SET revision=1; DELETE FROM app.business_events")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -190,6 +190,13 @@ func (f *fixture) intelligence(w http.ResponseWriter, r *http.Request) {
 			f.t.Error("PII in aggregate")
 		}
 		writeJSON(w, 200, Object{"hypothesis": "В инструкции не хватает SSL.", "proposed_fix": "Добавить ssl_mode=require после human review.", "source_refs": d["instruction_refs"]})
+	case strings.HasSuffix(r.URL.Path, "/task-clarity-draft"):
+		var d Object
+		_ = json.NewDecoder(r.Body).Decode(&d)
+		if f.s.Validate("v3/ai/TaskClarityDraftRequest", d) != nil || strings.Contains(string(encode(d)), "intern") {
+			f.t.Error("unsafe task clarity aggregate")
+		}
+		writeJSON(w, 200, Object{"hypothesis": "Критерий приёмки звучит неоднозначно.", "suggestion": "Добавьте проверяемый пример результата."})
 	case strings.HasSuffix(r.URL.Path, "/generate"):
 		var d Object
 		_ = json.NewDecoder(r.Body).Decode(&d)
@@ -231,6 +238,12 @@ func (f *fixture) intelligence(w http.ResponseWriter, r *http.Request) {
 		if stream == "eof" {
 			return
 		}
+		if stream == "origin" || stream == "origin_twice" {
+			emit("response.origin", Object{"run_id": id, "origin": Object{"mode": "live", "answered_by": "secondary", "completion": "complete", "reason_code": "timeout"}})
+		}
+		if stream == "origin_twice" {
+			emit("response.origin", Object{"run_id": id, "origin": Object{"mode": "live", "answered_by": "primary", "completion": "complete"}})
+		}
 		if stream == "bad_source" {
 			emit("message.sources", Object{"run_id": id, "sources": []any{Object{"document_id": docA, "version": 1, "title": "SSL инструкция", "url": "https://evil.invalid", "excerpt": ""}}})
 		} else {
@@ -267,7 +280,10 @@ func (b *browser) raw(method, path string, body any, headers map[string]string) 
 	if body != nil {
 		reader = strings.NewReader(string(encode(body)))
 	}
-	req, _ := http.NewRequest(method, b.f.url+"/api/v2"+path, reader)
+	if !strings.HasPrefix(path, "/api/") {
+		path = "/api/v2" + path
+	}
+	req, _ := http.NewRequest(method, b.f.url+path, reader)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://frontend.test")
 	req.Header.Set("X-CSRF-Token", b.csrf)
@@ -396,13 +412,14 @@ func TestAccessJourneyFeedback(t *testing.T) {
 			c = a.context(g, "check_connection")
 			st := stepOf(g, "check_connection")
 			snap := Object{"goal": Object{"id": g["id"], "title": "test"}, "step": Object{"id": "check_connection", "title": "test"}, "blocker": Object{"id": obj(list(st["blockers"])[0])["id"], "type": "db_ssl_required", "error_code": "DB_SSL_REQUIRED"}, "checks": []any{}, "attempted_actions": []any{}, "instruction_refs": []any{}, "hypotheses": []any{}, "question": "Как включить SSL?"}
-			escAction := a.call("POST", "/actions", Object{"conversation_id": c["id"], "goal_id": g["id"], "step_id": "check_connection", "type": "escalate_to_buddy", "parameters": Object{"question": "Как включить SSL?", "diagnostic_snapshot": snap}}, 201)
-			escAction = a.call("POST", "/actions/"+str(escAction["id"])+"/confirm", Object{}, 200)
-			eid := str(obj(escAction["result"])["escalation_id"])
-			esc := buddy.call("GET", "/escalations/"+eid, nil, 200)
-			buddy.call("GET", "/escalations", nil, 200)
-			f.browser("buddy-b").call("GET", "/escalations/"+eid, nil, 404)
-			buddy.call("POST", "/escalations/"+eid+"/reply", Object{"answer": "Используйте ssl_mode=require", "expected_version": esc["version"]}, 200)
+			// v3: the DB_SSL_REQUIRED blocker offers Telegram (outside actions), never an internal escalation.
+			if has(st["available_actions"], "escalate_to_buddy") || has(obj(list(st["blockers"])[0])["recovery_actions"], "escalate_to_buddy") {
+				t.Fatal(st)
+			}
+			a.call("POST", "/actions", Object{"conversation_id": c["id"], "goal_id": g["id"], "step_id": "check_connection", "type": "escalate_to_buddy", "parameters": Object{"question": "Как включить SSL?", "diagnostic_snapshot": snap}}, 422)
+			if len(list(buddy.call("GET", "/escalations", nil, 200)["items"])) != 0 {
+				t.Fatal("internal escalation created")
+			}
 			g = a.call("GET", "/goals/"+str(g["id"]), nil, 200)
 			if g["status"] != "blocked" {
 				t.Fatal("buddy resolved technical blocker")
@@ -1081,7 +1098,10 @@ func TestReplayReauthorizesReview(t *testing.T) {
 	t.Cleanup(func() { f.sql("INSERT INTO app.document_permissions VALUES ($1,$2,'knowledge.read')", docA, id) })
 	owner.keyed("POST", path, body, key, 404)
 }
-func TestReplayReauthorizesBuddy(t *testing.T) {
+
+// v3 retires internal escalations: old ones stay readable by the same ACL, nothing new is
+// created, answered or confirmed, and pending drafts are cancelled with an audit event.
+func TestLegacyEscalationsReadOnly(t *testing.T) {
 	f := newFixture(t)
 	f.setGrant(internA, true)
 	a := f.browser("intern-a")
@@ -1091,22 +1111,47 @@ func TestReplayReauthorizesBuddy(t *testing.T) {
 	c := a.context(g, "check_connection")
 	block := obj(list(stepOf(g, "check_connection")["blockers"])[0])
 	snapshot := Object{"goal": Object{"id": g["id"], "title": "test"}, "step": Object{"id": "check_connection", "title": "test"}, "blocker": Object{"id": block["id"], "type": block["type"], "error_code": block["error_code"]}, "checks": []any{}, "attempted_actions": []any{}, "instruction_refs": []any{}, "hypotheses": []any{}, "question": "SSL?"}
-	draftBody := Object{"conversation_id": c["id"], "goal_id": g["id"], "step_id": "check_connection", "type": "escalate_to_buddy", "parameters": Object{"question": "SSL?", "diagnostic_snapshot": snapshot}}
-	draftKey := uuid()
-	action := a.keyed("POST", "/actions", draftBody, draftKey, 201)
-	a.keyed("POST", "/actions", draftBody, draftKey, 201)
-	action = a.call("POST", "/actions/"+str(action["id"])+"/confirm", Object{}, 200)
+	legacy := func(status string) string {
+		id := uuid()
+		params := Object{"question": "SSL?", "diagnostic_snapshot": snapshot}
+		preview := Object{"initiator_id": internA, "recipient_id": buddyA, "question": "SSL?", "diagnostic_snapshot": snapshot}
+		f.sql("INSERT INTO app.actions(id,intern_id,conversation_id,type,parameters,preview,status,expires_at,goal_id,step_id,goal_version,scope_hash,recipient_id) VALUES ($1,$2,$3,'escalate_to_buddy',$7::jsonb,$8::jsonb,$4,now()+interval '10 minutes',$5,'check_connection',1,'x',$6)", id, internA, c["id"], status, g["id"], buddyA, string(encode(params)), string(encode(preview)))
+		return id
+	}
+	done := legacy("succeeded")
+	eid := uuid()
+	f.sql("INSERT INTO app.escalations(id,action_id,intern_id,buddy_id,question,summary,status,goal_id,step_id,blocker_id,diagnostic_snapshot) VALUES ($1,$2,$3,$4,'SSL?','Trusted diagnostic snapshot','open',$5,'check_connection',$6,$7::jsonb)", eid, done, internA, buddyA, g["id"], block["id"], string(encode(snapshot)))
 	buddy := f.browser("buddy-a")
-	eid := str(obj(action["result"])["escalation_id"])
 	esc := buddy.call("GET", "/escalations/"+eid, nil, 200)
-	body := Object{"answer": "Use SSL", "expected_version": esc["version"]}
-	key := uuid()
+	a.call("GET", "/escalations/"+eid, nil, 200)
+	if len(list(buddy.call("GET", "/escalations", nil, 200)["items"])) != 1 {
+		t.Fatal("legacy escalation not listed")
+	}
+	f.browser("buddy-b").call("GET", "/escalations/"+eid, nil, 404)
 	path := "/escalations/" + eid + "/reply"
-	buddy.keyed("POST", path, body, key, 200)
-	buddy.keyed("POST", path, body, key, 200)
+	buddy.call("POST", path, Object{"answer": "Use SSL", "expected_version": esc["version"]}, 403)
+	a.call("POST", path, Object{"answer": "Use SSL", "expected_version": esc["version"]}, 403)
+	if v := buddy.call("GET", "/escalations/"+eid, nil, 200); v["status"] != "open" || v["answer"] != nil {
+		t.Fatal("retired reply changed the escalation")
+	}
+	pending := legacy("pending_confirmation")
+	a.call("POST", "/actions/"+pending+"/confirm", Object{}, 409)
+	if v := a.call("GET", "/actions/"+pending, nil, 200); v["status"] != "cancelled" {
+		t.Fatal(v)
+	}
+	startup := legacy("pending_confirmation")
+	if e := f.s.Recover(context.Background()); e != nil {
+		t.Fatal(e)
+	}
+	if v := a.call("GET", "/actions/"+startup, nil, 200); v["status"] != "cancelled" {
+		t.Fatal(v)
+	}
+	if f.count("SELECT count(*) FROM app.business_events WHERE event_type='escalation_retired'") != 2 {
+		t.Fatal("retirement not audited")
+	}
 	f.sql("UPDATE app.users SET buddy_id='10000000-0000-4000-8000-000000000002' WHERE id=$1", internA)
 	t.Cleanup(func() { f.sql("UPDATE app.users SET buddy_id=$2 WHERE id=$1", internA, buddyA) })
-	buddy.keyed("POST", path, body, key, 404)
+	buddy.call("GET", "/escalations/"+eid, nil, 404)
 }
 func TestAuthorizedReplaysPreserveResults(t *testing.T) {
 	f := newFixture(t)

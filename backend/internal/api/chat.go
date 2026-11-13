@@ -21,6 +21,45 @@ func (s *Server) chatRoutes(m *http.ServeMux) {
 	s.route(m, "GET /api/v2/runs/{id}", "", "intern", false, getRun)
 	s.route(m, "POST /api/v2/runs/{id}/cancel", "EmptyBody", "intern", false, cancelRun)
 	m.HandleFunc("GET /api/v2/runs/{id}/events", s.stream)
+	s.route(m, "GET /api/v3/conversations/{id}/message-origins", "", "intern", false, listMessageOrigins)
+}
+
+// storedOrigin is what Go saves for an assistant message. Without a report from the AI service
+// the origin is "unknown"; a run that did not complete is never shown as a complete answer.
+func storedOrigin(reported Object, state string) Object {
+	origin := Object{"mode": "unknown", "answered_by": "unknown", "completion": "complete"}
+	if reported != nil {
+		origin = clone(reported)
+	}
+	if state != "completed" {
+		origin["completion"] = "interrupted"
+	}
+	return origin
+}
+
+// listMessageOrigins gives the server-owned origin of each assistant message for the chat history.
+func listMessageOrigins(q *request) (response, error) {
+	if _, e := q.conversation(q.r.PathValue("id")); e != nil {
+		return response{}, e
+	}
+	rows, e := q.many("SELECT jsonb_build_object('message_id',id,'run_id',run_id,'origin',origin,'status',status) FROM (SELECT id,run_id,origin,status,created_at FROM app.messages WHERE conversation_id=$1 AND role='assistant' AND run_id IS NOT NULL ORDER BY created_at DESC,id DESC LIMIT 100) m ORDER BY created_at,id", q.r.PathValue("id"))
+	if e != nil {
+		return response{}, e
+	}
+	items := []any{}
+	for _, row := range rows {
+		m := obj(row)
+		var reported Object
+		if m["origin"] != nil {
+			reported = obj(m["origin"])
+		}
+		origin := storedOrigin(reported, "completed")
+		if m["status"] != "completed" {
+			origin["completion"] = "interrupted"
+		}
+		items = append(items, Object{"message_id": m["message_id"], "run_id": m["run_id"], "origin": origin})
+	}
+	return out3("MessageOriginList", Object{"items": items}), nil
 }
 
 const conversationJSON = `jsonb_build_object('id',id,'goal_id',goal_id,'step_id',step_id,'created_at',created_at)`
@@ -360,7 +399,7 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, rid, e)
 		return
 	}
-	q := &request{ctx, s, tx, r, nil, nil, rid}
+	q := &request{Context: ctx, s: s, tx: tx, r: r, requestID: rid}
 	defer func() {
 		if q.tx != nil {
 			_ = q.tx.Rollback(context.Background())
@@ -433,7 +472,7 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 	emit("run.started", Object{"run_id": id})
 	text := ""
 	sources := []any{}
-	var tool Object
+	var tool, origin Object
 	errorCode := "UPSTREAM_ERROR"
 	completed, started, seenSources := false, false, false
 	req, _ := http.NewRequestWithContext(ctx, "POST", s.Config.AIURL+"/internal/v2/generate", bytes.NewReader(encode(input)))
@@ -492,9 +531,9 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 					errorCode = "AI_SCHEMA_INVALID"
 					break streamLoop
 				}
-				defs := map[string]string{"run.started": "RunStartedEvent", "message.delta": "MessageDeltaEvent", "message.sources": "MessageSourcesEvent", "tool.proposed": "ToolProposedEvent", "generation.completed": "GenerationCompletedEvent", "run.failed": "RunFailedEvent"}
+				defs := map[string]string{"run.started": "ai/RunStartedEvent", "message.delta": "ai/MessageDeltaEvent", "message.sources": "ai/MessageSourcesEvent", "tool.proposed": "ai/ToolProposedEvent", "generation.completed": "ai/GenerationCompletedEvent", "run.failed": "ai/RunFailedEvent", "response.origin": "v3/ai/ResponseOriginEvent"}
 				def := defs[f.event]
-				if def == "" || s.Validate("ai/"+def, f.data) != nil || f.data["run_id"] != id {
+				if def == "" || s.Validate(def, f.data) != nil || f.data["run_id"] != id {
 					errorCode = "AI_SCHEMA_INVALID"
 					break streamLoop
 				}
@@ -516,6 +555,12 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 						break streamLoop
 					}
 					emit("message.delta", f.data)
+				case "response.origin":
+					if origin != nil {
+						errorCode = "AI_SCHEMA_INVALID"
+						break streamLoop
+					}
+					origin = obj(f.data["origin"])
 				case "message.sources":
 					if seenSources {
 						errorCode = "AI_SCHEMA_INVALID"
@@ -549,10 +594,17 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		state = "interrupted"
 		errorCode = "CLIENT_DISCONNECTED"
 	}
-	terminal, err := s.finish(r.WithContext(ctx), run, q.user, state, errorCode, text, sources, tool, rid)
+	terminal, err := s.finish(r.WithContext(ctx), run, q.user, state, errorCode, text, sources, tool, origin, rid)
 	if err != nil {
 		emit("run.failed", Object{"run_id": id, "code": "UPSTREAM_ERROR", "message": "UPSTREAM_ERROR"})
 		return
+	}
+	// v3 clients read who answered from Go; v2 clients ignore the unknown event.
+	if terminal["message_id"] != nil && terminal["origin"] != nil {
+		data := Object{"run_id": id, "message_id": terminal["message_id"], "origin": terminal["origin"]}
+		if s.Validate("v3/public/MessageOriginData", data) == nil {
+			emit("message.origin", data)
+		}
 	}
 	switch terminal["status"] {
 	case "completed":
@@ -569,7 +621,7 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		emit("run.failed", Object{"run_id": id, "code": terminal["error_code"], "message": terminal["error_code"]})
 	}
 }
-func (s *Server) finish(r *http.Request, run, user Object, state, code, text string, sources []any, tool Object, rid string) (Object, error) {
+func (s *Server) finish(r *http.Request, run, user Object, state, code, text string, sources []any, tool, origin Object, rid string) (Object, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	tx, e := s.Pool.Begin(ctx)
@@ -577,7 +629,7 @@ func (s *Server) finish(r *http.Request, run, user Object, state, code, text str
 		return nil, e
 	}
 	defer tx.Rollback(ctx)
-	q := &request{ctx, s, tx, r, user, nil, rid}
+	q := &request{Context: ctx, s: s, tx: tx, r: r, user: user, requestID: rid}
 	current, e := q.one("SELECT "+runJSON+" FROM app.runs r JOIN app.conversations c ON c.id=r.conversation_id WHERE r.id=$1 AND c.intern_id=$2 FOR UPDATE OF r", run["id"], user["id"])
 	if e != nil {
 		return nil, e
@@ -617,7 +669,7 @@ func (s *Server) finish(r *http.Request, run, user Object, state, code, text str
 			a, e := q.draft(d, str(run["id"]))
 			if e != nil {
 				_ = tx.Rollback(ctx)
-				return s.finish(r, run, user, "failed", "TOOL_VALIDATION_ERROR", text, nil, nil, rid)
+				return s.finish(r, run, user, "failed", "TOOL_VALIDATION_ERROR", text, nil, nil, origin, rid)
 			}
 			result["action"] = a
 		}
@@ -633,7 +685,8 @@ func (s *Server) finish(r *http.Request, run, user Object, state, code, text str
 	var mid any
 	if text != "" {
 		mid = uuid()
-		if e = q.exec("INSERT INTO app.messages(id,conversation_id,role,content,status,run_id,sources) VALUES ($1,$2,'assistant',$3,$4,$5,$6::jsonb)", mid, run["conversation_id"], text, state, run["id"], string(encode(sources))); e != nil {
+		result["origin"] = storedOrigin(origin, state)
+		if e = q.exec("INSERT INTO app.messages(id,conversation_id,role,content,status,run_id,sources,origin) VALUES ($1,$2,'assistant',$3,$4,$5,$6::jsonb,$7::jsonb)", mid, run["conversation_id"], text, state, run["id"], string(encode(sources)), string(encode(result["origin"]))); e != nil {
 			return nil, e
 		}
 	}

@@ -1,0 +1,32 @@
+{
+  "dataset_version": 3,
+  "note": "Synthetic v3 additions. Telegram usernames are fictional demo values, not real contacts.",
+  "mentor_contacts": [
+    {"mentor_id": "10000000-0000-4000-8000-000000000001", "telegram_username": "ai_buddy_demo_mentor_a"},
+    {"mentor_id": "10000000-0000-4000-8000-000000000002", "telegram_username": "ai_buddy_demo_mentor_b"}
+  ],
+  "task_briefs": [
+    {
+      "id": "30000000-0000-4000-8000-000000000001",
+      "owner_id": "10000000-0000-4000-8000-000000000001",
+      "team_id": "team-a",
+      "version": 1,
+      "content": {
+        "title": "Синтетическое ТЗ: отчёт о подключении к тестовой БД",
+        "goal": "Подготовить короткий отчёт о том, как вы подключились к тестовой БД команды A.",
+        "sections": [
+          {"id": "report-format", "title": "Формат отчёта", "text": "Опишите шаги подключения в свободной форме и приложите вывод проверки."},
+          {"id": "deadline", "title": "Срок", "text": "Отчёт нужен к концу первой недели."}
+        ],
+        "expected_result": "Отчёт в общем документе команды.",
+        "acceptance_criteria": [
+          {"id": "steps-listed", "text": "В отчёте перечислены шаги подключения."}
+        ],
+        "refs": [
+          {"document_id": "0000000a-0000-4000-8000-00000000000a", "version": 1}
+        ]
+      },
+      "assign_to": ["10000000-0000-4000-8000-000000000003", "10000000-0000-4000-8000-000000000004"]
+    }
+  ]
+}
