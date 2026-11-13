@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Bot, Send } from 'lucide-react';
 import type { Action } from '../fixtures/all-states';
 import { actions as fixtureActions } from '../fixtures/all-states';
@@ -34,6 +34,27 @@ export function ChatPage({ view }: { view: ViewState }) {
   const result = useMockData<ChatMessage[]>(demoMessages, [], view);
   // Демо action-card в контексте диалога: pending → confirm → executing → succeeded.
   const [chatAction, setChatAction] = useState<Action>(fixtureActions[0]);
+  // Демо-диалог: вопрос (из поля или подсказки) сразу появляется в ленте с шаблонным ответом.
+  const [extra, setExtra] = useState<ChatMessage[]>([]);
+  const [draft, setDraft] = useState('');
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [extra]);
+
+  const ask = (text: string) => {
+    const question = text.trim();
+    if (!question) return;
+    const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    const n = extra.length;
+    setExtra((list) => [
+      ...list,
+      { id: `u${n}`, role: 'user', content: question, time },
+      { id: `a${n}`, role: 'assistant', content: 'Это демо-режим без сервера: здесь ответ шаблонный. Настоящий ответ ИИ по вашим документам — в режиме Live API (переключатель слева внизу).', time },
+    ]);
+    setDraft('');
+  };
 
   const confirmChatAction = () => {
     setChatAction((a) => ({ ...a, status: 'executing' }));
@@ -47,7 +68,7 @@ export function ChatPage({ view }: { view: ViewState }) {
   };
 
   return (
-    <>
+    <div className="flex h-[calc(100dvh-5.5rem)] flex-col md:h-[calc(100dvh-3rem)]">
       <PageHeader title="AI-помощник" subtitle="Вспомогательный чат · ответы опираются на разрешённые источники" />
       {result.state === 'loading' && <Card><LoadingState /></Card>}
       {result.state === 'error' && (
@@ -64,9 +85,9 @@ export function ChatPage({ view }: { view: ViewState }) {
         />
       )}
       {result.state === 'data' && result.data && (
-        <Card className="flex min-h-[60vh] flex-col">
-          <div className="flex-1 space-y-4 overflow-y-auto" aria-live="polite">
-            {result.data.map((m) =>
+        <Card className="flex min-h-0 flex-1 flex-col">
+          <div ref={scrollRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1" aria-live="polite">
+            {[...result.data, ...extra].map((m) =>
               m.role === 'user' ? (
                 <div key={m.id} className="ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-primary-light px-4 py-3">
                   <p className="text-sm">{m.content}</p>
@@ -98,6 +119,7 @@ export function ChatPage({ view }: { view: ViewState }) {
               <button
                 key={hint}
                 type="button"
+                onClick={() => ask(hint)}
                 className="rounded-full border border-border px-3 py-1.5 text-xs text-text-secondary hover:border-primary hover:text-primary"
               >
                 {hint}
@@ -105,11 +127,13 @@ export function ChatPage({ view }: { view: ViewState }) {
             ))}
           </div>
 
-          <form className="mt-3 flex gap-2" onSubmit={(e) => e.preventDefault()}>
+          <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); ask(draft); }}>
             <label className="sr-only" htmlFor="chat-input">Сообщение AI-помощнику</label>
             <input
               id="chat-input"
               type="text"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
               maxLength={4000}
               placeholder="Спроси про цель, шаг, ошибку или следующее действие…"
               className="flex-1 rounded-xl border border-border px-4 py-2.5 text-sm focus-visible:outline-2 focus-visible:outline-primary"
@@ -123,6 +147,6 @@ export function ChatPage({ view }: { view: ViewState }) {
           </p>
         </Card>
       )}
-    </>
+    </div>
   );
 }

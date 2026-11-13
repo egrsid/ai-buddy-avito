@@ -21,9 +21,12 @@ export function useLiveData<T>(
   fetcher: (signal: AbortSignal) => Promise<T>,
   deps: readonly unknown[],
   empty: T,
-  options: { enabled?: boolean } = {},
+  options: { enabled?: boolean; keepPrevious?: boolean } = {},
 ): LiveResult<T> {
   const enabled = options.enabled ?? true;
+  // keepPrevious: при обновлении показываем прежние данные, пока не придут новые
+  // (чат не мигает и не сбрасывает прокрутку). Без него — честное состояние loading.
+  const keepPrevious = options.keepPrevious ?? false;
   const [state, setState] = useState<{ status: ViewState; data: T | undefined; error: unknown }>({
     status: 'loading',
     data: undefined,
@@ -36,7 +39,7 @@ export function useLiveData<T>(
   useEffect(() => {
     if (!enabled) return;
     const controller = new AbortController();
-    setState((s) => ({ ...s, status: 'loading' }));
+    setState((s) => (keepPrevious && s.data !== undefined ? s : { ...s, status: 'loading' }));
     fetcherRef
       .current(controller.signal)
       .then((data) => {

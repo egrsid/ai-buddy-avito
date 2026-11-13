@@ -13,6 +13,17 @@ describe('ChatPage', () => {
     expect(screen.getByText(/слово «да» в чате ничего не исполняет/)).toBeInTheDocument();
   });
 
+  it('подсказка и поле ввода сразу добавляют вопрос в демо-ленту', async () => {
+    render(<ChatPage view="data" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Повторить проверку' }));
+    expect(screen.getAllByText('Повторить проверку').length).toBeGreaterThan(1);
+    expect(screen.getByText(/ответ шаблонный/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Сообщение AI-помощнику'), { target: { value: 'Свой вопрос' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Отправить' }));
+    expect(screen.getByText('Свой вопрос')).toBeInTheDocument();
+    expect(screen.getByLabelText('Сообщение AI-помощнику')).toHaveValue('');
+  });
+
   it('подтверждение заявки: executing → succeeded', async () => {
     render(<ChatPage view="data" />);
     const confirm = await screen.findByRole('button', { name: 'Подтвердить' });

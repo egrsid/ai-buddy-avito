@@ -19,6 +19,13 @@ const SOURCE_LABELS: Record<Source, string> = {
   task_clarity: 'Понятность моих ТЗ',
 };
 
+const ERRORS = ['ACCESS_MISSING', 'ACCESS_DENIED', 'DB_SSL_REQUIRED'];
+const REASON_LABELS: Record<string, string> = {
+  requirement_unclear: 'неясно требование',
+  outcome_unclear: 'неясен результат',
+  acceptance_unclear: 'неясен критерий приёмки',
+};
+
 function value(n: number | null) {
   return n === null ? '—' : String(n);
 }
@@ -26,7 +33,15 @@ function value(n: number | null) {
 export function StatisticsPage({ view }: { view: 'mentor' | 'documentation' }) {
   const [days, setDays] = useState<Days>(30);
   const [source, setSource] = useState<Source>('technical');
-  const stats = useLiveData(() => getStatistics(view, days, source), [view, days, source], null as StatisticsT | null);
+  const [problem, setProblem] = useState('');
+  const [status, setStatus] = useState('');
+  const kind: Source = view === 'mentor' ? source : 'technical';
+  const filters = { [kind === 'task_clarity' ? 'reason' : 'error_code']: problem, status };
+  const stats = useLiveData(() => getStatistics(view, days, source, filters), [view, days, source, problem, status], null as StatisticsT | null);
+  const chooseSource = (next: Source) => {
+    setSource(next);
+    setProblem('');
+  };
 
   return (
     <>
@@ -45,7 +60,7 @@ export function StatisticsPage({ view }: { view: 'mentor' | 'documentation' }) {
                 type="button"
                 role="tab"
                 aria-selected={source === s}
-                onClick={() => setSource(s)}
+                onClick={() => chooseSource(s)}
                 className={`rounded-lg px-3 py-1.5 text-sm font-medium ${source === s ? 'bg-primary text-white' : 'bg-surface-muted text-text-secondary hover:bg-border'}`}
               >
                 {SOURCE_LABELS[s]}
@@ -66,6 +81,25 @@ export function StatisticsPage({ view }: { view: 'mentor' | 'documentation' }) {
             </button>
           ))}
         </div>
+      </div>
+      <div className="mb-4 flex flex-wrap gap-3 text-sm">
+        <label>
+          {kind === 'task_clarity' ? 'Причина' : 'Ошибка'}
+          <select value={problem} onChange={(e) => setProblem(e.target.value)} className="ml-2 rounded-xl border border-border px-2 py-1.5">
+            <option value="">все</option>
+            {(kind === 'task_clarity' ? Object.entries(REASON_LABELS) : ERRORS.map((code) => [code, code])).map(([key, label]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Состояние
+          <select value={status} onChange={(e) => setStatus(e.target.value)} className="ml-2 rounded-xl border border-border px-2 py-1.5">
+            <option value="">все</option>
+            <option value="open">{kind === 'task_clarity' ? 'есть открытый отчёт' : 'есть открытый блокер'}</option>
+            <option value="closed">открытого нет</option>
+          </select>
+        </label>
       </div>
       {stats.state === 'loading' && <Card><LoadingState /></Card>}
       {stats.state === 'error' && <ErrorState message={userMessage(stats.error)} onRetry={stats.refetch} />}

@@ -22,6 +22,19 @@ describe('useLiveData', () => {
     expect(result.current.error).toBe(boom);
   });
 
+  it('keepPrevious: при перечитывании прежние данные остаются на экране', async () => {
+    let n = 0;
+    let release!: () => void;
+    const fetcher = vi.fn(() => (++n === 1 ? Promise.resolve([1]) : new Promise<number[]>((r) => { release = () => r([1, 2]); })));
+    const { result } = renderHook(() => useLiveData(fetcher, [], [] as number[], { keepPrevious: true }));
+    await waitFor(() => expect(result.current.data).toEqual([1]));
+    act(() => result.current.refetch());
+    expect(result.current.state).toBe('data');
+    expect(result.current.data).toEqual([1]);
+    await act(async () => release());
+    await waitFor(() => expect(result.current.data).toEqual([1, 2]));
+  });
+
   it('refetch перезапускает загрузку', async () => {
     let n = 0;
     const fetcher = vi.fn(async () => ++n);

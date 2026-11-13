@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RunStreamHandlers } from '../lib/sse';
 import { actions as fixtureActions, knowledgeDoc } from '../fixtures/all-states';
-import { LiveChatPage } from './LiveChatPage';
+import { LiveChatPage, shortTime } from './LiveChatPage';
 
 const mocks = vi.hoisted(() => ({
   listConversations: vi.fn(),
@@ -141,6 +141,24 @@ describe('LiveChatPage', () => {
     expect(screen.queryByText(/Произошла ошибка обращения к LLM/)).not.toBeInTheDocument();
   });
 
+  it('подсказка сразу уходит в чат; пока идёт ответ, подсказки выключены; лента не пропадает', async () => {
+    mocks.listMessages.mockResolvedValue([userMessage]);
+    await renderChat();
+    expect(await screen.findByText('Что мешает подключению?')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Что мне делать дальше?' }));
+    expect(mocks.createRun).toHaveBeenCalledWith(CONV, { content: 'Что мне делать дальше?' });
+    await waitFor(() => expect(mocks.streamRunEvents).toHaveBeenCalled());
+    expect(screen.getByRole('button', { name: 'Почему шаг заблокирован?' })).toBeDisabled();
+    // Перечитывание после отправки не прячет переписку (экран не прыгает).
+    expect(screen.getByText('Что мешает подключению?')).toBeInTheDocument();
+    expect(screen.getByLabelText('Переписка')).toBeInTheDocument();
+  });
+
+  it('на странице шага — свои подсказки', async () => {
+    render(<LiveChatPage goalId="0000001e-0000-4000-8000-00000000001e" stepId="check_access" embedded />);
+    expect(await screen.findByRole('button', { name: 'Что сделать на этом шаге?' })).toBeInTheDocument();
+  });
+
   it('v3: метка берётся от сервера, а не из слов ответа', async () => {
     // Текст похож на обычный ответ ИИ, но сервер знает, что ответила резервная модель.
     v3.listMessageOrigins.mockResolvedValue([{ run_id: RUN, message_id: MSG_A, origin: { mode: 'live', answered_by: 'secondary', completion: 'complete' } }]);
@@ -245,5 +263,14 @@ describe('LiveChatPage', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Синтетическая инструкция подключения' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Возможно, доступ изменился');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('shortTime', () => {
+  it('сегодня — только время, иначе дата и время; мусор как есть', () => {
+    const now = new Date('2026-11-13T20:00:00Z');
+    expect(shortTime('2026-11-13T19:05:00Z', now)).toMatch(/^\d{2}:\d{2}$/);
+    expect(shortTime('2026-11-10T19:05:00Z', now)).toMatch(/^\d{2}\.\d{2} \d{2}:\d{2}$/);
+    expect(shortTime('не дата', now)).toBe('не дата');
   });
 });
