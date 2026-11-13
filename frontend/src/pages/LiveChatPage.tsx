@@ -21,7 +21,8 @@ import { useLiveData } from '../lib/live';
 import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '../components/ui';
 import { ActionCard } from '../components/ActionCard';
 
-// RP-FE-02: live-чат. Диалог goal_id/step_id = null (общий).
+// RP-FE-02: live-чат. Без goal/step диалог общий.
+// Со страницы шага открывается диалог этой цели и шага, чтобы черновик не терял контекст.
 // Run запускается POST /runs, стрим — GET /runs/{id}/events (SSE).
 // Истина после разрыва — GET run/messages (контракт: disconnect не гарантирует доставку).
 // «Да» в чате ничего не исполняет: confirm — только кнопка ActionCard конкретного action.id.
@@ -30,16 +31,26 @@ type MessageT = z.infer<typeof Message>;
 type RunT = z.infer<typeof Run>;
 type SourceT = z.infer<typeof Source>;
 
-export function LiveChatPage() {
+export function LiveChatPage({
+  goalId = null,
+  stepId = null,
+}: {
+  goalId?: string | null;
+  stepId?: string | null;
+}) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [setupError, setSetupError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    setConversationId(null);
+    setSetupError(null);
     (async () => {
       try {
-        const existing = (await listConversations()).find((c) => c.goal_id === null);
-        const conversation = existing ?? (await createConversation(null, null));
+        const existing = (await listConversations()).find(
+          (c) => c.goal_id === goalId && c.step_id === stepId,
+        );
+        const conversation = existing ?? (await createConversation(goalId, stepId));
         if (!cancelled) setConversationId(conversation.id);
       } catch (e) {
         if (!cancelled) setSetupError(userMessage(e, 'Не удалось открыть диалог.'));
@@ -48,14 +59,22 @@ export function LiveChatPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [goalId, stepId]);
 
   if (setupError) return <ErrorState title="Диалог недоступен" message={setupError} />;
   if (!conversationId) return <Card><LoadingState /></Card>;
-  return <LiveChatConversation conversationId={conversationId} />;
+  return <LiveChatConversation conversationId={conversationId} goalId={goalId} stepId={stepId} />;
 }
 
-function LiveChatConversation({ conversationId }: { conversationId: string }) {
+function LiveChatConversation({
+  conversationId,
+  goalId,
+  stepId,
+}: {
+  conversationId: string;
+  goalId: string | null;
+  stepId: string | null;
+}) {
   const messages = useLiveData(() => listMessages(conversationId), [conversationId], []);
   const [draft, setDraft] = useState('');
   const [streamText, setStreamText] = useState('');
@@ -156,7 +175,14 @@ function LiveChatConversation({ conversationId }: { conversationId: string }) {
 
   return (
     <>
-      <PageHeader title="AI-помощник" subtitle="Ответы опираются на разрешённые источники · live API" />
+      <PageHeader
+        title="AI-помощник"
+        subtitle={
+          goalId && stepId
+            ? `Диалог шага ${stepId} · ответы только по разрешённым источникам`
+            : 'Ответы опираются на разрешённые источники · live API'
+        }
+      />
       {messages.state === 'loading' && <Card><LoadingState /></Card>}
       {messages.state === 'error' && (
         <ErrorState message={userMessage(messages.error)} onRetry={messages.refetch} />
