@@ -59,8 +59,8 @@ acceptance остаются у соответствующих авторов. Н
 | RP-REVERSE-01 | 5 | Backend | IN_PROGRESS | RP-BLOCKER-01, RP-AI-DIAG-01 | Distinct>=2, unique candidate, safe enrichment/fallback, scoped review; accepted не publish | [спецификация](../features/reverse-onboarding/spec.md) |
 | RP-FE-01 | 2 | Frontend | IN_PROGRESS | RP-CONTRACT-01 | Goal-first reference layout и states на agreed DTO fixtures (явно mock); component tests/responsiveness | [спецификация](../features/onboarding-journey/spec.md) |
 | RP-FE-02 | 3–4 | Frontend | IN_PROGRESS | RP-FE-01; по поставке RP-JOURNEY-01, RP-CHAT-01, RP-ACCESS-01, RP-VERIFY-01, RP-BLOCKER-01 | Go integration goal/chat/preview/requests/approvals/checks, refresh; принимать API поставки поэтапно | [спецификация](../features/access-request/spec.md) |
-| RP-FE-03 | 4–5 | Frontend | TODO | RP-FE-02, RP-BUDDY-01, RP-REVERSE-01 | Buddy и documentation-owner UI, safe snapshot/count/hypothesis/review; no hidden fixture runtime | [спецификация](../features/reverse-onboarding/spec.md) |
-| RP-E2E-01 | 2–6 | Frontend | TODO | RP-CONTRACT-01; полный прогон после RP-FE-03 | Браузерный A/B/C путь и UI/security assertions, reload; реальный backend restart с TL, без route interception | [спецификация](../testing/strategy.md) |
+| RP-FE-03 | 4–5 | Frontend | IN_PROGRESS | RP-FE-02, RP-BUDDY-01, RP-REVERSE-01 | Live-экраны бадди и владельца инструкций есть. Совместный restart ещё не прогнан | [спецификация](../features/reverse-onboarding/spec.md) |
+| RP-E2E-01 | 2–6 | Frontend | IN_PROGRESS | RP-CONTRACT-01; полный прогон после RP-FE-03 | frontend/e2e/live-onboarding.spec.ts проверяет Live API, если поднят make demo. Полный A/B/C и restart ещё не прогнаны | [спецификация](../testing/strategy.md) |
 | RP-QA-01 | 2–3 | Fullstack–QA–Integration | IN_PROGRESS | Обновлённая QA-ветка владельцем, RP-CONTRACT-01; запуск после RP-AUTH-01, RP-JOURNEY-01 | Только два имеющихся API-теста: v2 goal ownership/reread и 401/CSRF; один отчёт. Legacy подготовка есть, v2 ещё нет | [спецификация](assignments/fullstack-qa-integration.md) |
 | RP-INTEGRATION-01 | 6 | TL | TODO | RP-INF-01, RP-DATA-01, RP-AI-01, RP-REVERSE-01, RP-BUDDY-01, RP-FE-03, RP-E2E-01, RP-QA-01 | Свести component reports и full A/B/C/security/offline/restart результаты; дефекты исправляют владельцы, QA не переписывает всё | [спецификация](../product/demo.md) |
 | RP-DEMO-01 | 7 | TL | TODO | RP-INTEGRATION-01, RP-TL-02 | README/clean seed rehearsal/PDF/video, пять минут и честный mock/live; Frontend даёт UI capture в рамках E2E | [спецификация](../product/demo.md) |
@@ -178,7 +178,7 @@ SSE-клиент `lib/sse.ts` (fetch+ReadableStream, typed события run.*,
 live-варианты всех страниц (onboarding/step/requests/approvals/chat/buddy/knowledge-gaps)
 и переключатель «Источник данных» в AppShell. Эскалация со step: createConversation →
 createAction с diagnostic snapshot; confirm/cancel + опрос getAction до терминала.
-Live-интеграция покрыта unit-тестами на моках fetch/endpoint-слоя. Остаток до DONE:
+На шаге live можно отправить заявку на доступ и выбрать SSL disable или require. Остаток до DONE:
 live-smoke и browser E2E (RP-E2E-01) против поднятого стека — на окружении с Docker
 (локально Docker-демон не запущен, живой прогон не выполнялся). RP-FE-03 частично
 покрыт live-страницами buddy/docs-owner (list/reply/review), формальный старт — после

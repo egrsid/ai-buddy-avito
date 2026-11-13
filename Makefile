@@ -21,6 +21,9 @@ test: check
 up:
 	docker compose up --build -d --wait
 
+demo:
+	COMPOSE_PROJECT_NAME=ai-buddy-demo SEED_DATASET=v2 docker compose up --build -d --wait
+
 down:
 	docker compose down
 
