@@ -1,5 +1,12 @@
 # RP-CONTRACT-01 — текущая передача
 
+Дополнение RP-DEMO-UX-01: FE recovery теперь требует open blocker и актуальный
+Step.available_actions; resolved карточки не отправляют недопустимые draft.
+Source открывается из чата повторным Go GET knowledge с ACL. AI string допускает
+форматированный Markdown, inline URL активен только при совпадении с validated Source.
+Новых shared полей, schema/DDL и объединения server roles нет. Матрица и проверка:
+[TL record](tl-readiness.md). Formal approval ниже остаётся отдельным gate.
+
 13 ноября: актуальные BE public schemas (StepActionList/null negatives) импортированы,
 11 shared contract tests и весь FE suite 467 PASS. TL lock обновлен, настоящий
 Go→AI generate/source/action путь PASS после исправления AI excerpts. Явный BE↔AI/

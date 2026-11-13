@@ -348,7 +348,7 @@
       "path": "ai-service/app/prompt.py",
       "source": "aa6ff38d6dbb77ec427991913152cd6b10e311bf",
       "sha256": "9c1deeb04dacb7129602e42317a90a733f79848ead172e37edc33e34feda98e3",
-      "locally_modified": false
+      "locally_modified": true
     },
     {
       "path": "ai-service/app/redaction.py",
@@ -396,7 +396,7 @@
       "path": "ai-service/evals/cases.json",
       "source": "aa6ff38d6dbb77ec427991913152cd6b10e311bf",
       "sha256": "9660f5e0c3fb7b2442844263ab82303bc17a4953a15387778a0173f156d7a9fb",
-      "locally_modified": false
+      "locally_modified": true
     },
     {
       "path": "ai-service/evals/report-live-gigachat.md",
@@ -564,7 +564,7 @@
       "path": "ai-service/tests/test_mock_provider.py",
       "source": "aa6ff38d6dbb77ec427991913152cd6b10e311bf",
       "sha256": "1c47f644fd85310df4390154a698cfd0eb6aa880cab581d7f2d4fe04f74ff6b1",
-      "locally_modified": false
+      "locally_modified": true
     },
     {
       "path": "ai-service/tests/test_ollama_provider.py",
@@ -684,31 +684,31 @@
       "path": "frontend/src/App.tsx",
       "source": "3ea1d019081e836b9628084183174740c7caa5d9",
       "sha256": "e7472c8158a4d1fdf0af9c2d3ef685caef18c099b817a5aca8cc7ce108e3ea1b",
-      "locally_modified": false
+      "locally_modified": true
     },
     {
       "path": "frontend/src/components/ActionCard.test.tsx",
       "source": "3ea1d019081e836b9628084183174740c7caa5d9",
       "sha256": "d1162b885d7b8f22a7b3b2e2625884fb5dc883199c9debccdb00c39a4a1158f2",
-      "locally_modified": false
+      "locally_modified": true
     },
     {
       "path": "frontend/src/components/ActionCard.tsx",
       "source": "3ea1d019081e836b9628084183174740c7caa5d9",
       "sha256": "8f2829e35d7fcfa184074b01b4d013c9668c07b98d389f589cb70dc04d1ffd79",
-      "locally_modified": false
+      "locally_modified": true
     },
     {
       "path": "frontend/src/components/AppShell.test.tsx",
       "source": "3ea1d019081e836b9628084183174740c7caa5d9",
       "sha256": "10e600fa87fca3b602aaabbf1dfc9fdf182d282c9c24dba734825cc082cc9c64",
-      "locally_modified": false
+      "locally_modified": true
     },
     {
       "path": "frontend/src/components/AppShell.tsx",
       "source": "3ea1d019081e836b9628084183174740c7caa5d9",
       "sha256": "fe1352244bf0b1bac07580b6be20156369800924fb9df0f91a4f8966c342b720",
-      "locally_modified": false
+      "locally_modified": true
     },
     {
       "path": "frontend/src/components/SourceDrawer.test.tsx",
@@ -720,7 +720,7 @@
       "path": "frontend/src/components/SourceDrawer.tsx",
       "source": "3ea1d019081e836b9628084183174740c7caa5d9",
       "sha256": "66f1d38337cd910d91a0aa704b3d389636e2ba8e8139b0bf750865dec0663912",
-      "locally_modified": false
+      "locally_modified": true
     },
     {
       "path": "frontend/src/components/StatusBadge.test.tsx",
@@ -780,25 +780,25 @@
       "path": "frontend/src/lib/api.test.ts",
       "source": "3ea1d019081e836b9628084183174740c7caa5d9",
       "sha256": "048c2b2e72836fa6e82c84bf2474de2931436e8c2e2dfb52aada329f01fd55e9",
-      "locally_modified": false
+      "locally_modified": true
     },
     {
       "path": "frontend/src/lib/api.ts",
       "source": "3ea1d019081e836b9628084183174740c7caa5d9",
       "sha256": "897de85a7bd7adaa0bb566dd20ac7f93da224b2b121b94f64868b98879ee8db6",
-      "locally_modified": false
+      "locally_modified": true
     },
     {
       "path": "frontend/src/lib/dataMode.test.tsx",
       "source": "3ea1d019081e836b9628084183174740c7caa5d9",
       "sha256": "8862a519a5004c6422d35bbab0efbe1c5f6f42d6b6918eb60405c183cf958d4d",
-      "locally_modified": false
+      "locally_modified": true
     },
     {
       "path": "frontend/src/lib/dataMode.tsx",
       "source": "3ea1d019081e836b9628084183174740c7caa5d9",
       "sha256": "28863adbb6eb4566f2416bd6c47c0fd8a89956f1d4ee191fe68d884597aa02ff",
-      "locally_modified": false
+      "locally_modified": true
     },
     {
       "path": "frontend/src/lib/endpoints.test.ts",
@@ -942,13 +942,13 @@
       "path": "frontend/src/pages/LiveChatPage.test.tsx",
       "source": "3ea1d019081e836b9628084183174740c7caa5d9",
       "sha256": "49c6b2e00c24e4374141a19baf9ff6807befcdaaec8a559cd03bb2d6f4bcd74a",
-      "locally_modified": false
+      "locally_modified": true
     },
     {
       "path": "frontend/src/pages/LiveChatPage.tsx",
       "source": "3ea1d019081e836b9628084183174740c7caa5d9",
       "sha256": "75e98a67e5d60d3144daf3fe427a38cfd9b50b4181fe8a34dec03fd8d9475164",
-      "locally_modified": false
+      "locally_modified": true
     },
     {
       "path": "frontend/src/pages/LiveKnowledgeGapsPages.test.tsx",
@@ -972,18 +972,6 @@
       "path": "frontend/src/pages/LiveOnboardingPage.tsx",
       "source": "3ea1d019081e836b9628084183174740c7caa5d9",
       "sha256": "a8c6ef058e77d079e3ef0ece8a5499ce49de72cdc9aae4380596854287a558a7",
-      "locally_modified": false
-    },
-    {
-      "path": "frontend/src/pages/LiveStepPage.test.tsx",
-      "source": "3ea1d019081e836b9628084183174740c7caa5d9",
-      "sha256": "ad4f6009115d0ae3c497294607cf31e454af601d8f58f2968ac659ce2562936b",
-      "locally_modified": false
-    },
-    {
-      "path": "frontend/src/pages/LiveStepPage.tsx",
-      "source": "3ea1d019081e836b9628084183174740c7caa5d9",
-      "sha256": "9ee912d0b62bc53fa9710e588170a5228de915668ca2762152bd2bd2fe68375a",
       "locally_modified": false
     },
     {
@@ -1032,13 +1020,13 @@
       "path": "frontend/src/test/setup.ts",
       "source": "3ea1d019081e836b9628084183174740c7caa5d9",
       "sha256": "675e473d1041326dc6e83dfb4e62391b025617f98522a56caa71cbcfbb601af5",
-      "locally_modified": false
+      "locally_modified": true
     },
     {
       "path": "frontend/vite.config.ts",
       "source": "3ea1d019081e836b9628084183174740c7caa5d9",
       "sha256": "f2f9b68f3ededf81153a300180eb7ba8ddba2fac190881d6ae27625f2890de3e",
-      "locally_modified": false
+      "locally_modified": true
     },
     {
       "path": "frontend/e2e/onboarding.spec.ts",
@@ -1063,7 +1051,32 @@
       "source": "f88441418932d4fa179b7503c55d1d521375c438",
       "sha256": "f0fde142c4c2d0aab3f00f7f51de10ddeb2a6325e8cd3597da345a8cd24fd56b",
       "locally_modified": false
+    },
+    {
+      "path": "frontend/e2e/live-onboarding.spec.ts",
+      "source": "1f96778b5da0f5d6d2194d3d79d6fd1a56fce224",
+      "sha256": "ba848dcc0524237483fb6bcb83314247cd4dd218bbbcf4558d5296bdf8864990",
+      "locally_modified": true
+    },
+    {
+      "path": "frontend/src/pages/LiveStepPage.test.tsx",
+      "source": "1f96778b5da0f5d6d2194d3d79d6fd1a56fce224",
+      "sha256": "47273345f648e4615c5f7a721457a4073825a10738e9d8d3f8a70c91bc146dbb",
+      "locally_modified": true
+    },
+    {
+      "path": "frontend/src/pages/LiveStepPage.tsx",
+      "source": "1f96778b5da0f5d6d2194d3d79d6fd1a56fce224",
+      "sha256": "1b5d1d57b67345b94664223c16523532a159674b126544c42805c5021e37351f",
+      "locally_modified": true
     }
   ],
-  "ai_delta_location": "TL checkout only; AI branch/ref has not been changed"
+  "ai_delta_location": "TL checkout only; AI branch/ref has not been changed",
+  "integration_base": "61b6addf1c0c51ee0a264a67997f6629541e589e",
+  "current_roles": "TL/QA/AI integration in TL checkout; protected author branches unchanged",
+  "local_additions": [
+    "Dockerfile.demo-offline",
+    "compose.offline.yaml",
+    "frontend/e2e/demo-loop.spec.ts"
+  ]
 }

@@ -3,7 +3,7 @@
 Версия 2.0 · 2026-11-11 · целевая спецификация недельного MVP.
 Основание: [CODEX_PROJECT_REPLAN.md](../../CODEX_PROJECT_REPLAN.md).
 Предыдущие S1–S4 и S5/HR заменены моделью ниже. Runtime компонентов уже сведен в TL;
-API-путь проверен, полная browser-приемка открыта: [статус](../team/tl-readiness.md).
+Offline browser A/B/C/restart/ACL путь проверен (4 PASS), live/CI приемка отдельна: [статус](../team/tl-readiness.md).
 
 ## 1. Проблема, видение и ценность
 

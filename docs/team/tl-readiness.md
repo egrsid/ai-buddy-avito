@@ -1,5 +1,105 @@
 # TL readiness и решения по интеграции
 
+## Исправления по замечаниям владельца · 13 ноября · RP-DEMO-UX-01
+
+В TL checkout выполнен локальный consumer/AI delta; BE/FE/QA/AI refs и source SHA
+не менялись, commit/push/PR нет. Новые замечания заменяют прежнее решение показывать
+семь аккаунтов сразу. Основные четыре роли сохранены для разделения полномочий;
+второй стажёр и другая команда доступны через «Дополнительные участники».
+
+| Зависимость | Согласованное поведение |
+|---|---|
+| Go Step → FE blocker | Кнопка recovery только при blocker.status=open и наличии действия одновременно в blocker.recovery_actions и step.available_actions. У resolved история без кнопок; серверный draft остаётся authoritative |
+| Ошибка при stale UI | TOOL_VALIDATION_ERROR/VERSION_CONFLICT переведены в понятное предложение обновить состояние; серверная проверка не ослаблена |
+| AI → Go messages → FE | Текст в прежнем string поле, заголовки/нумерованные шаги Markdown; live prompt получает точные разрешённые URL. Offline guidance называет кнопки и этапы по trusted context |
+| Source → FE → Go knowledge | Кликабельные источники открывают drawer через повторный GET knowledge/ACL. Inline links разрешены только из citations; HTML/images/external links не исполняются |
+| Role selector → Go login | Четыре основных аккаунта без role suffix; дополнительные включаются отдельно, серверные accounts/assignments/permissions не менялись |
+| Ordered failover → readable answer | Локальный fallback сохраняет целые абзацы/ссылки в лимите сообщения и обязательное уведомление, без обрезанного Markdown |
+
+Общие DTO, schemas, DB migrations, seed, permissions и Go runtime не менялись.
+Инструкции получили широкую панель, заголовки, списки и code formatting, без повтора h1;
+Markdown soft wraps не превращаются в случайные разрывы строк.
+
+Проверки: FE build PASS, **482 tests / 94.50% lines**; AI **445 PASS / 99.61%**
+(5 DB tests отдельно), **29/29 evals** внутри AI suite; `make check` **57 PASS**.
+Реальный browser A/B/C/restart/ACL **4 PASS, 19.3s** на ai-buddy-demo-polish-v1;
+добавлены открытия оформленной инструкции/ссылки из чата и отсутствие recovery после
+verified. Persistent kb/ACL tests **5 PASS** на этой же отдельной QA-базе.
+Скриншоты `frontend/test-results/` просмотрены: readable-instruction.png и intern-a-preview.png.
+Paid live вызовы/качество нового prompt на реальной модели не проверялись.
+
+
+## Повторная интеграция · готовность к локальному созвону · 13 ноября
+
+**GO для локального offline demo.** Стандартный чистый стенд — http://localhost:15173,
+проект ai-buddy-demo-local. Запуск на этой машине: `make demo-offline`.
+Это реальные Go/AI/corporate/PostgreSQL и browser clicks, без fixture API/SQL-правок.
+Синтетические проверки и offline AI обозначены; live API означает Go API, не платную LLM.
+
+### Новая поставка и согласование
+
+- Локальная база владельца: 61b6add, уже включает предыдущий TL/AI delta. Backend
+  повторно проверен: ea2cfbe, новых commits нет. AI aa6ff38 и QA f88228c не менялись.
+- Новая FE-поставка **1f96778b5da0f5d6d2194d3d79d6fd1a56fce224** добавила manual
+  requestAccess/preview и SSL disable/require. Эти файлы и tests импортированы.
+  Ее Makefile/README не заменяли TL: такой запуск обходил persistent ingest/readiness.
+  Добавление wget в backend Dockerfile из FE не понадобилось: текущий wget healthcheck работает.
+- По новому поручению TL/QA/AI выполнены необходимые consumer wiring fixes в TL:
+  session readiness до mount live pages; auth/me при reload; все 7 demo accounts;
+  goal/step chat поверх существующего LiveChatPage; refresh после action; полный
+  диагностический preview. BE/FE/QA/AI refs не менялись; Go/mock business code не правился.
+  Author snapshots и локальный delta отличимы в integration-sources.json.
+- Manual requestAccess совместим с AI failover: degraded ответ не предлагает tool,
+  но стажёр может явно нажать «Запросить доступ» и подтвердить серверный preview.
+  Штатный offline AI выдаёт proposal в контекстном чате; этот путь показан E2E.
+
+### Наблюдаемые результаты
+
+| Проверка | Результат |
+|---|---|
+| `make check` | 57 PASS, lint/format/docs/schema/SQL/YAML |
+| FE build/component | build PASS; **475 PASS, lines 94.34%**; исходники UI входят в denominator |
+| Полный browser A/B/C + restart | **4 PASS, 19.4s**, включая неизменённые 2 QA API tests, без skip/interception |
+| AI kb/pgvector/ACL | **5 PASS** под ai_service в отдельном test image, не skipped |
+| V2 verify-db | PASS: identities, kb index и запреты cross-schema/DDL/DML |
+| Остальные компоненты | Go source ea2cfbe: 80.98% lines; AI unchanged: 443 PASS/99.65%; mock unchanged: 98.05%, previous evidence ниже сохраняется |
+| Offline image build | PASS: current sources COPY в новые images, без host bind mounts; uv --offline/Go GOPROXY=off; Python runtime --no-dev |
+
+Команда browser приемки на свежем QA dataset:
+`E2E_BASE_URL=http://localhost:15173 APP_ORIGIN=http://localhost:15173
+PLAYWRIGHT_CHROMIUM_CHANNEL=chrome DEMO_PROJECT=ai-buddy-demo-release-v3
+npx playwright test --workers=1` из frontend.
+System Chrome использован с отдельным временным browser profile. В CI ставится Chromium.
+
+Browser test реально выполнил AI draft → отсутствие заявки до confirm → submitted →
+approver decision → отдельный IAM recheck → ssl=disable/DB_SSL_REQUIRED → повтор того же
+intern без candidate → exact handoff → buddy reply без verified → ssl=require/100% →
+intern-b/вторая ошибка → один candidate count=2 → under_review/accepted без изменения
+документа → реальный restart → сохранение verified/review/session → intern-c/buddy-b ACL.
+`frontend/test-results/` содержит screenshots preview/blocker/buddy/candidate,
+`frontend/playwright-report/` — отчет. Оба пути намеренно в Git ignore.
+
+Первый restart тест выявил гонку зависимости: параллельный restart Go/mock позволял
+Go увидеть CHECK_UNAVAILABLE и инвалидировать IAM. `scripts.demo restart` теперь
+останавливает Go, перезапускает AI/mock, ждёт health, затем поднимает Go. Последующий
+прогон на новой БД прошел полностью; тест не ослаблялся и verified не выставлялся вручную.
+
+### Окружение и передача
+
+Docker Hub по-прежнему возвращает TLS timeout. Это решено для созвона отдельной
+сборкой Dockerfile.demo-offline/compose.offline.yaml из уже имеющихся dependency images.
+Все прикладные исходники копируются и пересобираются; временные /tmp overrides не нужны.
+Полный cold build на машине без cache и remote GitHub CI еще не подтверждены.
+Go race detector по-прежнему не выполнен локально (offline Go image без gcc).
+Платные calls/live quality не выполнялись; прежний live report 3.5 safety 9/10 остается
+отдельным RP-AI-02 gate и не выдается за проверенный live release.
+
+QA dataset ai-buddy-demo-release-v3 сохранён и остановлен; основной стенд подготовлен
+с чистой отдельной DB, без ранее созданных goals/requests/candidates. Старые volumes
+не удалялись. Новых commits/push/PR/merge нет. User-visible продукт для local call готов;
+это не приемка public hosting, всех fault matrices, PDF/video или платной LLM.
+
+
 ## Текущий результат · 2026-11-13
 
 **К объединению для полного browser demo пока не готовы.** В TL checkout локально сведены

@@ -19,6 +19,9 @@ services:
     environment:
       APP_ORIGIN: ${APP_ORIGIN:-http://localhost:15173}
       LLM_MODE: mock
+  frontend:
+    environment:
+      VITE_DATA_MODE: live
   ai-db-tests:
     environment:
       PYTHONPATH: /workspace/ai-service

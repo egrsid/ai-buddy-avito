@@ -104,6 +104,9 @@ export function userMessage(e: unknown, fallback = 'Сервис временн�
   if (e instanceof ApiError) {
     if (e.status === 401) return 'Сессия истекла. Войдите заново.';
     if (e.status === 403) return 'Недостаточно прав для этой операции.';
+    if (e.code === 'TOOL_VALIDATION_ERROR' || e.code === 'VERSION_CONFLICT') {
+      return 'Состояние шага изменилось. Обновите страницу и выберите доступное действие.';
+    }
     return e.message || fallback;
   }
   return fallback;

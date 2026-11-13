@@ -6,10 +6,10 @@ Read-only GitHub snapshot · 2026-11-13. Текущий checkout — feature/tea
 | Ветка | Source SHA на 13 ноября | Проверенное состояние |
 |---|---|---|
 | main | 30c5d08908aace5d10318adc429bbaa837b1a929 | Локальный legacy ref, remote повторно не проверялся |
-| feature/team-start-foundation | f88441418932d4fa179b7503c55d1d521375c438 | Remote TL snapshot; локальный HEAD c065919, новый integration delta uncommitted |
+| feature/team-start-foundation | 61b6add | База владельца с прошлой TL/AI поставкой; текущие demo integration/QA fixes локально без commit |
 | feature/backend-mvp-v2 | ea2cfbe35abb027c921c7e38882f43469e0fdadc | Runtime/migrations/v2 seed; source импортирован в TL |
 | feature/ai-mvp-v2 | aa6ff38d6dbb77ec427991913152cd6b10e311bf | Persistent kb/live adapters/budget/evals; source импортирован, citations/failover delta только в TL |
-| feature/frontend-mvp-v2 | 3ea1d019081e836b9628084183174740c7caa5d9 | Live API/SSE pages и 467 tests; browser blockers в TL record |
+| feature/frontend-mvp-v2 | 1f96778b5da0f5d6d2194d3d79d6fd1a56fce224 | request/SSL поставка импортирована; TL integration fixes, 474 tests и browser 4 PASS |
 | feature/qa-01-m1 | f88228cb5b1d669f05958c706e2c236c8cc7834f | Два адаптированных API tests; в TL 2 PASS |
 
 Текущий source manifest: [integration-sources.json](integration-sources.json). Чужие refs не менялись.

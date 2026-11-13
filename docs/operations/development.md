@@ -1,5 +1,12 @@
 # Development environment
 
+Актуальный local demo: `make demo-offline` → http://localhost:15173,
+ai-buddy-demo-local. Самостоятельные images из локального dependency cache, текущий
+код COPY без mounts, отдельный v2 seed/ingest/readiness. Browser A/B/C/restart/ACL 4 PASS.
+[Сценарий](../product/demo.md), [evidence/ограничения](../team/tl-readiness.md).
+Старые bootstrap описания ниже не являются текущим статусом TL runtime.
+
+
 ## Версии
 
 | Компонент | Версия / источник |

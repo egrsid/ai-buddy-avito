@@ -5,8 +5,8 @@
 отдельное одобрение → IAM/DB evidence → blocker/buddy → повтор у второго стажёра →
 Knowledge Gap Candidate с человеческим review. Accepted не публикует документацию.
 
-В TL checkout локально сведены BE/AI/FE/QA поставки. **Настоящий сквозной API-путь
-проверен; полный сайт для browser demo ещё требует доработки FE.** Текущие source SHA,
+В TL checkout локально сведены BE/AI/FE/QA поставки. **Локальный offline демопродукт готов: полный browser A/B/C путь и настоящий
+restart проверены.** Текущие source SHA,
 проверки и приоритеты — [TL readiness](docs/team/tl-readiness.md),
 [backlog](docs/team/backlog.md). Старые S1–S4 не являются текущим планом.
 Commit/push/PR/merge в этом проходе не выполнялись.
@@ -22,9 +22,13 @@ AI предлагает и фильтрует знания по проверен
 Нужны Docker Engine/Desktop, Compose v2 и Python 3 для orchestration. Первый build
 загружает образы/зависимости; после подготовки runtime не требует LLM/корпоративной сети.
 
+На этой машине зависимости уже подготовлены; сборка и запуск без Docker Hub:
+
 ```sh
-make demo-up
+make demo-offline
 ```
+
+На машине с доступной сетью обычная первичная сборка: `make demo-up`.
 
 Отдельный проект `ai-buddy-demo-local`, сайт http://localhost:15173,
 Go http://localhost:18080. Runner явно использует synthetic `.env.example`, mock LLM,
@@ -34,8 +38,9 @@ Runtime DB-роли ограничены своими схемами; внутр
 
 ```sh
 python3 -m scripts.demo status
-python3 -m scripts.demo ai-db-test
-python3 -m scripts.demo api-test
+python3 -m scripts.demo ai-db-test --offline
+# Только на отдельном свежем QA dataset, не перед показом:
+python3 -m scripts.demo api-test --offline
 make demo-down
 ```
 
@@ -45,21 +50,20 @@ make demo-down
 `--project ai-buddy-demo-ИМЯ` (имя — lowercase ASCII). Параллельно порты должны быть свободны.
 Reset с удалением данных выполняется только по явному решению владельца.
 
-13 ноября clean build остановился на TLS timeout Docker Hub. Реальная репетиция
-запущена в `ai-buddy-demo-20261113` на кешированных images с нынешними source mounts;
-пересобранный Go binary совпал по SHA-256. Это ограничение clean-build acceptance,
-а не свидетельство успешной сборки production images. [Подробности](docs/team/tl-readiness.md).
+Стенд сразу открывается в Live API, восстанавливает cookie-сессию после refresh и
+показывает четыре основные роли без технических суффиксов. Дополнительные аккаунты
+для повторного затруднения и ACL доступны переключателем «Дополнительные участники». Чат на странице шага получает goal/step, показывает
+AI proposal и точный preview; ручная кнопка запроса доступна при AI fallback.
+Полная диагностика видна до отправки buddy. SSL disable/require выбирается явно.
 
-## Что мешает показать весь сценарий кликами
+Browser приемка: **4/4 PASS**, включая весь feedback loop, restart и отрицательные ACL.
+FE: **475 tests, 94.34% lines**, AI DB: **5/5 PASS**, `make check`: **57 PASS**.
+[Пятиминутный сценарий с точными кнопками](docs/product/demo.md).
 
-- FE Live API начинает запросы до завершения login; refresh возвращает режим Fixtures.
-- В live шаге нет контекстного чата/draft/confirm заявки; общий чат не привязан к goal.
-- DB check всегда посылает `ssl_mode=require`: нельзя показать SSL failure → buddy → recheck.
-- В selector нет intern-b/intern-c; полный browser A/B/C E2E ещё не предъявлен.
-
-Эти FE исходники сохранены из авторской ветки без исправления за автора. Переход на
-Fixtures показывает помеченные UI-примеры и не заменяет реальное выполнение P0.
-Для созвона нужен оставшийся FE проход и чистая browser репетиция.
+Dockerfile.demo-offline копирует текущий код в самостоятельные images; исходники хоста
+не монтируются. Нужны заранее доступные dependency images, перечисленные в scripts/demo.py
+(они уже есть на этой машине). Полный cold build с пустым cache, remote CI и Go race
+остаются отдельными проверками. Docker Hub сейчас недоступен; live LLM для demo не нужна.
 
 ## Live LLM и fallback
 
@@ -104,9 +108,9 @@ Host-run требует Node 26.13.0, Go 1.27.3, Python 3.12, uv 0.13.4. Go/mock
 `uv run --frozen python -m scripts.backend_test_db`. Они не должны работать на demo progress DB.
 Конфигурация такой DB добавлена в CI; execution CI ещё не подтверждён.
 
-Line coverage строго >80% отдельно: Go 80.98%, AI >99%, mock 98.05%, FE 94.47%.
-QA API tests 2/2, AI DB 5/5, offline evals 29/29. Это не полная browser/live/clean-build
-приемка. Host `make test` остановился из-за отсутствия Go; component Go checks выполнены
+Line coverage строго >80% отдельно: Go 80.98%, AI >99%, mock 98.05%, FE 94.34%.
+Browser/API tests 4/4, AI DB 5/5, offline evals 29/29. Live/cold-build/CI
+приемка отдельна. Host `make test` остановился из-за отсутствия Go; component Go checks выполнены
 в локальном toolchain image, race detector остаётся открытым.
 [Testing](docs/testing/strategy.md), [development](docs/operations/development.md).
 

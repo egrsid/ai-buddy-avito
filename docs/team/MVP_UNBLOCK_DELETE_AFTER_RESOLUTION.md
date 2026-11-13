@@ -1,5 +1,11 @@
 # ВРЕМЕННО — удалить после разрешения текущих вопросов и приемки MVP
 
+**Локальный demo checkpoint закрыт:** browser A/B/C/restart/ACL 4 PASS; проблемы FE
+согласования исправлены в TL. [Актуальный record](tl-readiness.md). Этот исторический
+список сохраняется до его более широких условий (cold build/CI/race/live/formal acceptance),
+не является блокером уже подготовленного local offline созвона.
+
+
 **Обновление 13 ноября:** прежние checkpoints ниже — история. Реализованные поставки,
 независимые PASS и актуальный остаток теперь в [постоянном TL record](tl-readiness.md)
 и [backlog](backlog.md). Сейчас блокируют FE login/contextual request/SSL/intern-b/c,
