@@ -23,7 +23,9 @@ import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '
 import { ActionCard } from '../components/ActionCard';
 import { FormattedText } from '../components/FormattedText';
 import { SourceDrawer } from '../components/SourceDrawer';
-import { AnswerOriginBadge } from '../components/AnswerOriginBadge';
+import { ServerOriginBadge } from '../components/ServerOriginBadge';
+import { read3, type Origin } from '../lib/v3';
+import { MessageOriginList } from '../contracts/v3';
 import { classifyAnswer } from '../lib/answerOrigin';
 
 // RP-FE-02: live-чат. Диалог goal_id/step_id = null (общий).
@@ -67,6 +69,9 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
   conversationId: string; embedded: boolean; onActionChanged?: () => void;
 }) {
   const messages = useLiveData(() => listMessages(conversationId), [conversationId], []);
+  const origins = useLiveData(s => read3(`/conversations/${conversationId}/message-origins`, MessageOriginList, s), [conversationId, messages.data], null);
+  const [streamOrigin, setStreamOrigin] = useState<Origin>();
+  const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState('');
   const [streamText, setStreamText] = useState('');
   const [streamSources, setStreamSources] = useState<SourceT[]>([]);
@@ -95,6 +100,9 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
 
   const handleEvent = (event: SseEvent) => {
     switch (event.type) {
+      case 'message.origin':
+        setStreamOrigin(event.data.origin);
+        break;
       case 'message.delta':
         setStreamText((t) => t + event.data.text);
         break;
@@ -118,8 +126,11 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
   };
 
   const send = async (content: string) => {
+    if (sending || activeRun) return;
+    setSending(true);
     setNotice(null);
     setStreamText('');
+    setStreamOrigin(undefined);
     setStreamSources([]);
     try {
       const run = await createRun(conversationId, { content });
@@ -141,7 +152,7 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
       });
     } catch (e) {
       setNotice(userMessage(e, 'Сообщение не отправлено.'));
-    }
+    } finally { setSending(false); }
   };
 
   const stop = async () => {
@@ -189,7 +200,7 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
               <EmptyState title="Сообщений пока нет" message="Спросите про цель, шаг, ошибку или следующее действие." />
             )}
             {messages.data?.map((m) => (
-              <ChatMessage key={m.id} message={m} onDocument={openDocument} />
+              <ChatMessage key={m.id} message={m} origin={origins.data?.items.find(o => o.message_id === m.id)?.origin} onDocument={openDocument} />
             ))}
             {activeRun && !streamText && (
               <div className="flex max-w-[85%] gap-3">
@@ -207,7 +218,7 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
                   <Bot size={18} className="text-primary" />
                 </span>
                 <div className="rounded-2xl rounded-tl-md bg-surface-muted px-4 py-3">
-                  <StreamingAnswer text={streamText} sources={streamSources} onDocument={openDocument} />
+                  <StreamingAnswer origin={streamOrigin} text={streamText} sources={streamSources} onDocument={openDocument} />
                   <p className="mt-1 text-[11px] text-text-secondary" role="status">генерация…</p>
                 </div>
               </div>
@@ -250,7 +261,7 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
                 <Square size={16} aria-hidden />
               </Button>
             ) : (
-              <Button type="submit" ariaLabel="Отправить" disabled={!draft.trim()}>
+              <Button type="submit" ariaLabel="Отправить" disabled={sending || !draft.trim()}>
                 <Send size={16} aria-hidden />
               </Button>
             )}
@@ -268,19 +279,19 @@ function DocumentLink({ source, onDocument }: { source: SourceT; onDocument: (id
   return <a href={source.url} className="text-primary underline underline-offset-4" onClick={e => { e.preventDefault(); onDocument(source.document_id); }}>{source.title}</a>;
 }
 
-function StreamingAnswer({ text, sources, onDocument }: {
-  text: string; sources: SourceT[]; onDocument: (id: string) => void;
+function StreamingAnswer({ text, sources, onDocument, origin }: {
+  origin?: Origin; text: string; sources: SourceT[]; onDocument: (id: string) => void;
 }) {
   const answer = classifyAnswer(text);
   return (
     <>
-      <AnswerOriginBadge origin={answer.origin} interrupted={answer.interrupted} />
+      <ServerOriginBadge origin={origin} />
       <FormattedText text={answer.text} documents={sources} onDocument={onDocument} />
     </>
   );
 }
 
-function ChatMessage({ message: m, onDocument }: { message: MessageT; onDocument: (id: string) => void }) {
+function ChatMessage({ message: m, onDocument, origin }: { origin?: Origin; message: MessageT; onDocument: (id: string) => void }) {
   if (m.role === 'user') {
     return (
       <div className="ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-primary-light px-4 py-3">
@@ -296,7 +307,7 @@ function ChatMessage({ message: m, onDocument }: { message: MessageT; onDocument
         <Bot size={18} className="text-primary" />
       </span>
       <div className="rounded-2xl rounded-tl-md bg-surface-muted px-4 py-3">
-        <AnswerOriginBadge origin={answer.origin} interrupted={answer.interrupted} />
+        <ServerOriginBadge origin={origin} />
         <FormattedText text={answer.text} documents={m.sources} onDocument={onDocument} />
         {m.sources.length > 0 && (
           <ul className="mt-2 space-y-0.5 text-xs text-text-secondary">

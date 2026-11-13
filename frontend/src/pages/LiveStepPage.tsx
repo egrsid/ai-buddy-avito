@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, BookOpen, FlaskConical, MessageSquareWarning, RefreshCw } from 'lucide-react';
+import { ArrowLeft, BookOpen, FlaskConical, RefreshCw } from 'lucide-react';
 import type { z } from 'zod';
 import type { Action, Step } from '../fixtures/all-states';
 import { KnowledgeDocument } from '../contracts/public';
@@ -19,6 +19,7 @@ import { userMessage } from '../lib/api';
 import { useLiveData } from '../lib/live';
 import { href } from '../lib/router';
 import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '../components/ui';
+import { MentorContact } from '../components/MentorContact';
 import { ActionCard } from '../components/ActionCard';
 import { SourceDrawer } from '../components/SourceDrawer';
 import { LiveChatPage } from './LiveChatPage';
@@ -36,6 +37,7 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
   const [action, setAction] = useState<Action | null>(null);
   const [drawerDoc, setDrawerDoc] = useState<KnowledgeDocumentT | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [requestPending, setRequestPending] = useState(false);
   const [checkPending, setCheckPending] = useState(false);
   const [sslMode, setSslMode] = useState<'disable' | 'require'>('disable');
   const [reason, setReason] = useState('Нужен доступ к синтетической БД команды A.');
@@ -86,6 +88,8 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
   };
 
   const requestAccess = async () => {
+    if (requestPending) return;
+    setRequestPending(true);
     setNotice(null);
     try {
       const goal = await getGoal(goalId);
@@ -105,43 +109,7 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
       setAction(created);
     } catch (e) {
       setNotice(userMessage(e, 'Не удалось подготовить заявку.'));
-    }
-  };
-
-  const escalate = async () => {
-    setNotice(null);
-    const blocker = s.blockers.find((b) => b.status === 'open');
-    if (!blocker || !s.available_actions.includes('escalate_to_buddy')) {
-      setNotice('Эскалация возможна только из контекста активного блокера.');
-      return;
-    }
-    const question = 'Нужна помощь наставника с этим шагом.';
-    try {
-      // Драфт привязан к диалогу цель/шаг; snapshot Go пересобирает и валидирует.
-      const conversation = await createConversation(goalId, s.id);
-      const created = await createAction({
-        conversation_id: conversation.id,
-        goal_id: goalId,
-        step_id: s.id,
-        type: 'escalate_to_buddy',
-        parameters: {
-          question,
-          diagnostic_snapshot: {
-            goal: { id: goalId, title: 'Цель' },
-            step: { id: s.id, title: s.title },
-            blocker: { id: blocker.id, type: blocker.type, error_code: blocker.error_code },
-            checks: [],
-            attempted_actions: [],
-            instruction_refs: [],
-            hypotheses: [],
-            question,
-          },
-        },
-      });
-      setAction(created);
-    } catch (e) {
-      setNotice(userMessage(e, 'Не удалось подготовить передачу наставнику.'));
-    }
+    } finally { setRequestPending(false); }
   };
 
   const confirm = async (id: string) => {
@@ -215,7 +183,7 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
                       className="mt-1 w-full rounded-xl border border-border px-3 py-2"
                     />
                   </label>
-                  <Button onClick={requestAccess} disabled={checkPending}>Запросить доступ</Button>
+                  <Button onClick={requestAccess} disabled={checkPending || requestPending}>Запросить доступ</Button>
                 </div>
               )}
               {s.verification_method === 'mock_db_connection' && blocker.recovery_actions.includes('retry_check') && s.available_actions.includes('retry_check') && (
@@ -238,11 +206,7 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
                   <RefreshCw size={16} className="mr-1 inline" aria-hidden /> Повторить проверку
                 </Button>
               )}
-              {blocker.recovery_actions.includes('escalate_to_buddy') && s.available_actions.includes('escalate_to_buddy') && (
-                <Button variant="secondary" onClick={escalate} disabled={checkPending}>
-                  <MessageSquareWarning size={16} className="mr-1 inline" aria-hidden /> Спросить наставника
-                </Button>
-              )}
+
             </div>}
           </Card>
         ))}
@@ -272,6 +236,8 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
             </Button>
           </Card>
         )}
+
+        <MentorContact context={{ goal_id: goalId, step_id: s.id }} />
 
         {action && <ActionCard action={action} onConfirm={confirm} onCancel={cancel} />}
 

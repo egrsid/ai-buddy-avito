@@ -1,3 +1,4 @@
+vi.mock('./lib/v3', () => ({ read3: async () => ({items: [], next_cursor: null}), listBriefs: async () => [], listAssignments: async () => [], listReports: async () => [] }));
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { candidates, escalations, goalBlocked, goals, users } from './fixtures/all-states';
@@ -162,7 +163,7 @@ describe('App · live-режим', () => {
     expect(await screen.findByText('Нет заявок на согласование')).toBeInTheDocument();
 
     go('#/buddy/escalations');
-    expect(await screen.findByRole('heading', { name: 'Обращения стажёров' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Задания команды' })).toBeInTheDocument();
 
     go('#/knowledge-gaps');
     expect(await screen.findByRole('heading', { name: 'Пробелы знаний' })).toBeInTheDocument();
@@ -172,7 +173,7 @@ describe('App · live-режим', () => {
     expect(await screen.findByRole('heading', { name: step.title })).toBeInTheDocument();
 
     go(`#/buddy/escalations/${escalations[0].id}`);
-    expect(await screen.findByRole('heading', { name: /Обращение:/ })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Задания команды' })).toBeInTheDocument();
 
     go(`#/knowledge-gaps/${candidates[0].id}`);
     expect(await screen.findByRole('heading', { name: /Кандидат:/ })).toBeInTheDocument();

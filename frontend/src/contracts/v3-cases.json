@@ -1,0 +1,409 @@
+{
+  "valid": [
+    [
+      "MentorContact",
+      {
+        "status": "missing"
+      }
+    ],
+    [
+      "MentorContact",
+      {
+        "status": "available",
+        "display_name": "buddy-a",
+        "telegram_url": "https://t.me/ai_buddy_demo_mentor_a",
+        "contact_revision": 1
+      }
+    ],
+    [
+      "ContactPreviewRequest",
+      {
+        "goal_id": "10000000-0000-4000-8000-000000000003",
+        "step_id": "check_access"
+      }
+    ],
+    [
+      "ContactPreviewRequest",
+      {
+        "assignment_id": "10000000-0000-4000-8000-000000000003",
+        "section_id": "goal"
+      }
+    ],
+    [
+      "ContactExportRequest",
+      {
+        "preview_id": "10000000-0000-4000-8000-000000000003",
+        "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "contact_revision": 1
+      }
+    ],
+    [
+      "TaskBriefCreateRequest",
+      {
+        "content": {
+          "title": "ТЗ",
+          "goal": "Цель",
+          "sections": [
+            {
+              "id": "deadline",
+              "title": "Срок",
+              "text": "До пятницы"
+            }
+          ],
+          "expected_result": "Отчёт",
+          "acceptance_criteria": [
+            {
+              "id": "steps",
+              "text": "Шаги перечислены"
+            }
+          ],
+          "refs": [
+            {
+              "document_id": "10000000-0000-4000-8000-000000000003",
+              "version": 1
+            }
+          ]
+        }
+      }
+    ],
+    [
+      "TaskBriefVersion",
+      {
+        "brief_id": "10000000-0000-4000-8000-000000000003",
+        "version": 1,
+        "state": "published",
+        "content": {
+          "title": "ТЗ",
+          "goal": "Цель",
+          "sections": [
+            {
+              "id": "deadline",
+              "title": "Срок",
+              "text": "До пятницы"
+            }
+          ],
+          "expected_result": "Отчёт",
+          "acceptance_criteria": [
+            {
+              "id": "steps",
+              "text": "Шаги перечислены"
+            }
+          ],
+          "refs": [
+            {
+              "document_id": "10000000-0000-4000-8000-000000000003",
+              "version": 1
+            }
+          ]
+        },
+        "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "created_at": "2026-11-13T10:00:00Z",
+        "published_at": "2026-11-13T10:00:00Z"
+      }
+    ],
+    [
+      "TaskBrief",
+      {
+        "id": "10000000-0000-4000-8000-000000000003",
+        "title": "ТЗ",
+        "state": "published",
+        "latest_published_version": {
+          "brief_id": "10000000-0000-4000-8000-000000000003",
+          "version": 1,
+          "state": "published",
+          "content": {
+            "title": "ТЗ",
+            "goal": "Цель",
+            "sections": [
+              {
+                "id": "deadline",
+                "title": "Срок",
+                "text": "До пятницы"
+              }
+            ],
+            "expected_result": "Отчёт",
+            "acceptance_criteria": [
+              {
+                "id": "steps",
+                "text": "Шаги перечислены"
+              }
+            ],
+            "refs": [
+              {
+                "document_id": "10000000-0000-4000-8000-000000000003",
+                "version": 1
+              }
+            ]
+          },
+          "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "created_at": "2026-11-13T10:00:00Z",
+          "published_at": "2026-11-13T10:00:00Z"
+        },
+        "draft": null,
+        "versions": [
+          {
+            "version": 1,
+            "state": "published",
+            "published_at": "2026-11-13T10:00:00Z"
+          }
+        ],
+        "assignment_count": 2,
+        "open_report_count": 0,
+        "revision": 3,
+        "created_at": "2026-11-13T10:00:00Z",
+        "updated_at": "2026-11-13T10:00:00Z"
+      }
+    ],
+    [
+      "FrictionCreateRequest",
+      {
+        "section_id": "deadline",
+        "reason": "outcome_unclear"
+      }
+    ],
+    [
+      "TaskClarityReviewRequest",
+      {
+        "decision": "resolved",
+        "reason": "v2",
+        "expected_version": 3,
+        "resolved_version": 2
+      }
+    ],
+    [
+      "GoalSummaryList",
+      {
+        "items": [],
+        "next_cursor": null
+      }
+    ],
+    [
+      "Statistics",
+      {
+        "view": "mentor",
+        "source_kind": "technical",
+        "as_of": "2026-11-13T10:00:00Z",
+        "timezone": "Europe/Moscow",
+        "window": {
+          "from": "2026-11-13T10:00:00Z",
+          "to": "2026-11-13T10:00:00Z",
+          "days": 30
+        },
+        "privacy_threshold": 2,
+        "summary": {
+          "affected_interns": 2,
+          "observations": 3,
+          "open_items": 1,
+          "suppressed": false
+        },
+        "rows": [
+          {
+            "key": {
+              "journey_id": "db-access-team-a",
+              "step_id": "check_connection"
+            },
+            "label": "Проверить подключение · DB_SSL_REQUIRED",
+            "metrics": {
+              "affected_interns": null,
+              "observations": null,
+              "open_items": null,
+              "suppressed": true
+            },
+            "related_reports": []
+          }
+        ],
+        "daily": [
+          {
+            "date": "2026-11-13",
+            "affected_interns": 2,
+            "observations": 3,
+            "suppressed": false
+          }
+        ],
+        "next_cursor": null
+      }
+    ],
+    [
+      "MessageOriginData",
+      {
+        "run_id": "10000000-0000-4000-8000-000000000003",
+        "message_id": "10000000-0000-4000-8000-000000000003",
+        "origin": {
+          "mode": "live",
+          "answered_by": "secondary",
+          "completion": "complete"
+        }
+      }
+    ]
+  ],
+  "invalid": [
+    [
+      "MentorContact",
+      {
+        "status": "available",
+        "display_name": "x",
+        "contact_revision": 1
+      }
+    ],
+    [
+      "MentorContact",
+      {
+        "status": "available",
+        "display_name": "x",
+        "telegram_url": "https://evil.example/ai_buddy",
+        "contact_revision": 1
+      }
+    ],
+    [
+      "MentorContact",
+      {
+        "status": "missing",
+        "telegram_url": "https://t.me/ai_buddy_demo_mentor_a"
+      }
+    ],
+    [
+      "ContactPreviewRequest",
+      {
+        "goal_id": "10000000-0000-4000-8000-000000000003",
+        "step_id": "x",
+        "assignment_id": "10000000-0000-4000-8000-000000000003"
+      }
+    ],
+    [
+      "ContactPreviewRequest",
+      {
+        "question": "Привет"
+      }
+    ],
+    [
+      "TaskBriefCreateRequest",
+      {
+        "content": {
+          "title": "ТЗ",
+          "goal": "Цель",
+          "sections": [
+            {
+              "id": "deadline",
+              "title": "Срок",
+              "text": "До пятницы"
+            }
+          ],
+          "expected_result": "Отчёт",
+          "acceptance_criteria": [
+            {
+              "id": "steps",
+              "text": "Шаги перечислены"
+            }
+          ],
+          "refs": [
+            {
+              "document_id": "10000000-0000-4000-8000-000000000003",
+              "version": 1
+            }
+          ]
+        },
+        "owner_id": "10000000-0000-4000-8000-000000000003"
+      }
+    ],
+    [
+      "TaskBriefCreateRequest",
+      {
+        "content": {
+          "title": "ТЗ",
+          "goal": "Цель",
+          "sections": [],
+          "expected_result": "Отчёт",
+          "acceptance_criteria": [
+            {
+              "id": "steps",
+              "text": "Шаги перечислены"
+            }
+          ],
+          "refs": [
+            {
+              "document_id": "10000000-0000-4000-8000-000000000003",
+              "version": 1
+            }
+          ]
+        }
+      }
+    ],
+    [
+      "FrictionCreateRequest",
+      {
+        "section_id": "x",
+        "reason": "too_hard"
+      }
+    ],
+    [
+      "FrictionCreateRequest",
+      {
+        "section_id": "x",
+        "reason": "outcome_unclear",
+        "count": 2
+      }
+    ],
+    [
+      "TaskBriefVersion",
+      {
+        "brief_id": "10000000-0000-4000-8000-000000000003",
+        "version": 1,
+        "state": "draft",
+        "content": {
+          "title": "ТЗ",
+          "goal": "Цель",
+          "sections": [
+            {
+              "id": "deadline",
+              "title": "Срок",
+              "text": "До пятницы"
+            }
+          ],
+          "expected_result": "Отчёт",
+          "acceptance_criteria": [
+            {
+              "id": "steps",
+              "text": "Шаги перечислены"
+            }
+          ],
+          "refs": [
+            {
+              "document_id": "10000000-0000-4000-8000-000000000003",
+              "version": 1
+            }
+          ]
+        },
+        "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "created_at": "2026-11-13T10:00:00Z",
+        "published_at": "2026-11-13T10:00:00Z"
+      }
+    ],
+    [
+      "TaskClarityReviewRequest",
+      {
+        "decision": "resolved",
+        "reason": "x",
+        "expected_version": 1
+      }
+    ],
+    [
+      "TaskClarityReviewRequest",
+      {
+        "decision": "accepted",
+        "reason": "x",
+        "expected_version": 1,
+        "resolved_version": 2
+      }
+    ],
+    [
+      "MessageOriginData",
+      {
+        "run_id": "10000000-0000-4000-8000-000000000003",
+        "message_id": "10000000-0000-4000-8000-000000000003",
+        "origin": {
+          "mode": "live"
+        }
+      }
+    ]
+  ]
+}

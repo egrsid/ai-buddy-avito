@@ -1,11 +1,14 @@
 package api
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -45,10 +48,11 @@ type statRequest struct {
 	days, offset, limit int
 	source              string
 	from, to            time.Time
+	filters             map[string]string
 }
 
 func statParams(q *request, sources ...string) (statRequest, error) {
-	allowed := []string{"days", "cursor", "limit"}
+	allowed := []string{"days", "cursor", "limit", "journey_id", "step_id", "brief_id", "brief_version", "section_id", "reason", "error_code", "document_id", "document_version", "status"}
 	if len(sources) > 1 {
 		allowed = append(allowed, "source")
 	}
@@ -70,7 +74,16 @@ func statParams(q *request, sources ...string) (statRequest, error) {
 		r.source = raw
 	}
 	if raw, ok := params["cursor"]; ok {
-		if r.offset, e = strconv.Atoi(raw); e != nil || r.offset < 1 || r.offset > 10000 {
+		decoded, err := base64.RawURLEncoding.DecodeString(raw)
+		parts := strings.Split(string(decoded), "|")
+		if err != nil || len(parts) != 2 {
+			return r, fail(422, "VALIDATION_ERROR")
+		}
+		r.to, err = time.Parse(time.RFC3339, parts[1])
+		if err != nil || r.to.After(q.s.Now()) || q.s.Now().Sub(r.to) > 24*time.Hour {
+			return r, fail(422, "VALIDATION_ERROR")
+		}
+		if r.offset, e = strconv.Atoi(parts[0]); e != nil || r.offset < 1 || r.offset > 10000 {
 			return r, fail(422, "VALIDATION_ERROR")
 		}
 	}
@@ -80,7 +93,21 @@ func statParams(q *request, sources ...string) (statRequest, error) {
 		}
 	}
 	// The window is whole Moscow calendar days ending today: [start of first day, now).
-	r.to = q.s.Now().UTC()
+	if r.to.IsZero() {
+		r.to = q.s.Now().UTC()
+	}
+	r.filters = map[string]string{}
+	for _, key := range allowed {
+		if key == "days" || key == "cursor" || key == "limit" || key == "source" {
+			continue
+		}
+		if value, ok := params[key]; ok {
+			if !regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`).MatchString(value) {
+				return r, fail(422, "VALIDATION_ERROR")
+			}
+			r.filters[key] = value
+		}
+	}
 	local := r.to.In(moscow)
 	r.from = time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, moscow).AddDate(0, 0, -(r.days - 1)).UTC()
 	return r, nil
@@ -95,6 +122,35 @@ func metrics(affected, observations, open int, suppressed bool) Object {
 
 // aggregate turns scoped observations into rows, a total and daily buckets.
 func aggregate(view string, r statRequest, list []observation, open map[string]int, related map[string][]any) Object {
+	filtered := []observation{}
+	for _, o := range list {
+		match := true
+		for key, value := range r.filters {
+			if key == "status" {
+				found := false
+				for _, report := range related[o.key] {
+					if str(obj(report)["state"]) == value {
+						found = true
+					}
+				}
+				if value == "open" {
+					found = open[o.key] > 0
+				}
+				if value == "closed" {
+					found = open[o.key] == 0
+				}
+				if !found {
+					match = false
+				}
+			} else if fmt.Sprint(o.keyObj[key]) != value {
+				match = false
+			}
+		}
+		if match {
+			filtered = append(filtered, o)
+		}
+	}
+	list = filtered
 	groups := map[string]*statGroup{}
 	for _, o := range list {
 		g := groups[o.key]
@@ -121,7 +177,8 @@ func aggregate(view string, r statRequest, list []observation, open map[string]i
 	})
 	rows := []any{}
 	visible := map[string]bool{}
-	interns, items, openTotal, hidden := map[string]bool{}, 0, 0, false
+	openKeys := map[string]bool{}
+	interns, items, openTotal, hidden := map[string]bool{}, map[string]bool{}, 0, false
 	for _, k := range keys {
 		g := groups[k]
 		suppressed := len(g.interns) < privacyThreshold
@@ -138,11 +195,20 @@ func aggregate(view string, r statRequest, list []observation, open map[string]i
 		for id := range g.interns {
 			interns[id] = true
 		}
-		items += len(g.items)
-		openTotal += open[k]
+		for id := range g.items {
+			items[id] = true
+		}
+		openKey := k
+		if view == "documentation" {
+			openKey = str(g.keyObj["journey_id"]) + "|" + str(g.keyObj["step_id"]) + "|" + str(g.keyObj["error_code"])
+		}
+		if !openKeys[openKey] {
+			openTotal += open[k]
+			openKeys[openKey] = true
+		}
 	}
 	// With only hidden groups the total would be a misleading zero, so it is hidden too.
-	summary := metrics(len(interns), items, openTotal, hidden && len(visible) == 0)
+	summary := metrics(len(interns), len(items), openTotal, hidden)
 	daily := []any{}
 	for day := 0; day < r.days; day++ {
 		start := r.from.Add(time.Duration(day) * 24 * time.Hour)
@@ -151,11 +217,11 @@ func aggregate(view string, r statRequest, list []observation, open map[string]i
 		for _, o := range list {
 			if visible[o.key] && !o.at.Before(start) && o.at.Before(end) {
 				who[o.intern] = true
-				what[o.key+o.item] = true
+				what[o.item] = true
 			}
 		}
 		bucket := Object{"date": start.In(moscow).Format("2006-01-02"), "affected_interns": len(who), "observations": len(what), "suppressed": false}
-		if len(who) > 0 && len(who) < privacyThreshold {
+		if hidden || (len(who) > 0 && len(who) < privacyThreshold) {
 			bucket["affected_interns"], bucket["observations"], bucket["suppressed"] = nil, nil, true
 		}
 		daily = append(daily, bucket)
@@ -168,7 +234,7 @@ func aggregate(view string, r statRequest, list []observation, open map[string]i
 	}
 	if len(rows) > r.limit {
 		rows = rows[:r.limit]
-		next = strconv.Itoa(r.offset + r.limit)
+		next = base64.RawURLEncoding.EncodeToString([]byte(strconv.Itoa(r.offset+r.limit) + "|" + r.to.Format(time.RFC3339Nano)))
 	}
 	return Object{"view": view, "source_kind": r.source, "as_of": stamp(r.to), "timezone": "Europe/Moscow", "window": Object{"from": stamp(r.from), "to": stamp(r.to), "days": r.days}, "privacy_threshold": privacyThreshold, "summary": summary, "rows": rows, "daily": daily, "next_cursor": next}
 }
@@ -195,12 +261,12 @@ func (q *request) stepTitle(cache map[string]string, journey string, version int
 // technical collects failed trusted checks. CHECK_UNAVAILABLE and transport failures are not
 // a difficulty of the intern or of the instruction and never enter these numbers.
 func (q *request) technical(r statRequest, scope string, perDocument bool) ([]observation, map[string]int, error) {
-	filter := "u.buddy_id=$1 AND u.team=$2"
+	filter := "u.buddy_id=$1 AND u.team=$2 AND EXISTS(SELECT 1 FROM app.friction_mentor_attribution a WHERE a.friction_id=f.id AND a.mentor_id=$1)"
 	args := []any{q.user["id"], q.user["team_id"], r.from, r.to}
 	if scope == "documentation" {
 		filter = "u.team=$2 AND EXISTS(SELECT 1 FROM app.document_permissions p WHERE p.subject_id=$1 AND p.document_id=f.instruction_id AND p.permission='knowledge_gap.review') AND EXISTS(SELECT 1 FROM app.document_permissions p WHERE p.subject_id=$1 AND p.document_id=f.instruction_id AND p.permission='knowledge.read')"
 	}
-	rows, e := q.tx.Query(q.Context, "SELECT f.journey_id,f.journey_version,f.step_id,f.error_code,f.instruction_id::text,f.instruction_version,f.intern_id::text,f.attempt_id::text,f.occurred_at,f.goal_id::text FROM app.friction_events f JOIN app.users u ON u.id=f.intern_id JOIN app.goals g ON g.id=f.goal_id WHERE "+filter+" AND f.outcome='failed' AND f.error_code<>'CHECK_UNAVAILABLE' AND g.resource_id IN (SELECT resource_id FROM app.resource_assignments WHERE user_id=$1) AND f.occurred_at>=$3 AND f.occurred_at<$4 ORDER BY f.occurred_at LIMIT 10000", args...)
+	rows, e := q.tx.Query(q.Context, "SELECT f.journey_id,f.journey_version,f.step_id,f.error_code,f.instruction_id::text,f.instruction_version,f.intern_id::text,f.attempt_id::text,f.occurred_at,f.goal_id::text FROM app.friction_events f JOIN app.users u ON u.id=f.intern_id JOIN app.goals g ON g.id=f.goal_id WHERE "+filter+" AND f.outcome='failed' AND f.error_code<>'CHECK_UNAVAILABLE' AND g.resource_id IN (SELECT resource_id FROM app.resource_assignments WHERE user_id=$1) AND f.occurred_at>=$3 AND f.occurred_at<$4 ORDER BY f.occurred_at", args...)
 	if e != nil {
 		return nil, nil, e
 	}
@@ -276,7 +342,7 @@ func toStrings(items []any) []string {
 }
 
 func (q *request) taskClarity(r statRequest) ([]observation, map[string]int, map[string][]any, error) {
-	rows, e := q.tx.Query(q.Context, "SELECT f.brief_id::text,f.brief_version,f.section_id,f.reason,f.intern_id::text,f.id::text,f.first_seen,v.content->>'title' FROM app.task_frictions f JOIN app.task_briefs b ON b.id=f.brief_id AND b.owner_id=f.owner_id AND b.team_id=f.team_id JOIN app.task_brief_versions v ON v.brief_id=f.brief_id AND v.version=f.brief_version WHERE f.owner_id=$1 AND f.team_id=$2 AND f.first_seen>=$3 AND f.first_seen<$4 ORDER BY f.first_seen LIMIT 10000", q.user["id"], q.user["team_id"], r.from, r.to)
+	rows, e := q.tx.Query(q.Context, "SELECT f.brief_id::text,f.brief_version,f.section_id,f.reason,f.intern_id::text,f.id::text,f.first_seen,v.content->>'title' FROM app.task_frictions f JOIN app.task_briefs b ON b.id=f.brief_id AND b.owner_id=f.owner_id AND b.team_id=f.team_id JOIN app.task_brief_versions v ON v.brief_id=f.brief_id AND v.version=f.brief_version WHERE f.owner_id=$1 AND f.team_id=$2 AND f.first_seen>=$3 AND f.first_seen<$4 ORDER BY f.first_seen", q.user["id"], q.user["team_id"], r.from, r.to)
 	if e != nil {
 		return nil, nil, nil, e
 	}

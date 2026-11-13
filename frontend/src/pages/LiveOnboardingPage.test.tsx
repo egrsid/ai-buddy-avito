@@ -5,11 +5,13 @@ import { LiveOnboardingPage } from './LiveOnboardingPage';
 
 const mocks = vi.hoisted(() => ({
   listGoals: vi.fn(),
+  getGoal: vi.fn(),
   listJourneys: vi.fn(),
   createGoal: vi.fn(),
 }));
 
 vi.mock('../lib/endpoints', () => mocks);
+vi.mock('../lib/v3', () => ({ read3: async () => ({ items: await mocks.listGoals(), next_cursor: null }) }));
 
 const journeys = [
   { journey_id: 'db-access-team-a', version: 1, title: 'Доступ к БД', resource_id: 'db-team-a-test' },
@@ -19,12 +21,14 @@ describe('LiveOnboardingPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.listGoals.mockResolvedValue([goalBlocked]);
+    mocks.getGoal.mockResolvedValue(goalBlocked);
     mocks.listJourneys.mockResolvedValue(journeys);
     mocks.createGoal.mockResolvedValue(goalBlocked);
   });
 
   it('data: показывает цель из API', async () => {
     render(<LiveOnboardingPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Показать подзадачи' }));
     expect(await screen.findByText('Следующий шаг')).toBeInTheDocument();
     expect(screen.getByText('Следующий шаг')).toBeInTheDocument();
     expect(mocks.listGoals).toHaveBeenCalledTimes(1);
@@ -37,6 +41,7 @@ describe('LiveOnboardingPage', () => {
     fireEvent.click(start);
     expect(mocks.createGoal).toHaveBeenCalledWith('db-access-team-a', 1);
     // после создания — refetch, цель появляется
+    fireEvent.click(await screen.findByRole('button', { name: 'Показать подзадачи' }));
     expect(await screen.findByText('Следующий шаг')).toBeInTheDocument();
   });
 
@@ -53,6 +58,7 @@ describe('LiveOnboardingPage', () => {
     render(<LiveOnboardingPage />);
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Повторить' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Показать подзадачи' }));
     expect(await screen.findByText('Следующий шаг')).toBeInTheDocument();
   });
 });

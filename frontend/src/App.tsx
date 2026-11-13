@@ -16,7 +16,8 @@ import { ChatPage } from './pages/ChatPage';
 import { LiveOnboardingPage } from './pages/LiveOnboardingPage';
 import { LiveStepPage } from './pages/LiveStepPage';
 import { LiveApprovalsPage, LiveRequestsPage } from './pages/LiveAccessPages';
-import { LiveBuddyEscalationDetailPage, LiveBuddyEscalationsPage } from './pages/LiveBuddyPages';
+import { AssignmentsPage, MentorTasksPage, ReportsPage } from './pages/V3Tasks';
+import { StatisticsPage } from './pages/V3Statistics';
 import { LiveKnowledgeGapDetailPage, LiveKnowledgeGapsPage } from './pages/LiveKnowledgeGapsPages';
 import { LiveChatPage } from './pages/LiveChatPage';
 import { GrantStateBadge, RequestStatusBadge } from './components/StatusBadge';
@@ -99,10 +100,14 @@ function AppInner() {
       page = <LiveRequestsPage />;
     } else if (route === '/approvals') {
       page = <LiveApprovalsPage />;
-    } else if (escalationId) {
-      page = <LiveBuddyEscalationDetailPage id={escalationId} />;
-    } else if (route === '/buddy/escalations') {
-      page = <LiveBuddyEscalationsPage />;
+    } else if (route === '/assignments') {
+      page = <AssignmentsPage />;
+    } else if (route === '/mentor/tasks' || route.startsWith('/buddy/escalations')) {
+      page = <MentorTasksPage />;
+    } else if (route.startsWith('/mentor/reports')) {
+      page = <ReportsPage id={matchIdRoute(route, '/mentor/reports') ?? undefined} />;
+    } else if (route === '/statistics') {
+      page = <StatisticsPage documentation={user.roles.includes('documentation_owner')} />;
     } else if (gapId) {
       page = <LiveKnowledgeGapDetailPage id={gapId} />;
     } else if (route === '/knowledge-gaps') {
@@ -139,7 +144,7 @@ function AppInner() {
       view={view}
       onUserChange={(id) => {
         void switchAccount(id);
-        window.location.hash = href(id.startsWith('buddy-') ? '/buddy/escalations'
+        window.location.hash = href(id.startsWith('buddy-') ? (mode === 'live' ? '/mentor/tasks' : '/buddy/escalations')
           : id === 'approver-a' ? '/approvals' : id === 'docs-owner-a' ? '/knowledge-gaps' : '/onboarding');
       }}
       onViewChange={setView}

@@ -123,12 +123,12 @@ func TestDifficultyStatistics(t *testing.T) {
 		t.Fatal(denied)
 	}
 	summary := obj(stats["summary"])
-	if num(summary["affected_interns"]) != 2 || num(summary["observations"]) != 3+num(obj(access["metrics"])["observations"]) || summary["suppressed"] != false {
+	if summary["affected_interns"] != nil || summary["observations"] != nil || summary["suppressed"] != true {
 		t.Fatal(summary)
 	}
 	daily := list(stats["daily"])
 	today := obj(daily[len(daily)-1])
-	if len(daily) != 30 || num(today["affected_interns"]) != 2 || today["date"] != time.Now().In(moscow).Format("2006-01-02") {
+	if len(daily) != 30 || today["suppressed"] != true || today["date"] != time.Now().In(moscow).Format("2006-01-02") {
 		t.Fatal(today)
 	}
 	if strings.Contains(string(encode(stats)), internA) || strings.Contains(string(encode(stats)), "intern-a") {
@@ -136,16 +136,14 @@ func TestDifficultyStatistics(t *testing.T) {
 	}
 	// Paging, window and validation.
 	first := buddy.call("GET", "/api/v3/statistics/mentor?limit=1&days=7", nil, 200)
-	if len(list(first["rows"])) != 1 || first["next_cursor"] != "1" || len(list(first["daily"])) != 7 {
+	if len(list(first["rows"])) != 1 || first["next_cursor"] == nil || len(list(first["daily"])) != 7 {
 		t.Fatal(first)
 	}
-	second := buddy.call("GET", "/api/v3/statistics/mentor?limit=1&days=7&cursor=1&source=technical", nil, 200)
+	second := buddy.call("GET", "/api/v3/statistics/mentor?limit=1&days=7&cursor="+str(first["next_cursor"])+"&source=technical", nil, 200)
 	if obj(list(second["rows"])[0])["label"] == obj(list(first["rows"])[0])["label"] {
 		t.Fatal("cursor repeated a row")
 	}
-	if v := buddy.call("GET", "/api/v3/statistics/mentor?cursor=99", nil, 200); len(list(v["rows"])) != 0 {
-		t.Fatal(v)
-	}
+	buddy.call("GET", "/api/v3/statistics/mentor?cursor=99", nil, 422)
 	f.sql("UPDATE app.friction_events SET occurred_at=now()-interval '10 days'")
 	if v := buddy.call("GET", "/api/v3/statistics/mentor?days=7", nil, 200); len(list(v["rows"])) != 0 || num(obj(v["summary"])["affected_interns"]) != 0 {
 		t.Fatal(v)
@@ -207,6 +205,25 @@ func TestTaskClarityStatistics(t *testing.T) {
 	// Only hidden groups: the total is hidden as well instead of a misleading zero.
 	f.sql("DELETE FROM app.task_frictions WHERE section_id='deadline'")
 	if v := buddy.call("GET", "/api/v3/statistics/mentor?source=task_clarity", nil, 200); obj(v["summary"])["suppressed"] != true {
+		t.Fatal(v)
+	}
+}
+
+func TestStatisticsDistinctAcrossDocuments(t *testing.T) {
+	r := statRequest{days: 1, limit: 50, from: time.Now().Add(-time.Hour), to: time.Now()}
+	observations := []observation{}
+	for _, doc := range []string{"a", "b"} {
+		for _, intern := range []string{"one", "two"} {
+			observations = append(observations, observation{doc, Object{"document_id": doc}, doc, intern, intern, r.from})
+		}
+	}
+	v := aggregate("documentation", r, observations, nil, nil)
+	if num(obj(v["summary"])["observations"]) != 2 || num(obj(list(v["daily"])[0])["observations"]) != 2 {
+		t.Fatal(v)
+	}
+	r.filters = map[string]string{"document_id": "a"}
+	v = aggregate("documentation", r, observations, nil, nil)
+	if len(list(v["rows"])) != 1 {
 		t.Fatal(v)
 	}
 }
