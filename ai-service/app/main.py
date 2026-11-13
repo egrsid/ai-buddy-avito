@@ -1,10 +1,11 @@
-"""Development liveness only; generate/knowledge are specified but not implemented."""
+"""Точка входа uvicorn: app.main:app. Логика — в app.api и других модулях."""
 
-from fastapi import FastAPI
+import logging
+import os
 
-app = FastAPI(title="AI-buddy internal AI", docs_url=None, redoc_url=None)
+from app.api import create_app
+from app.config import load_settings
 
-
-@app.get("/healthz")
-def health() -> dict[str, str]:
-    return {"status": "ok", "service": "ai-service"}
+# Без этого предупреждения провайдера (обрезка промпта, прогрев) не видны в логах контейнера.
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+app = create_app(load_settings(os.environ))

@@ -59,6 +59,11 @@ def main() -> None:
             return
         # Preserve project imports for independent service test execution.
         os.environ["PYTHONPATH"] = str(ROOT / folder)
+        # Test containers keep sources read-only. Coverage artifacts belong in an
+        # explicitly writable directory, independent of the source mount.
+        output = Path(os.environ.get("COVERAGE_OUTPUT_DIR", str(ROOT / folder / "coverage")))
+        output.mkdir(parents=True, exist_ok=True)
+        os.environ.setdefault("COVERAGE_FILE", str(output / ".coverage"))
         run(
             [
                 sys.executable,
@@ -68,7 +73,7 @@ def main() -> None:
                 f"--cov={module}",
                 "--cov-fail-under=80.01",
                 "--cov-report=term-missing",
-                f"--cov-report=xml:{folder}/coverage/coverage.xml",
+                f"--cov-report=xml:{output / 'coverage.xml'}",
             ],
             ROOT,
         )

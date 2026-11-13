@@ -1,5 +1,13 @@
 # Работа пяти участников
 
+13 ноября владелец разрешил изменения только TL и AI. В TL checkout локально импортированы
+авторские BE/AI/FE/QA snapshots для интеграции; refs/ветки BE/FE/QA не менялись, их runtime
+не исправлялся за авторов. AI changes этого прохода: citations/failover/tests; TL — общая
+orchestration/CI/verification/docs. Публикации и commit нет.
+Текущая цепочка Pro → 3.5 → offline заменяет прежнее single-model решение ниже;
+[результат и оставшиеся назначения](tl-readiness.md).
+
+
 2026-11-11 · назначения по прямому поручению пользователя. TL — владелец проекта;
 Backend, AI Engineer, Frontend, Fullstack–QA–Integration — остальные четыре участника.
 Личные имена/GitHub handles не предоставлены и не придуманы; ответственность по ролям
@@ -81,7 +89,7 @@ smoke, TL сводит общую интеграцию с реальным resta
 
 Ежедневно результат/следующая задача/блокер в согласованном TL канале (канал не придуман).
 Ключ/model access, окружение, оплату и всю LLM-specific интеграцию обеспечивает AI Engineer
-самостоятельно, без подтверждения TL. Модель ai-sage/GigaChat3.5-432B-A28B; бюджет хакатона
+самостоятельно, без подтверждения TL. Primary GigaChat/GigaChat-3-Pro, secondary ai-sage/GigaChat3.5-432B-A28B; бюджет хакатона
 1000 ₽, начальный stop 800 ₽, reserve/usage ledger и cap по [AI strategy](../AI_ENGINEERING_STRATEGY.md).
 TL сохраняет scope/security/API/product acceptance и общую инфраструктуру вне LLM.
 Фактические ключ/оплата/готовность/срок ещё не подтверждены.

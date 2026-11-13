@@ -1,5 +1,32 @@
 # AI integration — дополнительные решения TL
 
+## Уточнение владельца · 13 ноября 2026
+
+Текущее live-решение: `GigaChat/GigaChat-3-Pro` →
+`ai-sage/GigaChat3.5-432B-A28B` → детерминированный offline provider.
+Название «GigaChat3.5Pro» не является проверенным API ID; Pro ID подтверждён
+уже поставленным AI smoke. [Каталог Cloud.ru](https://cloud.ru/docs/foundation-models/ug/topics/overview__available__models)
+и фактические AI reports — разные виды evidence; доступ конкретного аккаунта проверяется отдельно.
+Прежнее решение о единственной модели/только ручном offline retry заменено этим поручением.
+
+В TL integration checkout это реализовано поверх существующего OpenAI adapter,
+общего budget ledger и mock_answer. Primary — LLM_MODEL, secondary — LLM_FALLBACK_MODEL,
+цены secondary задаются отдельно; unknown usage сохраняет резерв, budget refusal
+не вызывает вторую платную модель. Максимум две попытки по 6s в прежнем 85s budget;
+каждая буферизуется до успешного EOF, прерванный ответ не попадает в историю.
+Сохраняются верхние лимиты 20/25/85/90s, ACL/retrieval/source validation и Go ownership.
+В degraded ответе нет tool.proposed; явные Go actions/preview/confirm остаются доступны.
+
+В чат через обычный message.delta всегда попадает: «Произошла ошибка обращения к LLM.
+Работает fallback. Обратись к своему наставнику напрямую для решения вопроса».
+При offline recovery явно сказано, что ответ подготовлен без LLM. Go сохраняет его
+как завершённый резервный ответ; ошибочный partial исходной модели отброшен.
+Публичные схемы не расширяются. Mock mode не делает live attempts и не сообщает
+о выдуманном сбое. Structured операции остаются детерминированными.
+
+Независимые component/API/DB/fault/restart результаты и оставшиеся FE/clean-build/live
+gates — [TL record](../team/tl-readiness.md). Это не финальная browser/live приемка.
+
 2026-11-11 · RP-TL-AI-01 · уточнение target v2 по вопросам AI Engineer.
 Решения подготовлены по поручению TL. Это документация, не выполненные схемы,
 изменения Docker/CI/seed, ingest или live-подключение. Исполняемый v1 остаётся legacy.
@@ -144,7 +171,7 @@ fail closed. Превышение budget до API call → LLM_UNAVAILABLE, не
 
 Первые 5–10 замеров входят в примерно 10 smoke-запросов: access/usage/TTFT/schema/SSE.
 Таймеры §2 (20/25/85/90s) сохраняются; heartbeat и reasoning frame не content. Не внедрять
-reasoning diagnostics или GigaChat-3-Pro fallback автоматически. Ollama не требуется CI/demo.
+reasoning diagnostics; порядок разрешенного failover задан уточнением 13 ноября выше. Ollama не требуется CI/demo.
 Небольшой live eval в пределах бюджета — отдельно от обязательных offline tests.
 
 QA response cache — опционален, полная политика [security](security.md) и strategy §13:

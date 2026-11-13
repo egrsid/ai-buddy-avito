@@ -1,170 +1,120 @@
 # Avito AI-buddy
 
 **Engineering Onboarding & Feedback Loop** — помощник инженерного стажёра от рабочей
-цели до проверенного результата. Утверждённый маршрут учитывает права и зависимости,
-помогает оформить заявку, проверяет подключение, передаёт диагностику buddy и обнаруживает
-повторяющиеся проблемы, чтобы человек мог улучшить инструкцию.
+цели до проверенного результата: разрешённый маршрут → заявка с подтверждением →
+отдельное одобрение → IAM/DB evidence → blocker/buddy → повтор у второго стажёра →
+Knowledge Gap Candidate с человеческим review. Accepted не публикует документацию.
 
-Главный MVP: **доступ к синтетической тестовой БД → отдельное mock-одобрение → IAM recheck →
-безопасный connection check → blocker/buddy → та же ошибка у второго стажёра → Knowledge Gap Candidate**.
-Чат/RAG помогают цели; ручной checklist и расшифровка терминов не центр продукта.
+В TL checkout локально сведены BE/AI/FE/QA поставки. **Настоящий сквозной API-путь
+проверен; полный сайт для browser demo ещё требует доработки FE.** Текущие source SHA,
+проверки и приоритеты — [TL readiness](docs/team/tl-readiness.md),
+[backlog](docs/team/backlog.md). Старые S1–S4 не являются текущим планом.
+Commit/push/PR/merge в этом проходе не выполнялись.
 
-## Состояние и перепланирование
+React/TypeScript/Tailwind/TanStack Query/Zod → Go REST/SSE → Python/FastAPI и отдельный
+corporate mock; PostgreSQL app/kb/corporate и pgvector. Только Go меняет app state;
+AI предлагает и фильтрует знания по проверенному scope до LLM.
+[Product Spec](docs/product/specification.md), [Architecture](ARCHITECTURE.md),
+[ADR](docs/architecture/decisions.md), [восемь SDD](docs/features/README.md).
 
-Документация и P0-план обновлены по [CODEX_PROJECT_REPLAN.md](CODEX_PROJECT_REPLAN.md).
-**Новый MVP еще не готов.** В TL checkout сведены executable v2 schemas BE+AI, подготовлены
-общие tooling/Docker/Compose/CI; runtime и dataset пока bootstrap/legacy. В отдельной
-FE-ветке есть fixture UI. Consumer gate и продуктовая реализация еще открыты.
-Фактические commits, TL решения/проверки и остаток: [TL readiness](docs/team/tl-readiness.md).
-Новая AI-поставка 3f955322 содержит offline API/SSE/ACL/diagnostics и семь документов:
-184 tests, 99.90% coverage, evals 29/29. Она пока не импортирована в этот checkout;
-[повторный review](docs/team/ai-review-2026-11-12.md) содержит четыре открытых замечания,
-включая отсутствие persistent kb/ingest/readiness. Это не готовность полного MVP.
-Срок владельца — **12 ноября 2026, 22:00 МСК**; он не заменяет приемку P0.
+## Локальная offline-демонстрация
 
-Стек сохранён: React/TypeScript/Tailwind/TanStack Query/Zod → Go REST/SSE → Python/FastAPI
-и corporate mock; одна PostgreSQL с app/kb/corporate, pgvector для knowledge. Только Go
-меняет бизнес-состояние; Python предлагает действия и фильтрует знания до LLM. Test DB
-сценария не является внутренней PostgreSQL. [Architecture](ARCHITECTURE.md).
-
-## Старт команды
-
-1. Прочитать [AGENTS](AGENTS.md), [vision](docs/product/vision.md), [Product Spec](docs/product/specification.md),
-   [ADR](docs/architecture/decisions.md), [API/events](docs/architecture/api-contracts.md).
-2. Пять ролей уже получили [индивидуальные назначения](docs/team/assignments/README.md).
-   Fullstack–QA–Integration имеет один небольшой RP-QA-01; фактические и планируемые
-   рабочие ветки перечислены в [inventory](docs/team/branches.md). Владелец публикует
-   текущую редакцию и готовит рабочие папки, не теряя существующую QA-работу.
-3. TL-часть RP-CONTRACT-01 подготовлена: [решения](docs/architecture/contract-baseline.md).
-   Backend делает RP-CONTRACT-BE-01, AI Engineer — RP-CONTRACT-AI-01, Frontend проверяет
-   потребление DTO, TL затем принимает комплект. [Contract handoff](docs/team/contract-handoff.md).
-   Вся RP-CONTRACT-01 ещё не DONE; после неё — RP-DATA-01. [Статус schemas](contracts/README.md) отделяет проверенный snapshot от final acceptance.
-4. Команда берёт задачи [backlog](docs/team/backlog.md): семь дней от спецификаций до demo.
-   Первый продуктовый checkpoint — разрешённый JSON journey и фактический IAM access state.
-5. Агенты работают локально только в назначенной текущей ветке, без создания/переключения
-   веток. Публикацию, PR и права выполняет владелец репозитория.
-
-## Запуск существующего каркаса через Docker
-
-Нужны Docker Engine/Desktop с Compose v2 (2.20+), Git и make; для smoke — Python 3.
-Node/Go/Python для контейнерного запуска на хосте не нужны. Команды ниже запускают
-**текущий каркас**, не новый продуктовый демосценарий.
+Нужны Docker Engine/Desktop, Compose v2 и Python 3 для orchestration. Первый build
+загружает образы/зависимости; после подготовки runtime не требует LLM/корпоративной сети.
 
 ```sh
-cp .env.example .env
-make up
-make smoke
-make verify-db
+make demo-up
 ```
 
-http://localhost:5173, Go http://localhost:8080/healthz. AI/mock/PostgreSQL доступны только
-в Compose-сети; порты хоста привязаны к 127.0.0.1. Первый старт: bootstrap roles/pgvector →
-migrate → seed → сервисы; сборка загружает образы/зависимости из сети. После подготовки
-образов offline demo не должен требовать LLM/корпоративной сети; это отдельная приёмка.
-
-.env.example содержит только local demo values, .env в Git ignore. LLM_MODE=mock не требует
-ключа; mock provider и live adapter пока не реализованы. Healthcheck — только liveness.
-Предыдущая INF-01 не закрыта: после исправления bootstrap COPY в Dockerfile.postgres
-bootstrap up/migrate/seed/verify-db/smoke подтверждены TL, target v2 требует отдельной RP-INF-01 приемки. TL теперь подтвердил bootstrap в отдельном проекте, повтор migrate/seed, role isolation и
-liveness; target P0 еще не проверен. Существующие volumes не удалялись.
+Отдельный проект `ai-buddy-demo-local`, сайт http://localhost:15173,
+Go http://localhost:18080. Runner явно использует synthetic `.env.example`, mock LLM,
+v2 seed → реальный kb ingest → /readyz → Go → UI. `.env` для этого запуска не читается.
+Runtime DB-роли ограничены своими схемами; внутренние AI/mock/DB порты не опубликованы.
+Новое demo-окружение не переносит старого intern-b между командами и не удаляет старые volumes.
 
 ```sh
-make migrate
-make seed
-make down
+python3 -m scripts.demo status
+python3 -m scripts.demo ai-db-test
+python3 -m scripts.demo api-test
+make demo-down
 ```
 
-Миграции повторяемы, seed не должен стирать существующий прогресс.
-`make reset CONFIRM=delete-local-data` удаляет ВСЕ local данные; выполнять только по явному решению
-владельца. Bootstrap выполняется только на новом volume; изменение .env не меняет
-существующие DB-роли/пароли. Восстановление после bootstrap error: [development](docs/operations/development.md).
+`api-test` выполняет весь synthetic сценарий с реальным AI draft/SSE и предназначен
+для свежего отдельного dataset. После него данные уже пройдены — это не начальный
+экран чистой репетиции. Down сохраняет volumes. Для новой репетиции можно задать новый
+`--project ai-buddy-demo-ИМЯ` (имя — lowercase ASCII). Параллельно порты должны быть свободны.
+Reset с удалением данных выполняется только по явному решению владельца.
 
-## Локальная разработка
+13 ноября clean build остановился на TLS timeout Docker Hub. Реальная репетиция
+запущена в `ai-buddy-demo-20261113` на кешированных images с нынешними source mounts;
+пересобранный Go binary совпал по SHA-256. Это ограничение clean-build acceptance,
+а не свидетельство успешной сборки production images. [Подробности](docs/team/tl-readiness.md).
 
-Закреплены Node 26.13.0 (.nvmrc), Go 1.27.3 (backend/go.mod), Python 3.12, uv 0.13.4,
-PostgreSQL 17/pgvector 0.8.2. Прямые frontend версии в package.json, lock в package-lock.json;
-Python pyproject.toml + uv.lock. Подробности: [development](docs/operations/development.md).
+## Что мешает показать весь сценарий кликами
+
+- FE Live API начинает запросы до завершения login; refresh возвращает режим Fixtures.
+- В live шаге нет контекстного чата/draft/confirm заявки; общий чат не привязан к goal.
+- DB check всегда посылает `ssl_mode=require`: нельзя показать SSL failure → buddy → recheck.
+- В selector нет intern-b/intern-c; полный browser A/B/C E2E ещё не предъявлен.
+
+Эти FE исходники сохранены из авторской ветки без исправления за автора. Переход на
+Fixtures показывает помеченные UI-примеры и не заменяет реальное выполнение P0.
+Для созвона нужен оставшийся FE проход и чистая browser репетиция.
+
+## Live LLM и fallback
+
+По поручению владельца порядок: `GigaChat/GigaChat-3-Pro` →
+`ai-sage/GigaChat3.5-432B-A28B` → существующий deterministic offline provider.
+Это точные ID из поставки AI; «GigaChat3.5Pro» не подтверждённый API ID.
+Используются прежние OpenAI-compatible adapter, ACL retrieval и общий persistent budget ledger.
+
+Для отдельного live запуска скопировать `.env.example` в `.env`, задать `LLM_MODE=live`,
+`LLM_PROVIDER=openai`, `LLM_BASE_URL`, `LLM_MODEL=GigaChat/GigaChat-3-Pro`, `LLM_API_KEY`,
+`EMBEDDING_MODEL=BAAI/bge-m3`, а также проверенные цены обеих моделей. Затем использовать
+`make mvp-up` в отдельном Compose project с корректными APP_ORIGIN/портами.
+`make demo-up` намеренно всегда offline. Бюджет 1000/stop 800 ₽, unknown usage сохраняет
+резерв, budget refusal не вызывает вторую платную модель. Ключи только в env Python.
+
+Каждая попытка ограничена 6s и буферизуется до успешного конца; исходный ошибочный partial
+не сохраняется. Общие 20/25/85/90s лимиты не увеличены. При сбое в самом чате появляется:
+
+> Произошла ошибка обращения к LLM. Работает fallback. Обратись к своему наставнику напрямую для решения вопроса.
+
+Offline явно помечен как ответ без LLM. Degraded ответ не создаёт action proposal;
+серверные preview/confirm по-прежнему доступны отдельно. Публичные схемы не менялись.
+Проверены local 503 обеих моделей, сохранение уведомления Go и настоящий Backend restart.
+Paid вызовов в этом проходе нет; live safety/latency/cost требуют отдельной приемки.
+[AI policy](docs/architecture/ai-design.md), [strategy](docs/AI_ENGINEERING_STRATEGY.md).
+
+## Разработка и проверки
 
 ```sh
 make install
 make check
+make mvp-preflight
 make test
 ```
 
-В отдельных терминалах из корня:
+Host-run требует Node 26.13.0, Go 1.27.3, Python 3.12, uv 0.13.4. Go/mock tests требуют
+отдельную seeded `buddy_test_*` БД: `TEST_DATABASE_URL`, `TEST_APP_PASSWORD`,
+`TEST_MOCK_PASSWORD`, `MOCK_TEST_DSN`, `MOCK_TEST_ADMIN_DSN` и
+`uv run --frozen python -m scripts.backend_test_db`. Они не должны работать на demo progress DB.
+Конфигурация такой DB добавлена в CI; execution CI ещё не подтверждён.
 
-```sh
-cd backend
-go run ./cmd/api
-```
+Line coverage строго >80% отдельно: Go 80.98%, AI >99%, mock 98.05%, FE 94.47%.
+QA API tests 2/2, AI DB 5/5, offline evals 29/29. Это не полная browser/live/clean-build
+приемка. Host `make test` остановился из-за отсутствия Go; component Go checks выполнены
+в локальном toolchain image, race detector остаётся открытым.
+[Testing](docs/testing/strategy.md), [development](docs/operations/development.md).
 
-```sh
-uv run --frozen uvicorn app.main:app --app-dir ai-service --port 8000
-```
+## Синтетические роли и границы
 
-```sh
-uv run --frozen uvicorn corporate.main:app --app-dir mock-services --port 8001
-```
+V2 seed: intern-a/intern-b команды A → buddy-a; intern-c команды B → buddy-b;
+approver-a назначен ресурсу db-team-a-test; docs-owner-a рассматривает его инструкцию.
+Один JSON journey, db_reader, разрешённые IAM/DB checks без SQL/DSN. Не путать test DB
+с внутренним PostgreSQL приложения. Restricted/private/team B документы нужны для ACL negatives.
 
-```sh
-cd frontend
-npm run dev
-```
-
-Каркас не использует БД; будущим handlers нужны PGHOST/PGDATABASE/PGUSER/PGPASSWORD.
-Vite proxy /api → localhost:8080. Host-run не загружает .env автоматически: shell/IDE
-передают переменные; Compose подставляет их. Не передавать admin DSN runtime.
-
-## Проверки
-
-- make check: локальные ссылки, legacy JSON Schema/examples/seed, SQL syntax/YAML,
-  Python lint/format и tests контрактов/миграций.
-- make test: дополнительно component checks Go/AI/mock/frontend, vet/build/typecheck;
-  line coverage строго >80% каждого прикладного компонента с первой бизнес-фичи.
-- make smoke: только liveness работающего Compose; make verify-db: seed/DB role isolation.
-- В текущей foundation P0 E2E отсутствуют; в отдельной QA-ветке есть два legacy API-теста
-  ([inventory](docs/team/branches.md)), назначенных Fullstack на адаптацию. Полный browser
-  E2E — задача Frontend RP-E2E-01. После добавления тестов: из frontend
-  `npx playwright install chromium`, затем `npm run test:e2e`.
-
-До бизнес-модулей runner пишет BOOTSTRAP, не 100% покрытого MVP. Нельзя помещать логику
-в исключённый wiring. [Testing](docs/testing/strategy.md) содержит новую матрицу приёмки;
-[CI](.github/workflows/ci.yml) пока проверяет существующий каркас.
-
-## Тестовые пользователи: сейчас и целевой seed
-
-**Текущий seed v1:** intern-a команды A → buddy-a; intern-b команды B → buddy-b.
-Всего 4 аккаунта, 8 задач, 3 demo_public документа, без embeddings. Login пока отсутствует.
-
-**Планируемый seed v2 (RP-MOCK-01, ещё не создан):** intern-a и intern-b команды A → buddy-a;
-intern-c команды B → buddy-b; approver-a и docs-owner-a с ограниченными назначениями.
-Ресурсы db-team-a-test, db-team-b-test, db-restricted; team/restricted/private synthetic
-документы. Разделение двух одинаковых ошибок внутри команды A и чужой команды B необходимо
-для feedback loop и negative ACL. Изменение команды старого intern-b не выполняется тихо
-при повторном seed; переход описан в [data model](docs/architecture/data-model.md).
-Материалы учебные, не реальные регламенты/данные Авито.
-
-## Demo и границы
-
-[Пятиминутный сценарий](docs/product/demo.md): цель → AI draft/confirm → отдельный approver →
-SSL failure → buddy/recheck → второй intern → candidate для docs-owner. Это target demo,
-недоступное в текущем каркасе. Mock approval и evidence явно обозначаются как synthetic.
-No confirm ≠ submitted, approved ≠ grant, ответ buddy ≠ verified; Go проверяет результат.
-Accepted candidate не редактирует/не публикует документацию.
-
-HR, реальные интеграции, arbitrary SQL/команды, MR/code review/IDE, workflow builder,
-ML-кластеризация и multi-agent платформа вне MVP. Все P0 — [восемь SDD](docs/features/README.md).
-Внешние provider/key/budget, originals и площадка — [dependencies](docs/operations/external-dependencies.md).
-Live LLM не блокирует offline P0; публичный demo требует отдельной auth/HTTPS и отключения demo-login.
-
-## Target acceptance после поставки компонентов
-
-`make mvp-preflight` выявляет отсутствие runtime/migrations/tests. `make mvp-up` использует
-compose.mvp.yaml: seed → AI ingest → /readyz → Go → UI. `make ai-db-test` запускает
-реальные AI DB tests в отдельном test image под runtime ролью. Сейчас preflight BLOCKED.
-AI Engineer передает **реальные JSON argv arrays**, которые экспортируются в окружение
-как AI_INGEST_COMMAND и AI_DB_TEST_COMMAND перед make mvp-up. Никакого shell eval нет;
-самих CLI/tests в bootstrap пока нет. APP_ENV=local/test, LLM_MODE=mock, faults default false.
-CI workflow_dispatch mvp_acceptance включает тот же gate после поставок, команды берет
-из repository vars; текущая правка не меняет настройки GitHub. Это только AI DB portion,
-не замена browser/security/full offline acceptance. [Инструкции](docs/operations/development.md).
+Реальные корпоративные интеграции, HR, произвольные команды/SQL, автоматическая выдача
+прав и публикация документации вне MVP. Public hosting требует отдельной auth/HTTPS и
+отключения demo-login. [Демосценарий](docs/product/demo.md), [AGENTS](AGENTS.md),
+[назначения](docs/team/assignments/README.md), [ветки](docs/team/branches.md).

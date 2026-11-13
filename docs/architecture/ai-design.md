@@ -1,5 +1,32 @@
 # AI design target v2
 
+## Уточнение владельца · 13 ноября 2026
+
+Текущее live-решение: `GigaChat/GigaChat-3-Pro` →
+`ai-sage/GigaChat3.5-432B-A28B` → детерминированный offline provider.
+Название «GigaChat3.5Pro» не является проверенным API ID; Pro ID подтверждён
+уже поставленным AI smoke. [Каталог Cloud.ru](https://cloud.ru/docs/foundation-models/ug/topics/overview__available__models)
+и фактические AI reports — разные виды evidence; доступ конкретного аккаунта проверяется отдельно.
+Прежнее решение о единственной модели/только ручном offline retry заменено этим поручением.
+
+В TL integration checkout это реализовано поверх существующего OpenAI adapter,
+общего budget ledger и mock_answer. Primary — LLM_MODEL, secondary — LLM_FALLBACK_MODEL,
+цены secondary задаются отдельно; unknown usage сохраняет резерв, budget refusal
+не вызывает вторую платную модель. Максимум две попытки по 6s в прежнем 85s budget;
+каждая буферизуется до успешного EOF, прерванный ответ не попадает в историю.
+Сохраняются верхние лимиты 20/25/85/90s, ACL/retrieval/source validation и Go ownership.
+В degraded ответе нет tool.proposed; явные Go actions/preview/confirm остаются доступны.
+
+В чат через обычный message.delta всегда попадает: «Произошла ошибка обращения к LLM.
+Работает fallback. Обратись к своему наставнику напрямую для решения вопроса».
+При offline recovery явно сказано, что ответ подготовлен без LLM. Go сохраняет его
+как завершённый резервный ответ; ошибочный partial исходной модели отброшен.
+Публичные схемы не расширяются. Mock mode не делает live attempts и не сообщает
+о выдуманном сбое. Structured операции остаются детерминированными.
+
+Независимые component/API/DB/fault/restart результаты и оставшиеся FE/clean-build/live
+gates — [TL record](../team/tl-readiness.md). Это не финальная browser/live приемка.
+
 Версия 2.0 · целевое проектирование. TL checkout пока содержит bootstrap AI;
 в AI-ветке 3f955322 уже реализованы offline HTTP/SSE, lexical ACL retrieval и диагностика.
 [Review 12 ноября](../team/ai-review-2026-11-12.md) фиксирует tests/evals и остаток:
@@ -25,8 +52,8 @@ fallback для полного P0 demo, а не только fixtures для ч�
 
 Live RP-AI-02 идёт для MVP отдельно от обязательного offline P0; mock CI остаётся без
 платного ключа/сети. Ollama — опциональный local experiment, не обязательная зависимость.
-При live-сбое/stop завершить failed с LLM_UNAVAILABLE/LLM_TIMEOUT и дать явный offline
-retry; не смешивать токены и не менять provider автоматически. Go candidate fallback сохраняется.
+При live-сбое/stop действует описанный выше recovery с явным notice;
+ошибочные попытки не смешиваются с успешным резервным ответом. Go candidate fallback сохраняется.
 GigaChat-3-Pro/прямой API Сбера — только резервные варианты, reasoning split chat/diagnostics
 не принят. A-Vibe — после MVP через тот же LLMProvider, без переписывания RAG/Go logic.
 

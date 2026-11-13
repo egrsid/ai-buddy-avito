@@ -1,0 +1,120 @@
+{
+  "dataset_version": "2",
+  "users": [
+    {
+      "id": "10000000-0000-4000-8000-000000000003",
+      "account_id": "intern-a",
+      "display_name": "intern-a",
+      "role": "intern",
+      "team": "team-a",
+      "buddy_id": "10000000-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000004",
+      "account_id": "intern-b",
+      "display_name": "intern-b",
+      "role": "intern",
+      "team": "team-a",
+      "buddy_id": "10000000-0000-4000-8000-000000000001"
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000005",
+      "account_id": "intern-c",
+      "display_name": "intern-c",
+      "role": "intern",
+      "team": "team-b",
+      "buddy_id": "10000000-0000-4000-8000-000000000002"
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000001",
+      "account_id": "buddy-a",
+      "display_name": "buddy-a",
+      "role": "buddy",
+      "team": "team-a",
+      "buddy_id": null
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000002",
+      "account_id": "buddy-b",
+      "display_name": "buddy-b",
+      "role": "buddy",
+      "team": "team-b",
+      "buddy_id": null
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000006",
+      "account_id": "approver-a",
+      "display_name": "approver-a",
+      "role": "access_approver",
+      "team": "team-a",
+      "buddy_id": null
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000007",
+      "account_id": "docs-owner-a",
+      "display_name": "docs-owner-a",
+      "role": "documentation_owner",
+      "team": "team-a",
+      "buddy_id": null
+    }
+  ],
+  "resources": [
+    {
+      "resource_id": "db-team-a-test",
+      "team_id": "team-a",
+      "requestable_roles": [
+        "db_reader"
+      ],
+      "approver_account_id": "approver-a"
+    },
+    {
+      "resource_id": "db-team-b-test",
+      "team_id": "team-b",
+      "requestable_roles": [],
+      "approver_account_id": null
+    },
+    {
+      "resource_id": "db-restricted",
+      "team_id": "team-a",
+      "requestable_roles": [],
+      "approver_account_id": null
+    }
+  ],
+  "documents": [
+    {
+      "key": "connection-a",
+      "id": "0000000a-0000-4000-8000-00000000000a",
+      "version": 1
+    },
+    {
+      "key": "request-a",
+      "id": "0000000b-0000-4000-8000-00000000000b",
+      "version": 1
+    },
+    {
+      "key": "public",
+      "id": "0000000c-0000-4000-8000-00000000000c",
+      "version": 1
+    },
+    {
+      "key": "team-b",
+      "id": "0000000d-0000-4000-8000-00000000000d",
+      "version": 1
+    },
+    {
+      "key": "restricted",
+      "id": "0000000e-0000-4000-8000-00000000000e",
+      "version": 1
+    },
+    {
+      "key": "private",
+      "id": "0000000f-0000-4000-8000-00000000000f",
+      "version": 1
+    },
+    {
+      "key": "injection",
+      "id": "00000010-0000-4000-8000-000000000010",
+      "version": 1
+    }
+  ]
+}

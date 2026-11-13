@@ -8,6 +8,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "jsonschema" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pyyaml" },
@@ -16,7 +17,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx" },
     { name = "pglast" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -26,6 +26,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115,<1" },
+    { name = "httpx", specifier = ">=0.28,<1" },
     { name = "jsonschema", specifier = ">=4.23,<5" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2,<4" },
     { name = "pyyaml", specifier = ">=6,<7" },
@@ -34,7 +35,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx", specifier = ">=0.28,<1" },
     { name = "pglast", specifier = ">=7,<10" },
     { name = "pytest", specifier = ">=8,<10" },
     { name = "pytest-cov", specifier = ">=6,<8" },

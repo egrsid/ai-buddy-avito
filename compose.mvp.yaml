@@ -1,5 +1,11 @@
 # Opt-in target acceptance. Requires real AI CLI/tests; never silently skips them.
 services:
+  migrate:
+    environment:
+      SEED_DATASET: v2
+  seed:
+    environment:
+      SEED_DATASET: v2
   ai-ingest:
     build:
       context: .
@@ -8,6 +14,8 @@ services:
     command: [python, -m, scripts.ai_tasks, ingest]
     environment: &ai-runtime
       PGHOST: postgres
+      PYTHONPATH: /workspace/ai-service
+      KNOWLEDGE_SOURCE: db
       PGDATABASE: ${POSTGRES_DB:-buddy}
       PGUSER: ai_service
       PGPASSWORD: ${AI_DB_PASSWORD:?set AI_DB_PASSWORD}
@@ -19,9 +27,27 @@ services:
       LLM_API_KEY: ${LLM_API_KEY:-}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
       EMBEDDING_DIM: ${EMBEDDING_DIM:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      LLM_NUM_CTX: ${LLM_NUM_CTX:-}
+      LLM_MAX_OUTPUT_TOKENS: ${LLM_MAX_OUTPUT_TOKENS:-}
+      LLM_KEEP_ALIVE: ${LLM_KEEP_ALIVE:-}
+      LLM_REASONING_EFFORT: ${LLM_REASONING_EFFORT:-}
+      LLM_BUDGET_LEDGER_PATH: /var/lib/ai-budget/budget.sqlite
+      LLM_BUDGET_STOP_RUB: ${LLM_BUDGET_STOP_RUB:-}
+      LLM_PRICE_INPUT_RUB: ${LLM_PRICE_INPUT_RUB:-}
+      LLM_PRICE_OUTPUT_RUB: ${LLM_PRICE_OUTPUT_RUB:-}
+      EMBEDDING_PRICE_RUB: ${EMBEDDING_PRICE_RUB:-}
+      LLM_FALLBACK_MODEL: ${LLM_FALLBACK_MODEL:-}
+      LLM_FALLBACK_PRICE_INPUT_RUB: ${LLM_FALLBACK_PRICE_INPUT_RUB:-}
+      LLM_FALLBACK_PRICE_OUTPUT_RUB: ${LLM_FALLBACK_PRICE_OUTPUT_RUB:-}
       MOCK_FAULTS_ENABLED: ${MOCK_FAULTS_ENABLED:-false}
       AI_MOCK_SCENARIO: ${AI_MOCK_SCENARIO:-normal}
       AI_INGEST_COMMAND: ${AI_INGEST_COMMAND:-}
+    # Live-ingest тоже платит за эмбеддинги: том переживает рестарт, иначе бюджет обнулится.
+    volumes:
+      - ai-budget:/var/lib/ai-budget
+    # Локальная Ollama на хосте; на Linux имя без этой строки не резолвится.
+    extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on:
       seed: {condition: service_completed_successfully}
 
@@ -53,6 +79,7 @@ services:
       MOCK_FAULTS_ENABLED: 'false'
       AI_MOCK_SCENARIO: normal
       AI_DB_TEST_COMMAND: ${AI_DB_TEST_COMMAND:-}
+      KB_INTEGRATION: '1'
     depends_on:
       ai-ingest: {condition: service_completed_successfully}
 

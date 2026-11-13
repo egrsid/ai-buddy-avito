@@ -1,5 +1,11 @@
 # Authorization & Privacy — tasks
 
+13 ноября: компоненты сведены в TL, настоящий AI/Go/corporate/DB API путь прошёл;
+полные browser/clean image/consumer gates открыты. Текущие source SHA, component checks
+и конкретные оставшиеся задачи — [TL record](../../team/tl-readiness.md).
+Ниже исходные задачи; их checkbox не заменяет результат указанного integration review.
+
+
 Все продуктовые задачи не завершены; владельцы, P0/день, зависимости и разрешённые
 директории централизованы в [backlog](../../team/backlog.md). Исполнители/reviewers
 назначены по ролям в [handoff](../../team/assignments/README.md); имена не выдумывать. [Spec](spec.md), [design](design.md).

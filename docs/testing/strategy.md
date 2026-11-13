@@ -2,7 +2,8 @@
 
 Версия 2.0 · 2026-11-11. [Product DoD](../product/specification.md),
 [demo](../product/demo.md), [SDD](../features/README.md) — критерии нового MVP.
-Сейчас только каркас: тесты старых контрактов не подтверждают готовность новых сценариев.
+Runtime v2 и настоящий API feedback путь проверены в TL. Browser A/B/C, clean build/CI
+и Go race остаются открытыми. [Фактический отчет](../team/tl-readiness.md).
 
 ## Команды и честный статус
 

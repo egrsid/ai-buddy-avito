@@ -1,5 +1,32 @@
 # AI Engineering Strategy
 
+## Уточнение владельца · 13 ноября 2026
+
+Текущее live-решение: `GigaChat/GigaChat-3-Pro` →
+`ai-sage/GigaChat3.5-432B-A28B` → детерминированный offline provider.
+Название «GigaChat3.5Pro» не является проверенным API ID; Pro ID подтверждён
+уже поставленным AI smoke. [Каталог Cloud.ru](https://cloud.ru/docs/foundation-models/ug/topics/overview__available__models)
+и фактические AI reports — разные виды evidence; доступ конкретного аккаунта проверяется отдельно.
+Прежнее решение о единственной модели/только ручном offline retry заменено этим поручением.
+
+В TL integration checkout это реализовано поверх существующего OpenAI adapter,
+общего budget ledger и mock_answer. Primary — LLM_MODEL, secondary — LLM_FALLBACK_MODEL,
+цены secondary задаются отдельно; unknown usage сохраняет резерв, budget refusal
+не вызывает вторую платную модель. Максимум две попытки по 6s в прежнем 85s budget;
+каждая буферизуется до успешного EOF, прерванный ответ не попадает в историю.
+Сохраняются верхние лимиты 20/25/85/90s, ACL/retrieval/source validation и Go ownership.
+В degraded ответе нет tool.proposed; явные Go actions/preview/confirm остаются доступны.
+
+В чат через обычный message.delta всегда попадает: «Произошла ошибка обращения к LLM.
+Работает fallback. Обратись к своему наставнику напрямую для решения вопроса».
+При offline recovery явно сказано, что ответ подготовлен без LLM. Go сохраняет его
+как завершённый резервный ответ; ошибочный partial исходной модели отброшен.
+Публичные схемы не расширяются. Mock mode не делает live attempts и не сообщает
+о выдуманном сбое. Structured операции остаются детерминированными.
+
+Независимые component/API/DB/fault/restart результаты и оставшиеся FE/clean-build/live
+gates — [TL record](team/tl-readiness.md). Это не финальная browser/live приемка.
+
 **Проект:** Avito AI-buddy — Hack&Change 2026  
 **Версия:** 2.3 · GigaChat3.5-432B-A28B, бюджет и безопасная экономия
 **Дата:** 12 ноября 2026  
@@ -885,8 +912,8 @@ AI Engineer обеспечивает оплату и контроль самос
 и `max_completion_tokens`; быстрый старт использует `max_tokens`. Поддержку этих настроек
 конкретным endpoint и полноту usage при SSE AI Engineer проверяет smoke, не предполагает.
 Лимитер не меняет action/API contracts: budget stop — существующий `LLM_UNAVAILABLE`,
-reason budget_exhausted остаётся внутренним. Run завершается failed, без автоматической
-подмены ответом mock; UI предлагает явный offline retry. Candidate fallback Go сохраняется.
+reason budget_exhausted остаётся внутренним. Платный вызов блокируется; чат получает явно обозначенный offline ответ
+и рекомендацию напрямую обратиться к наставнику, без нового платного вызова. Candidate fallback Go сохраняется.
 
 ### 13.2.2. Кэш ответов для demo
 
