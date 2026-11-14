@@ -84,6 +84,8 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
       setSettling(false);
     }
   }, [settling, messages.data, messages.state]);
+  const sendingRef = useRef(false);
+  const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState('');
   const [streamText, setStreamText] = useState('');
   const [streamSources, setStreamSources] = useState<SourceT[]>([]);
@@ -92,9 +94,10 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
   const [notice, setNotice] = useState<string | null>(null);
   const [document, setDocument] = useState<z.infer<typeof KnowledgeDocument> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const [streamOrigin, setStreamOrigin] = useState<ResponseOriginT>();
   const [origins, setOrigins] = useState<Record<string, ResponseOriginT>>({});
   // История происхождения ответов: после каждой перезагрузки сообщений. Ошибка — не критична,
-  // тогда бейдж строится по пометкам в тексте, как раньше.
+  // тогда источник остаётся неподтверждённым.
   useEffect(() => {
     if (messages.state !== 'data') return;
     let active = true;
@@ -142,6 +145,7 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
         setAction(event.data.action);
         break;
       case 'message.origin':
+        setStreamOrigin(event.data.origin);
         setOrigins((current) => ({ ...current, [event.data.message_id]: event.data.origin }));
         break;
       default:
@@ -160,8 +164,12 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
   };
 
   const send = async (content: string) => {
+    if (sendingRef.current || activeRun) return;
+    sendingRef.current = true;
+    setSending(true);
     setNotice(null);
     setStreamText('');
+    setStreamOrigin(undefined);
     setStreamSources([]);
     try {
       const run = await createRun(conversationId, { content });
@@ -183,7 +191,7 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
       });
     } catch (e) {
       setNotice(userMessage(e, 'Сообщение не отправлено.'));
-    }
+    } finally { sendingRef.current = false; setSending(false); }
   };
 
   const stop = async () => {
@@ -251,7 +259,7 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
                   <Bot size={18} className="text-primary" />
                 </span>
                 <div className="rounded-2xl rounded-tl-md bg-surface-muted px-4 py-3">
-                  <StreamingAnswer text={streamText} sources={streamSources} onDocument={openDocument} />
+                  <StreamingAnswer origin={streamOrigin} text={streamText} sources={streamSources} onDocument={openDocument} />
                   <p className="mt-1 text-[11px] text-text-secondary" role="status">генерация…</p>
                 </div>
               </div>
@@ -277,7 +285,7 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
               <button
                 key={hint}
                 type="button"
-                disabled={activeRun !== null}
+                disabled={sending || activeRun !== null}
                 onClick={() => void send(hint)}
                 className="rounded-full border border-border px-3 py-1.5 text-xs text-text-secondary hover:border-primary hover:text-primary focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -308,7 +316,7 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
                 <Square size={16} aria-hidden />
               </Button>
             ) : (
-              <Button type="submit" ariaLabel="Отправить" disabled={!draft.trim()}>
+              <Button type="submit" ariaLabel="Отправить" disabled={sending || !draft.trim()}>
                 <Send size={16} aria-hidden />
               </Button>
             )}
@@ -330,13 +338,13 @@ function DocumentLink({ source, onDocument }: { source: SourceT; onDocument: (id
   return <a href={source.url} className="text-primary underline underline-offset-4" onClick={e => { e.preventDefault(); onDocument(source.document_id); }}>{source.title}</a>;
 }
 
-function StreamingAnswer({ text, sources, onDocument }: {
-  text: string; sources: SourceT[]; onDocument: (id: string) => void;
+function StreamingAnswer({ text, sources, onDocument, origin }: {
+  origin?: ResponseOriginT; text: string; sources: SourceT[]; onDocument: (id: string) => void;
 }) {
   const answer = classifyAnswer(text);
   return (
     <>
-      <AnswerOriginBadge origin={answer.origin} interrupted={answer.interrupted} />
+      <AnswerOriginBadge {...(originFromServer(origin) ?? {origin: 'unknown' as const})} />
       <FormattedText text={answer.text} documents={sources} onDocument={onDocument} />
     </>
   );
@@ -347,7 +355,7 @@ function ChatMessage({ message: m, origin, onDocument }: {
 }) {
   if (m.role === 'user') {
     return (
-      <div className="ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-primary-light px-4 py-3">
+      <div data-chat-message className="ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-primary-light px-4 py-3">
         <p className="text-sm">{m.content}</p>
         <p className="mt-1 text-right text-[11px] text-text-secondary">{shortTime(m.created_at)}</p>
       </div>
@@ -355,9 +363,9 @@ function ChatMessage({ message: m, origin, onDocument }: {
   }
   const answer = classifyAnswer(m.content);
   const trusted = originFromServer(origin);
-  const badge = trusted ?? { origin: answer.origin, interrupted: answer.interrupted };
+  const badge = trusted ?? { origin: 'unknown' as const, interrupted: m.status !== 'completed' };
   return (
-    <div className="flex max-w-[85%] gap-3">
+    <div data-chat-message className="flex max-w-[85%] gap-3">
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-light" aria-hidden>
         <Bot size={18} className="text-primary" />
       </span>

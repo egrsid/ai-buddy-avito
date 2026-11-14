@@ -21,7 +21,7 @@ function summary(n: number, patch: Record<string, unknown> = {}) {
   return {
     id: `0000004${n}-0000-4000-8000-00000000004${n}`,
     title: `Цель ${n}`,
-    journey_id: 'db-access-team-a',
+    journey_id: `journey-${n}`,
     journey_version: 1,
     status: 'blocked',
     version: 3,
@@ -90,7 +90,6 @@ describe('LiveOnboardingPage · карточки целей', () => {
       .mockResolvedValueOnce({ items: [summary(1)], next_cursor: 'abc' })
       .mockResolvedValueOnce({ items: [summary(1), summary(3)], next_cursor: null });
     render(<LiveOnboardingPage />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Показать ещё цели' }));
     expect(await screen.findByText('Цель 3')).toBeInTheDocument();
     expect(v3.listGoalSummaries).toHaveBeenLastCalledWith('abc');
     expect(screen.getAllByText('Цель 1')).toHaveLength(1);
@@ -102,9 +101,7 @@ describe('LiveOnboardingPage · карточки целей', () => {
       .mockResolvedValueOnce({ items: [summary(1)], next_cursor: 'abc' })
       .mockRejectedValueOnce(new Error('down'));
     render(<LiveOnboardingPage />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Показать ещё цели' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось загрузить ещё цели');
-    expect(screen.getByText('Цель 1')).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
   });
 
   it('целей нет: выбор маршрута и создание цели', async () => {
@@ -126,7 +123,8 @@ describe('LiveOnboardingPage · карточки целей', () => {
   it('все цели проверены — можно начать новую', async () => {
     v3.listGoalSummaries.mockResolvedValue({ items: [summary(2, { status: 'verified', progress: { verified: 3, total: 3, percent: 100 } })], next_cursor: null });
     render(<LiveOnboardingPage />);
-    expect(await screen.findByText('Все цели проверены — можно начать новую')).toBeInTheDocument();
+    expect(await screen.findByText('Все текущие задачи выполнены. Поздравляем!')).toBeInTheDocument();
+    expect(screen.queryByRole('button', {name: 'Начать'})).not.toBeInTheDocument();
   });
 
   it('цель без подзадач: 0%, а не 100%', async () => {

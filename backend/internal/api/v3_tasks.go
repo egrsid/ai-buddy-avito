@@ -320,8 +320,17 @@ func createAssignment(q *request) (response, error) {
 		return response{}, e
 	}
 	if tag.RowsAffected() == 0 {
-		// Already assigned: moving to another version is the separate adopt flow.
-		return response{}, fail(409, "VERSION_CONFLICT")
+		// Return the pinned assignment; adopting a successor remains explicit.
+		a, err := q.one("SELECT jsonb_build_object('id',id) FROM app.task_assignments WHERE brief_id=$1 AND intern_id=$2", b["id"], intern["id"])
+		if err != nil {
+			return response{}, err
+		}
+		assignment, err := q.assignment(str(a["id"]))
+		if err != nil {
+			return response{}, err
+		}
+		dto, err := q.assignmentDTO(assignment)
+		return created3("TaskAssignment", dto), err
 	}
 	if e = q.touchBrief(b); e != nil {
 		return response{}, e

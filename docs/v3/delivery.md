@@ -1,5 +1,10 @@
 # V3 — backlog, зависимости и передача команде
 
+**14 ноября: runtime интегрирован локально.** Текущее состояние, результаты проверок и
+открытые gates: [интеграционная приёмка](integration-acceptance-2026-11-14.md).
+Исторические docs-only/TODO пометки ниже описывают исходный план 13 ноября.
+
+
 Дата: 13 ноября. Пакет документации подготовлен; runtime задачи **TODO**, реализация следует согласованным contract dependencies. Сроки/имена людей не придуманы. Текущая docs ветка
 не является готовым runtime release и не заменяет main для демо.
 
@@ -76,3 +81,13 @@ V3-T01…T30, >=20 AI evals/all safety, coverage >80% per component, persistence
 version/replay/concurrency/retirement, клики в браузере и отдельный Go↔AI review.
 Открытые настройки до contract gate: final DTO names, стабильные permission codes,
 retention для реальных данных. Telegram уже выбран владельцем; это не открытый вопрос.
+
+## Checkpoint интеграции · 14 ноября 2026
+
+Backend/AI/FE поставки объединены локально, функциональный offline demo принят техническим
+прогоном: shared/component/DB tests и 6 browser/API сценариев (включая restart) PASS.
+CONTACT/TASK/FRICTION/REVIEW/GOALS/STATS/FE/OBS имеют работающий runtime; DATA применены
+на изолированных БД, legacy escalation writes отключены. CONTRACT-FE проверен consumer
+suite, но отдельные человеческие approval не выдумываются. INTEGRATION принят для local
+offline demo; полное release gate остаётся открытым для actual live LLM, Go race и cold CI.
+[Точные версии, проверки и ограничения](integration-acceptance-2026-11-14.md).

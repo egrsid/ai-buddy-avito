@@ -32,7 +32,7 @@ export function openTelegram(url: string) {
   window.open(url, '_blank', 'noopener,noreferrer');
 }
 
-export function MentorContactCard({ context, title = 'Написать наставнику' }: { context?: ContactContext; title?: string }) {
+export function MentorContactCard({ context, title = 'Написать наставнику', initiallyOpen = false }: { context?: ContactContext; title?: string; initiallyOpen?: boolean }) {
   const contact = useLiveData(() => getMentorContact(), [], null as MentorContactT | null);
 
   if (contact.state === 'loading') return <Card><LoadingState label="Ищем контакт наставника…" /></Card>;
@@ -54,15 +54,16 @@ export function MentorContactCard({ context, title = 'Написать наст�
       </Card>
     );
   }
-  return <ContactPanel contact={contact.data} context={context} title={title} />;
+  return <ContactPanel contact={contact.data} context={context} title={title} initiallyOpen={initiallyOpen} />;
 }
 
-function ContactPanel({ contact, context, title }: {
+function ContactPanel({ contact, context, title, initiallyOpen }: {
   contact: Extract<MentorContactT, { status: 'available' }>;
   context?: ContactContext;
   title: string;
+  initiallyOpen: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initiallyOpen);
   const [question, setQuestion] = useState('');
   const [preview, setPreview] = useState<ContactPreviewT | null>(null);
   const [busy, setBusy] = useState(false);

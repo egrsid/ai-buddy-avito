@@ -1,3 +1,7 @@
+**14 ноября, v3 runtime:** локальная интеграция завершена и offline demo проверен;
+[приёмка, проверки и открытые live/race/CI gates](../v3/integration-acceptance-2026-11-14.md).
+Нижние docs-only/PLANNED записи — история предыдущих поручений.
+
 # Backlog — назначения пяти участников
 
 **Новый план v3:** [backlog/owners/dependencies/allowed directories/DoD](../v3/delivery.md),

@@ -2,6 +2,8 @@ import { Sparkles, TriangleAlert } from 'lucide-react';
 import type { AnswerOrigin } from '../lib/answerOrigin';
 
 const LABELS: Record<AnswerOrigin, { label: string; hint: string; className: string }> = {
+  unknown: {label: 'Источник ответа не подтверждён', hint: 'Нет сохранённых сведений о модели.', className: 'bg-surface-muted text-text-secondary'},
+  mock: {label: 'Демо · без LLM', hint: 'Запущен offline-режим. Ответ подготовлен по разрешённым документам и шаблонам.', className: 'bg-amber-50 text-amber-800'},
   ai: {
     label: 'Сгенерировано ИИ',
     hint: 'Ответ написала языковая модель по разрешённым документам. Проверяйте по источникам.',

@@ -22,8 +22,13 @@ interface GoalPage {
 export function LiveOnboardingPage() {
   const { accountId } = useDataMode();
   const first = useLiveData<GoalPage>(async () => {
-    const page = await listGoalSummaries();
-    return { items: page.items, next: page.next_cursor };
+    const items: GoalSummaryT[] = [];
+    let cursor: string | undefined;
+    do { const page = await listGoalSummaries(cursor); items.push(...page.items); cursor = page.next_cursor ?? undefined; } while (cursor);
+    // Earlier rehearsals may contain repeated instances; keep their history in the DB.
+    const unique = new Map<string, GoalSummaryT>();
+    for (const goal of items) { const old = unique.get(goal.journey_id); if (!old || (old.status === 'verified' && goal.status !== 'verified')) unique.set(goal.journey_id, goal); }
+    return { items: [...unique.values()], next: null };
   }, [], { items: [], next: null });
   const [more, setMore] = useState<GoalPage | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -91,7 +96,7 @@ export function LiveOnboardingPage() {
           )}
           {moreError && <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-error" role="alert">{moreError}</p>}
           {allVerified && (
-            <div className="mt-6"><JourneyPicker creating={creating} error={createError} onStart={startGoal} title="Все цели проверены — можно начать новую" /></div>
+            <Card className="mt-6"><h2 className="font-semibold text-success">Все текущие задачи выполнены. Поздравляем!</h2><p className="mt-2 text-sm text-text-secondary">Новые цели появятся, когда будут назначены. Выполненные цели остаются доступны для просмотра.</p></Card>
           )}
         </>
       )}

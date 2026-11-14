@@ -44,3 +44,15 @@ def test_restart_drains_backend_and_waits_for_dependencies(monkeypatch):
     assert calls[1][-3:] == ["restart", "ai-service", "mock-services"]
     assert "--wait" in calls[2] and calls[2][-2:] == ["ai-service", "mock-services"]
     assert "--wait" in calls[3] and calls[3][-1] == "backend"
+
+
+def test_demo_separate_ports_match_origin(monkeypatch):
+    monkeypatch.setenv("DEMO_FRONTEND_PORT", "15175")
+    monkeypatch.setenv("DEMO_BACKEND_PORT", "18082")
+    _, env = configuration("ai-buddy-demo-qa")
+    assert env["APP_ORIGIN"] == "http://localhost:15175"
+    assert env["FRONTEND_PORT"] == "15175"
+    assert env["BACKEND_PORT"] == "18082"
+    monkeypatch.setenv("DEMO_FRONTEND_PORT", "80")
+    with pytest.raises(ValueError):
+        configuration("ai-buddy-demo-qa")

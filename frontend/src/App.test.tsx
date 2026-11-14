@@ -80,7 +80,7 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Согласования' })).toBeInTheDocument();
 
     go('#/buddy/escalations');
-    expect(await screen.findByRole('heading', { name: 'Обращения стажёров' })).toBeInTheDocument();
+    expect(await screen.findByText('Связь с наставником перенесена в Telegram.')).toBeInTheDocument();
 
     go('#/knowledge-gaps');
     expect(await screen.findByRole('heading', { name: 'Пробелы знаний' })).toBeInTheDocument();
@@ -107,7 +107,7 @@ describe('App', () => {
   it('детальные маршруты: обращение и кандидат', async () => {
     window.location.hash = `#/buddy/escalations/${escalations[0].id}`;
     render(<App />);
-    expect(await screen.findByRole('heading', { name: /Обращение:/ })).toBeInTheDocument();
+    expect(await screen.findByText('Связь с наставником перенесена в Telegram.')).toBeInTheDocument();
   });
 
   it('переключение демо-состояния на «Пусто»', async () => {
@@ -193,7 +193,7 @@ describe('App · live-режим', () => {
     expect(await screen.findByText('Нет заявок на согласование')).toBeInTheDocument();
 
     go('#/buddy/escalations');
-    expect(await screen.findByRole('heading', { name: 'Архив обращений' })).toBeInTheDocument();
+    expect(await screen.findByText('Связь с наставником перенесена в Telegram.')).toBeInTheDocument();
 
     go('#/tasks');
     expect(await screen.findByText('Заданий пока нет')).toBeInTheDocument();
@@ -220,7 +220,7 @@ describe('App · live-режим', () => {
     expect(await screen.findByRole('heading', { name: step.title })).toBeInTheDocument();
 
     go(`#/buddy/escalations/${escalations[0].id}`);
-    expect(await screen.findByRole('heading', { name: /Обращение:/ })).toBeInTheDocument();
+    expect(await screen.findByText('Связь с наставником перенесена в Telegram.')).toBeInTheDocument();
 
     go(`#/knowledge-gaps/${candidates[0].id}`);
     expect(await screen.findByRole('heading', { name: /Кандидат:/ })).toBeInTheDocument();

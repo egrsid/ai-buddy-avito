@@ -12,6 +12,17 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def seed(connection):
     data = json.loads((ROOT / "data/seed/demo-v2.json").read_text(encoding="utf-8"))
+    # Additional synthetic interns for distinct-participant statistics and ACL rehearsal.
+    prototype = next(u for u in data["users"] if u["account_id"] == "intern-a")
+    for index, suffix in enumerate("defghi", start=20):
+        data["users"].append(
+            {
+                **prototype,
+                "id": f"10000000-0000-4000-8000-{index:012d}",
+                "account_id": f"intern-{suffix}",
+                "display_name": f"Стажёр {index - 17} · команда A",
+            }
+        )
     journey = json.loads((ROOT / "data/seed/journey-db-v2.json").read_text(encoding="utf-8"))
     connection.execute("SET LOCAL ROLE app_owner")
     for user in sorted(data["users"], key=lambda u: u["role"] == "intern"):

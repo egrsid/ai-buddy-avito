@@ -126,9 +126,9 @@ function AppInner() {
     } else if (route === '/approvals') {
       page = <LiveApprovalsPage />;
     } else if (escalationId) {
-      page = <LiveBuddyEscalationDetailPage id={escalationId} />;
+      page = <Card>Связь с наставником перенесена в Telegram.</Card>;
     } else if (route === '/buddy/escalations') {
-      page = <LiveBuddyEscalationsPage />;
+      page = <Card>Связь с наставником перенесена в Telegram.</Card>;
     } else if (gapId) {
       page = <LiveKnowledgeGapDetailPage id={gapId} />;
     } else if (route === '/knowledge-gaps') {
@@ -149,9 +149,9 @@ function AppInner() {
   } else if (route === '/approvals') {
     page = <ApprovalsPage view={view} />;
   } else if (escalationId) {
-    page = <BuddyEscalationDetailPage id={escalationId} view={view} />;
+    page = <Card>Связь с наставником перенесена в Telegram.</Card>;
   } else if (route === '/buddy/escalations') {
-    page = <BuddyEscalationsPage view={view} />;
+    page = <Card>Связь с наставником перенесена в Telegram.</Card>;
   } else if (gapId) {
     page = <KnowledgeGapDetailPage id={gapId} view={view} />;
   } else if (route === '/knowledge-gaps') {

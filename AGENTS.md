@@ -6,21 +6,19 @@ Work on project files locally. You may create local Git commits. Do not list Cod
 
 Do not push to any remote, including feature branches and forks. Do not open or merge pull requests, invite collaborators, or change repository permissions. The repository owner handles publishing and access management.
 
-## Current assignment · v3 documentation · 2026-11-13
+## Current assignment · local v3 integration · 2026-11-14
 
-Work in docs/v3-planning, based on verified published main b6f940d.
-Only Markdown documentation/agent instructions may change in this assignment.
-Do not change executable files, schemas/fixtures, migrations/seed, env, CI/Docker or DB.
-main remains the canonical v2 demo/build branch. No push/PR/remote merge.
+The owner explicitly authorized runtime changes, local integration and fixes across branches,
+superseding the earlier Markdown-only assignment. Work in feature/local-v3-integration.
+Published main b6f940d remains the v2 baseline. No push/PR/remote merge.
+The integrated source includes feature/frontend-v3 363a0e5 and Backend/AI v3.
 Read docs/v3/README.md, product.md, architecture.md, delivery.md, testing.md and the
-six v3 feature SDDs before v3 work. Runtime implementation belongs to subsequent component tasks, not this docs-only turn.
-V3 replaces internal intern-to-buddy tickets with direct Telegram personal messaging
-(manual send, scoped copy/preview); adds mentor-owned versioned task briefs and a
-separate task-clarity feedback report. V3 also plans goal cards with collapsible steps,
-primary live LLM recovery/diagnostics, and scoped difficulty statistics for mentors/docs owners.
-Do not implement these in the current Markdown-only assignment.
-Docs-owner feedback/evidence/authorization remain.
-Legacy v2 handoffs below v3 banners and S1–S4 are not the current implementation plan.
+six feature SDDs. Current evidence: docs/v3/integration-acceptance-2026-11-14.md.
+Use isolated test DBs and preserve existing demo data. Never reset volumes implicitly.
+The owner chose offline operation; paid primary LLM acceptance stays OPEN.
+Telegram is manual personal messaging with scoped preview/export; versions of mentor task
+briefs and task-clarity reports stay separate from documentation feedback.
+Goal progress/verification and authorization remain Go-owned.
 
 ## Product direction
 

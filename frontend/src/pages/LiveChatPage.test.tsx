@@ -113,7 +113,7 @@ describe('LiveChatPage', () => {
       handlers.onEvent({ type: 'message.delta', data: { run_id: RUN, text: 'Проверяю…' } }, 2);
     });
     expect(screen.getByText('Проверяю…')).toBeInTheDocument();
-    expect(screen.getByText('Сгенерировано ИИ')).toBeInTheDocument();
+    expect(screen.getByText('Источник ответа не подтверждён')).toBeInTheDocument();
     expect(screen.queryByText('ИИ готовит ответ…')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Остановить генерацию' })).toBeInTheDocument();
 
@@ -135,10 +135,23 @@ describe('LiveChatPage', () => {
     mocks.listMessages.mockResolvedValue([userMessage, assistantMessage, fallback]);
     await renderChat();
     expect(await screen.findByText('Нужен sslmode=require.')).toBeInTheDocument();
-    expect(screen.getByText('Сгенерировано ИИ')).toBeInTheDocument();
-    expect(screen.getByText('Fallback · без ИИ')).toBeInTheDocument();
+    expect(screen.getAllByText('Источник ответа не подтверждён')).toHaveLength(2);
+    expect(screen.queryByText('Сгенерировано ИИ')).not.toBeInTheDocument();
     expect(screen.getByText('Шаблонная подсказка.')).toBeInTheDocument();
     expect(screen.queryByText(/Произошла ошибка обращения к LLM/)).not.toBeInTheDocument();
+  });
+
+  it('blocks duplicate run creation while POST is pending', async () => {
+    let finish!: (value: typeof run) => void;
+    mocks.createRun.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    await renderChat();
+    fireEvent.change(screen.getByLabelText('Сообщение AI-помощнику'), {target: {value: 'Вопрос'}});
+    const button = screen.getByRole('button', {name: 'Отправить'});
+    fireEvent.click(button);
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(mocks.createRun).toHaveBeenCalledTimes(1);
+    await act(async () => { finish(run); });
   });
 
   it('подсказка сразу уходит в чат; пока идёт ответ, подсказки выключены; лента не пропадает', async () => {

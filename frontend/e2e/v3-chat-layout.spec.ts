@@ -16,11 +16,11 @@ test('чат: подсказка сразу в чат, ввод внизу, ст
   expect((await inputBox()).y + (await inputBox()).height).toBeGreaterThan(800 - 120);
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 1)).toBeTruthy();
 
-  const before = await page.getByLabel('Переписка').locator(':scope > *').count();
+  const before = await page.getByLabel('Переписка').locator('[data-chat-message]').count();
   await page.getByRole('button', { name: 'Что мне делать дальше?' }).click();
   await expect(page.getByLabel('Переписка').getByText('Что мне делать дальше?').last()).toBeVisible();
   // Ответ модели пришёл и сохранён: в ленте стало на два элемента больше.
-  await expect.poll(async () => page.getByLabel('Переписка').locator(':scope > *').count(), { timeout: 90_000 }).toBeGreaterThanOrEqual(before + 2);
+  await expect.poll(async () => page.getByLabel('Переписка').locator('[data-chat-message]').count(), { timeout: 90_000 }).toBeGreaterThanOrEqual(before + 2);
   await expect(page.getByRole('button', { name: 'Остановить генерацию' })).toHaveCount(0, { timeout: 90_000 });
   // Ответ не пропадает после окончания потока: последним в ленте стоит ответ, а не вопрос.
   const last = page.getByLabel('Переписка').locator(':scope > *').last();

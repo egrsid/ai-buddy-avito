@@ -71,7 +71,7 @@ func createGoal(q *request) (response, error) {
 	if e = q.exec("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", str(q.user["id"])+str(t["journey_id"])); e != nil {
 		return response{}, e
 	}
-	old, e := q.many("SELECT jsonb_build_object('id',id) FROM app.goals WHERE intern_id=$1 AND journey_id=$2 AND status<>'verified'", q.user["id"], t["journey_id"])
+	old, e := q.many("SELECT jsonb_build_object('id',id) FROM app.goals WHERE intern_id=$1 AND journey_id=$2 ORDER BY (status<>'verified') DESC,created_at DESC LIMIT 1", q.user["id"], t["journey_id"])
 	if e != nil {
 		return response{}, e
 	}
