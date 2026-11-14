@@ -212,7 +212,9 @@ it('keeps generation, selected apply, human publication and impact configuration
   });
   render(<LiveV4Page />);
   await screen.findByText(/intern-a/);
-  await click('Разрешить DB-маршрут');
+  expect(screen.queryByRole('button', { name: 'Добавить цель доступа к БД' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByLabelText('Для этого назначения нужен доступ к БД команды A'));
+  await click('Добавить цель доступа к БД');
   expect(m.api).toHaveBeenCalledWith(
     `/api/v4/assignments/${fx.ASSIGNMENT_ID}/permitted-template`,
     expect.objectContaining({ body: expect.objectContaining({ expected_revision: 1 }) }),
@@ -266,6 +268,24 @@ it('keeps generation, selected apply, human publication and impact configuration
   await click('Загрузить сравнение');
   expect(screen.getByText('Разница: -40.0 п.п.')).toBeInTheDocument();
   expect(screen.getByText('Версия 1: 6 из 10, 60.0%')).toBeInTheDocument();
+});
+it('keeps an unrelated assignment usable without offering an unauthorized DB link', async () => {
+  m.api.mockResolvedValue({ items: [{ ...workspaceCard(), can_link: false }], unlinked_goals: [], as_of: fx.STAMP });
+  render(<LiveV4Page />);
+  await screen.findByText('Рабочий отчёт');
+  expect(screen.getByRole('link', { name: 'Открыть ТЗ' })).toHaveAttribute('href', `#/tasks/${fx.ASSIGNMENT_ID}`);
+  expect(screen.queryByRole('button', { name: 'Связать с технической целью' })).not.toBeInTheDocument();
+  expect(screen.getByText(/Если понадобится техническая проверка доступа/)).toBeInTheDocument();
+  expect(m.api).toHaveBeenCalledTimes(1);
+});
+it('shows the saved per-assignment DB choice after a new page mount without offering it twice', async () => {
+  m.role = 'buddy';
+  m.assignments.mockResolvedValue([{ ...fx.assignment(), db_route_enabled: true }]);
+  render(<LiveV4Page />);
+  await screen.findByText(/Цель «Доступ к БД команды A» подключена/);
+  expect(screen.queryByLabelText('Для этого назначения нужен доступ к БД команды A')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Добавить цель доступа к БД' })).not.toBeInTheDocument();
+  expect(m.api).not.toHaveBeenCalled();
 });
 it('handles questions, a fresh generation error, apply conflict and configuration failure without success', async () => {
   m.role = 'buddy';
@@ -395,7 +415,7 @@ it('collapses a long route list once loaded and then keeps the user choice', asy
   let resolve: (value: unknown) => void = () => {};
   m.assignments.mockReturnValue(new Promise((r) => (resolve = r)));
   render(<LiveV4Page />);
-  const summary = screen.getByText(/Маршруты назначений/);
+  const summary = screen.getByText(/технические цели назначений/);
   const details = summary.closest('details')!;
   expect(details.open).toBe(false);
   // The user opens the panel before the list arrives: the arrival must not close it.
@@ -404,7 +424,7 @@ it('collapses a long route list once loaded and then keeps the user choice', asy
     details.dispatchEvent(new Event('toggle'));
   });
   await act(async () => resolve(many));
-  await screen.findByText('Маршруты назначений (4)');
+  await screen.findByText('Дополнительно: технические цели назначений (4)');
   expect(details.open).toBe(true);
   await act(async () => {
     details.open = false;
@@ -416,6 +436,6 @@ it('collapses a long route list once loaded and then keeps the user choice', asy
 it('opens a short route list by default', async () => {
   m.role = 'buddy';
   render(<LiveV4Page />);
-  await screen.findByText('Маршруты назначений (1)');
-  expect(screen.getByText(/Маршруты назначений/).closest('details')!.open).toBe(true);
+  await screen.findByText('Дополнительно: технические цели назначений (1)');
+  expect(screen.getByText(/технические цели назначений/).closest('details')!.open).toBe(true);
 });

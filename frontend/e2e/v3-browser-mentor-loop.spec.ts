@@ -50,8 +50,6 @@ test('v3: ТЗ → две неясности → отчёт → новая ве�
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
   await page.goto('/');
-  const live = page.getByRole('button', { name: 'Live API', exact: true });
-  if ((await live.getAttribute('aria-pressed')) !== 'true') await live.click();
 
   // 1. Наставник создаёт черновик, публикует v1 и назначает двум стажёрам.
   await account(page, 'buddy-a');

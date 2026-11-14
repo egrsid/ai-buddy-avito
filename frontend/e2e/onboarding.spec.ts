@@ -1,7 +1,7 @@
 import {expect, request, test, type APIRequestContext} from '@playwright/test';
 
 const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:5173';
-const origin = process.env.APP_ORIGIN ?? 'http://localhost:5173';
+const origin = process.env.APP_ORIGIN ?? new URL(baseURL).origin;
 
 async function login(accountId: string): Promise<{api: APIRequestContext; csrf: string}> {
   const api = await request.newContext({baseURL, extraHTTPHeaders: {Origin: origin}});

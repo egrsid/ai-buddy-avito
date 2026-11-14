@@ -1,9 +1,18 @@
+# Финальная локальная v4 · реальная LLM
+
+**Live: http://localhost:15180** · **Синтетические когорты: http://localhost:15181**.
+**[Полная актуальная инструкция проверки](TESTING_FINAL_V4.md)**.
+[Сценарий выступления для жюри](JURY_DEMO_V4.md) · [Перенос финальной версии в main](MAIN_RELEASE.md).
+Настоящая GigaChat и embeddings вызываются через Go/Python; corporate IAM/DB остаются mock.
+Ключ — только в ignored `.env.live-v4`, журнал расходов постоянный. Запуск: `make v4-live-up`.
+Ниже сохранена история offline-интеграции; актуальные команды и ограничения — в инструкции выше.
+
 # AI-buddy v4 · ветка feature/ai-v4 · 14 ноября 2026
 
 **Полная рабочая версия:** v2 (доступ к БД, проверки, чат с RAG, заявки и одобрение, бадди,
 обратная связь в документацию) + v3 (Telegram, ТЗ наставника, отчёты о понятности, цели,
 статистика, живая модель) + v4 (рабочее пространство стажёра, лента доказательств,
-AI-правка ТЗ с ручной публикацией, сравнение версий). main остаётся опубликованной v2.
+AI-правка ТЗ с ручной публикацией, сравнение версий). Та же v4 выпущена лидом в main.
 
 Запуск (Docker Desktop/Engine, Compose v2, Python 3; первая сборка скачивает зависимости):
 
@@ -19,7 +28,7 @@ http://localhost:15178 — модель в этом режиме не нужна
 | Сценарий показа и ручная проверка | [DEFENSE_V4.md](DEFENSE_V4.md) |
 | Итоговая приёмка, исправления, T01–T24 | [docs/v4/acceptance-2026-11-14-final.md](docs/v4/acceptance-2026-11-14-final.md) |
 | Сравнение версий на синтетической истории (тестовые часы) | `python3 -m scripts.v4_cohorts up` → http://localhost:15181 |
-| Живая модель Cloud.ru (свой ключ) | `.env.live-v4` из `.env.example` + ключ, `make v4-live-up` → http://localhost:15186, проверка `make v4-live-check` |
+| Живая модель Cloud.ru (свой ключ) | `.env.live-v4` из `.env.example` + ключ, `make v4-live-up` → адрес из `FRONTEND_PORT` в `.env.live-v4` (в инструкциях лида 15180), проверка `make v4-live-check` |
 
 **LLM:** Cloud.ru Foundation Models (OpenAI-совместимый `/v1`), основная модель
 `GigaChat/GigaChat-3-Pro`, запасная `ai-sage/GigaChat3.5-432B-A28B`, эмбеддинги `BAAI/bge-m3`.

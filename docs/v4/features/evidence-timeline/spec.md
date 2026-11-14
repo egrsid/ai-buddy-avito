@@ -1,6 +1,6 @@
 # Доказательства состояния — specification v4
 
-PLANNED; runtime отсутствует. [Product](../../product.md), [delivery](../../delivery.md).
+Target specification. [Текущая реализация и приёмка](../../final-acceptance-2026-11-14.md). [Product](../../product.md), [delivery](../../delivery.md).
 Задачи: V4-PROOF-BE-01, V4-PROOF-FE-01.
 
 Intern открывает «Почему такой статус?» и видит текущий Go state и последовательность

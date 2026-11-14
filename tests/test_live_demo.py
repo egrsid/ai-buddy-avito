@@ -125,3 +125,21 @@ def test_cached_build_falls_back_to_network_build_without_cached_images(tmp_path
     calls.clear()
     main(["status", "--env-file", str(path), "--project", "ai-buddy-live-v4", "--cached-build"])
     assert any(part.endswith("compose.offline.yaml") for part in calls[0])
+
+
+def test_failed_evals_still_exports_the_current_report(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    calls = []
+    monkeypatch.setattr("scripts.live_demo.ROOT", tmp_path)
+
+    def execute(command, **kwargs):
+        calls.append((command, kwargs))
+        return SimpleNamespace(returncode=1)
+
+    monkeypatch.setattr("scripts.live_demo.subprocess.run", execute)
+    path = write_env(tmp_path, GOOD)
+    assert main(["evals", "--env-file", str(path)]) == 1
+    assert calls[0][1]["check"] is False
+    assert calls[1][0][:2] == ["docker", "cp"]
+    assert "/tmp/v4-revision-live.md" in calls[1][0][2]

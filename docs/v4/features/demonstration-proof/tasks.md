@@ -1,4 +1,12 @@
+> **Текущий результат:** [проверенный runtime/live и ограничения](../../final-acceptance-2026-11-14.md).
+> Пагинация, event producers и операторский cohort harness уже поставлены; formal review отдельно.
+
 # Проверяемое AI-демо — tasks v4
+
+Актуальные [сценарий защиты](../../../../JURY_DEMO_V4.md) и
+[UX-приёмка](../../ux-release-2026-11-14.md): сайт без переключателя fixtures и ссылки
+на прототип, live runtime и synthetic история разделены явно. Ниже — прежний checkpoint;
+actual LLM evidence описан в final-acceptance, cold/race/remote CI остаются открыты.
 
 ## Текущий результат локальной интеграции
 

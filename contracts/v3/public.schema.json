@@ -648,6 +648,9 @@
         },
         "updated_at": {
           "$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"
+        },
+        "db_route_enabled": {
+          "type": "boolean"
         }
       }
     },

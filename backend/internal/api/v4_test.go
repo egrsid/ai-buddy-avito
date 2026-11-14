@@ -23,6 +23,12 @@ func TestV4WorkspaceTimelineAndRevision(t *testing.T) {
 	buddy.call("POST", "/api/v4/assignments/"+assignmentID+"/permitted-template", Object{"template_id": "db-access-team-a", "template_version": 1, "expected_revision": 1}, 200)
 	buddy.call("POST", "/api/v4/assignments/"+assignmentID+"/permitted-template", Object{"template_id": "db-access-team-a", "template_version": 1, "expected_revision": 1}, 409)
 
+	if intern.call("GET", "/api/v3/task-assignments/"+assignmentID, nil, 200)["db_route_enabled"] != true {
+		t.Fatal("route selection not persisted for the assignment")
+	}
+	if obj(intern.call("GET", "/api/v4/workspaces/"+assignmentID, nil, 200)["card"])["can_link"] != true {
+		t.Fatal("permitted link unavailable")
+	}
 	preview := intern.call("POST", "/api/v4/workspaces/"+assignmentID+"/link-preview", Object{"template_id": "db-access-team-a", "template_version": 1}, 201)
 	other.call("POST", "/api/v4/workspaces/"+assignmentID+"/link-preview", Object{"template_id": "db-access-team-a", "template_version": 1}, 404)
 	intern.call("POST", "/api/v4/workspaces/"+assignmentID+"/link-confirm", Object{"preview_id": preview["id"], "preview_hash": strings.Repeat("a", 64), "expected_revision": preview["assignment_revision"]}, 409)
