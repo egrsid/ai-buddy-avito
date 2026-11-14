@@ -402,7 +402,7 @@ func (q *request) assignmentDTO(a Object) (Object, error) {
 	if a["archived"] == true {
 		state = "archived"
 	}
-	return Object{"id": a["id"], "brief_id": a["brief_id"], "brief_version": a["brief_version"], "brief_state": state, "latest_published_version": latest, "content": content, "intern": intern, "author": author, "reported_sections": reported, "verification": "not_verified", "revision": a["revision"], "created_at": a["created_at"], "updated_at": a["updated_at"]}, nil
+	return Object{"id": a["id"], "brief_id": a["brief_id"], "brief_version": a["brief_version"], "brief_state": state, "latest_published_version": latest, "content": content, "intern": intern, "author": author, "reported_sections": reported, "verification": "not_verified", "db_route_enabled": a["permitted_template_id"] != nil, "revision": a["revision"], "created_at": a["created_at"], "updated_at": a["updated_at"]}, nil
 }
 
 func listAssignments(q *request) (response, error) {

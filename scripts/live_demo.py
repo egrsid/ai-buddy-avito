@@ -51,7 +51,7 @@ def read_env_file(path: Path) -> dict:
 
 
 # The image's evals/ folder is read-only for the service user; /tmp is writable.
-LIVE_EVAL_REPORT = "/tmp/report-revision-draft-live.md"
+LIVE_EVAL_REPORT = "/tmp/v4-revision-live.md"
 
 
 def config_problems(values: dict) -> list[str]:
@@ -168,14 +168,14 @@ def main(argv=None) -> int:
             "-m",
             "app.revision_draft_evals",
             "--live",
-            "--report",
+            "--output",
             LIVE_EVAL_REPORT,
         ]
     elif args.action == "down":
         command += ["down"]
     else:
         command += ["ps", "-a"]
-    subprocess.run(command, env=env, cwd=ROOT, check=True)
+    completed = subprocess.run(command, env=env, cwd=ROOT, check=args.action != "evals")
     if args.action == "evals":
         output = ROOT / ".cache" / "v4-revision-live.md"
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -188,6 +188,7 @@ def main(argv=None) -> int:
             ],
             check=True,
         )
+        return completed.returncode
     if args.action == "up":
         print(f"Live-демо: {env['APP_ORIGIN']} (источник ответа указан в интерфейсе).")
     return 0

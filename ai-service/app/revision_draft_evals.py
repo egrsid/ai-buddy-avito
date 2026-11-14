@@ -189,9 +189,11 @@ def main(argv: list[str]) -> int:
         results = run_mock()
         title = "Evals правки ТЗ — без модели (явный шаблон)"
         report = EVALS_DIR / "report-revision-draft-mock.md"
-    # В контейнере evals/ только для чтения: live-прогон пишет отчёт по пути из --report.
-    if "--report" in argv:
-        report = Path(argv[argv.index("--report") + 1])
+    # В контейнере evals/ только для чтения: live-прогон пишет отчёт по пути из --output
+    # (--report — прежнее имя флага).
+    for flag in ("--output", "--report"):
+        if flag in argv:
+            report = Path(argv[argv.index(flag) + 1])
     report.write_text(render(results, title), encoding="utf-8", newline="\n")
     totals = summary(results)
     print(
