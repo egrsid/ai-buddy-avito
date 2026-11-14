@@ -12,7 +12,7 @@ from app.api import make_embedder, make_provider
 from app.budget import BudgetLedger, init_ledger
 from app.generate import run_generate
 from app.mock_provider import ProviderUnavailable
-from app.openai_provider import OpenAIEmbedder, OpenAIProvider
+from app.openai_provider import CONNECT_ATTEMPTS, OpenAIEmbedder, OpenAIProvider
 from app.prompt import LlmInput
 from app.vectors import EmbeddingError
 
@@ -443,3 +443,37 @@ def test_invalid_usage_keeps_the_reservation_instead_of_refunding(ledger, usage)
     assert row["actual_rub"] is None and row["reserved_rub"] > 0
     assert row["model"] == PAID["llm_model"]
     assert row["correlation_id"] is not None
+
+
+def test_connect_failure_is_retried_once_then_reported(ledger):
+    calls = []
+
+    def flaky(request):
+        calls.append(request)
+        if len(calls) == 1:
+            raise httpx.ConnectTimeout("no route")
+        return httpx.Response(200, content=sse(delta("Ок"), usage_chunk(), "[DONE]"))
+
+    assert read_stream(provider_with(flaky, ledger)) == ["Ок"]
+    assert len(calls) == 2 and ledger.status()["unsettled"] == 0
+
+    def down(request):
+        calls.append(request)
+        raise httpx.ConnectError("refused")
+
+    calls.clear()
+    with pytest.raises(ProviderUnavailable, match="ConnectError"):
+        read_stream(provider_with(down, ledger))
+    assert len(calls) == CONNECT_ATTEMPTS
+
+
+def test_read_failure_after_connect_is_not_retried(ledger):
+    calls = []
+
+    def broken(request):
+        calls.append(request)
+        raise httpx.ReadTimeout("slow")
+
+    with pytest.raises(ProviderUnavailable, match="ReadTimeout"):
+        read_stream(provider_with(broken, ledger))
+    assert len(calls) == 1

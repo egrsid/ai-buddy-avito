@@ -24,7 +24,10 @@ from app.prompt import LlmInput
 from app.vectors import EmbeddingError
 
 logger = logging.getLogger(__name__)
-CONNECT_TIMEOUT = 5.0
+# Две попытки подключения по 2.5 с укладываются в лимит 6 с на первый кусок ответа.
+# Сбой подключения бывает только до отправки запроса, поэтому повтор ничего не стоит.
+CONNECT_TIMEOUT = 2.5
+CONNECT_ATTEMPTS = 2
 # Ingest шлёт корпус пачками; удалённому API хватает с запасом.
 EMBED_READ_TIMEOUT = 60.0
 # Паузы перед повторами эмбеддингов: всего до 3 попыток, задержка ≤2.5 с (лимит токена 20 с).
@@ -114,40 +117,48 @@ class OpenAIProvider:
         # finish_reason stop/length — модель сама закончила ответ; если после этого поток
         # закрылся без [DONE], ответ всё равно полный. Без finish_reason обрыв — сбой.
         finished = False
-        try:
-            async with self.client.stream("POST", "/chat/completions", json=body) as response:
-                if response.status_code != 200:
-                    raise ProviderUnavailable(f"API ответил кодом {response.status_code}")
-                async for line in response.aiter_lines():
-                    if not line.startswith("data:"):
-                        continue
-                    data = line.removeprefix("data:").strip()
-                    if data == "[DONE]":
-                        completed = True
-                        break
-                    chunk = json.loads(data)
-                    if "error" in chunk:
-                        # Текст ошибки провайдера не пробрасываем и не логируем.
-                        raise ProviderUnavailable("API вернул ошибку в потоке")
-                    for choice in chunk.get("choices") or []:
-                        # Только content: служебные «размышления» модели текстом не считаем.
-                        text = (choice.get("delta") or {}).get("content") or ""
-                        if text:
-                            yield text
-                        if choice.get("finish_reason") in ("stop", "length"):
-                            finished = True
-                        if choice.get("finish_reason") == "length":
-                            logger.warning(
-                                "Ответ оборван на лимите %s токенов (LLM_MAX_OUTPUT_TOKENS "
-                                "или лимит операции)",
-                                body["max_tokens"],
-                            )
-                    if chunk.get("usage"):
-                        last_usage = chunk["usage"]
-        except httpx.HTTPError as error:
-            raise ProviderUnavailable(f"API недоступен: {type(error).__name__}") from error
-        except ValueError as error:
-            raise ProviderUnavailable("API прислал не JSON") from error
+        attempt = 0
+        while True:
+            try:
+                async with self.client.stream("POST", "/chat/completions", json=body) as response:
+                    if response.status_code != 200:
+                        raise ProviderUnavailable(f"API ответил кодом {response.status_code}")
+                    async for line in response.aiter_lines():
+                        if not line.startswith("data:"):
+                            continue
+                        data = line.removeprefix("data:").strip()
+                        if data == "[DONE]":
+                            completed = True
+                            break
+                        chunk = json.loads(data)
+                        if "error" in chunk:
+                            # Текст ошибки провайдера не пробрасываем и не логируем.
+                            raise ProviderUnavailable("API вернул ошибку в потоке")
+                        for choice in chunk.get("choices") or []:
+                            # Только content: служебные «размышления» модели текстом не считаем.
+                            text = (choice.get("delta") or {}).get("content") or ""
+                            if text:
+                                yield text
+                            if choice.get("finish_reason") in ("stop", "length"):
+                                finished = True
+                            if choice.get("finish_reason") == "length":
+                                logger.warning(
+                                    "Ответ оборван на лимите %s токенов (LLM_MAX_OUTPUT_TOKENS "
+                                    "или лимит операции)",
+                                    body["max_tokens"],
+                                )
+                        if chunk.get("usage"):
+                            last_usage = chunk["usage"]
+                break
+            except (httpx.ConnectError, httpx.ConnectTimeout) as error:
+                attempt += 1
+                if attempt >= CONNECT_ATTEMPTS:
+                    raise ProviderUnavailable(f"API недоступен: {type(error).__name__}") from error
+                logger.warning("Нет соединения с API (%s), повторяем", type(error).__name__)
+            except httpx.HTTPError as error:
+                raise ProviderUnavailable(f"API недоступен: {type(error).__name__}") from error
+            except ValueError as error:
+                raise ProviderUnavailable("API прислал не JSON") from error
         if not completed and finished:
             logger.warning("Поток API закрыт без [DONE] после finish_reason: ответ полный")
             completed = True
