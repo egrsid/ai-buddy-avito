@@ -10,8 +10,26 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// activeRoutes maps a request ID to its route pattern while the request runs, for error logs.
+// activeRoutes maps a request ID to its route and context while the request runs, for error logs.
 var activeRoutes sync.Map
+
+type activeRoute struct {
+	pattern string
+	ctx     context.Context
+}
+
+func routeName(active any) string {
+	if a, ok := active.(activeRoute); ok {
+		return a.pattern
+	}
+	return ""
+}
+
+// clientGone is true when the browser aborted the request that hit the error.
+func clientGone(active any) bool {
+	a, ok := active.(activeRoute)
+	return ok && a.ctx.Err() != nil
+}
 
 // errorClass describes an unexpected error for logs without its text: wrapper types,
 // SQLSTATE and cancellation only, so no SQL arguments, user input or secrets get logged.
