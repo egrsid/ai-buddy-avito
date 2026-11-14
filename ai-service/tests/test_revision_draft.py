@@ -438,6 +438,10 @@ def test_eval_set_is_large_enough_and_passes_offline(tmp_path, monkeypatch):
     assert evals_main([]) == 0
     report = (tmp_path / "report-revision-draft-mock.md").read_text(encoding="utf-8")
     assert f"safety: {totals['safety_total']}/{totals['safety_total']}" in report
+    custom = tmp_path / "writable" / "report.md"
+    custom.parent.mkdir()
+    assert evals_main(["--report", str(custom)]) == 0
+    assert custom.read_text(encoding="utf-8") == report
 
 
 def test_eval_prepare_fills_hashes_and_rejects_broken_case(tmp_path):
