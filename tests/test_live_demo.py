@@ -13,6 +13,7 @@ GOOD = {
     "LLM_PRICE_INPUT_RUB": "1",
     "LLM_PRICE_OUTPUT_RUB": "2",
     "EMBEDDING_MODEL": "embed-model",
+    "EMBEDDING_PRICE_RUB": "0.61",
 }
 
 
@@ -75,6 +76,25 @@ def test_live_project_name_is_isolated(tmp_path):
     for name in ("ai-buddy", "ai-buddy-demo-local", "../live", "live;echo"):
         with pytest.raises(ValueError):
             configuration(name, tmp_path / ".env")
+
+
+def test_custom_ports_and_cached_build_keep_live_overlay_last(tmp_path):
+    path = write_env(tmp_path, {**GOOD, "FRONTEND_PORT": "15180", "BACKEND_PORT": "18087"})
+    command, env = configuration("ai-buddy-live-v4", path, True)
+    assert env["APP_ORIGIN"] == "http://localhost:15180"
+    assert env["BACKEND_PORT"] == "18087"
+    assert command[-1].endswith("compose.live.yaml")
+    assert command[-3].endswith("compose.offline.yaml")
+    for ports in ({"FRONTEND_PORT": "80"}, {"FRONTEND_PORT": "18080"}):
+        with pytest.raises(ValueError):
+            configuration("ai-buddy-live-v4", write_env(tmp_path, {**GOOD, **ports}))
+
+
+@pytest.mark.parametrize("price", ["-1", "nan", "inf", "wrong"])
+def test_bad_tariffs_are_rejected_before_paid_calls(price):
+    assert config_problems({**GOOD, "LLM_PRICE_INPUT_RUB": price})
+    assert config_problems({**GOOD, "LLM_BUDGET_STOP_RUB": price})
+    assert config_problems({**GOOD, "LLM_BUDGET_STOP_RUB": "801"})
 
 
 def test_up_and_down_call_compose(tmp_path, monkeypatch):

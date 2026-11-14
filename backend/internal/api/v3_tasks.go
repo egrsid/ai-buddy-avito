@@ -280,6 +280,15 @@ func archiveBrief(q *request) (response, error) {
 	if e = q.touchBrief(b); e != nil {
 		return response{}, e
 	}
+	assignments, e := q.many("SELECT jsonb_build_object('id',id) FROM app.task_assignments WHERE brief_id=$1", b["id"])
+	if e != nil {
+		return response{}, e
+	}
+	for _, assignment := range assignments {
+		if e = q.closeExposure(str(obj(assignment)["id"]), "archived"); e != nil {
+			return response{}, e
+		}
+	}
 	if e = q.taskEvent("brief_archived", "go_task_workflow", "task_brief", str(b["id"]), Object{"brief_id": b["id"]}); e != nil {
 		return response{}, e
 	}

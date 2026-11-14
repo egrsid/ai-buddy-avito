@@ -461,6 +461,9 @@ func (s *Server) Recover(ctx context.Context) error {
 	if _, e = s.Pool.Exec(ctx, "UPDATE app.task_clarity_reports SET enrichment_status='failed' WHERE enrichment_status='pending'"); e != nil {
 		return e
 	}
+	if _, e = s.Pool.Exec(ctx, "UPDATE app.revision_proposals SET status='unavailable',questions='[\"Генерация прервана перезапуском. Запросите новое предложение.\"]',proposal_revision=proposal_revision+1 WHERE status='generating'"); e != nil {
+		return e
+	}
 	return s.reconcilePending(ctx)
 }
 func (s *Server) reconcilePending(ctx context.Context) error {

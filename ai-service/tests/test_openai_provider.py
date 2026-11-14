@@ -416,3 +416,22 @@ def test_eof_without_done_is_not_success_and_keeps_unknown_usage_reserved(ledger
     with pytest.raises(ProviderUnavailable):
         read_stream(provider)
     assert ledger.status()["unsettled"] == 1
+
+
+@pytest.mark.parametrize(
+    "usage",
+    [
+        {"prompt_tokens": 10},
+        {"prompt_tokens": -1, "completion_tokens": 2},
+        {"prompt_tokens": True, "completion_tokens": 2},
+        {"prompt_tokens": "10", "completion_tokens": 2},
+    ],
+)
+def test_invalid_usage_keeps_the_reservation_instead_of_refunding(ledger, usage):
+    provider = provider_with(answer_with(delta("Ответ"), usage_chunk(usage), "[DONE]"), ledger)
+    assert read_stream(provider) == ["Ответ"]
+    assert ledger.status()["unsettled"] == 1
+    row = ledger.observations()[0]
+    assert row["actual_rub"] is None and row["reserved_rub"] > 0
+    assert row["model"] == PAID["llm_model"]
+    assert row["correlation_id"] is not None
