@@ -45,8 +45,8 @@ def main() -> None:
             (directory / "coverage.coverprofile").read_text(encoding="utf-8")
         )
         print(f"Go line coverage: {covered}/{total}")
-        if total == 0 or covered * 100 <= total * 80:
-            raise SystemExit("Go line coverage must be strictly >80%")
+        if total == 0 or covered * 100 < total * 82:
+            raise SystemExit("Go line coverage must be at least 82%")
     elif component in {"ai", "mock"}:
         folder, module = (
             ("ai-service", "app") if component == "ai" else ("mock-services", "corporate")

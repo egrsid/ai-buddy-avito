@@ -75,7 +75,7 @@ func created3(def string, v any) response { return response{201, v, "v3/public/"
 
 // requestSchema keeps v2 request names short and lets v3 routes name "v3/public/...".
 func requestSchema(definition string) string {
-	if strings.HasPrefix(definition, "v3/") {
+	if strings.HasPrefix(definition, "v3/") || strings.HasPrefix(definition, "v4/") {
 		return definition
 	}
 	return "public/" + definition
@@ -188,6 +188,8 @@ func New(pool *pgxpool.Pool, c Config) (*Server, error) {
 	for _, name := range []string{"public", "events", "ai"} {
 		files = append(files, schemaFile{c.ContractsV3, "v3/", name})
 	}
+	v4dir := filepath.Join(filepath.Dir(filepath.Clean(c.Contracts)), "v4")
+	files = append(files, schemaFile{v4dir, "v4/", "public"})
 	refs := map[string]string{}
 	for _, f := range files {
 		data, e := os.ReadFile(filepath.Join(f.dir, f.name+".schema.json"))
@@ -444,7 +446,7 @@ func normalizeTimes(v any) {
 	case map[string]any:
 		for k, value := range x {
 			switch k {
-			case "created_at", "updated_at", "observed_at", "invalidated_at", "expires_at", "resolved_at", "published_at", "last_seen", "last_seen_at", "first_seen":
+			case "created_at", "updated_at", "observed_at", "invalidated_at", "expires_at", "resolved_at", "published_at", "last_seen", "last_seen_at", "first_seen", "started_at", "ended_at", "as_of", "unlinked_at", "from_a", "to_a", "from_b", "to_b":
 				if parsed, e := time.Parse(time.RFC3339Nano, str(value)); e == nil {
 					x[k] = stamp(parsed)
 				}
