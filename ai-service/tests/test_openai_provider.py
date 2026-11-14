@@ -418,6 +418,14 @@ def test_eof_without_done_is_not_success_and_keeps_unknown_usage_reserved(ledger
     assert ledger.status()["unsettled"] == 1
 
 
+@pytest.mark.parametrize("reason", ["stop", "length"])
+def test_eof_after_finish_reason_is_a_complete_answer_and_settles(ledger, reason):
+    chunks = [delta("Полный"), delta(" ответ", finish_reason=reason), usage_chunk()]
+    provider = provider_with(answer_with(*chunks), ledger)
+    assert "".join(read_stream(provider)) == "Полный ответ"
+    assert ledger.status()["unsettled"] == 0
+
+
 @pytest.mark.parametrize(
     "usage",
     [

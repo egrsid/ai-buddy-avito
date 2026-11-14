@@ -103,17 +103,39 @@ def ledger_rows(command: list[str], env: dict) -> list[dict]:
     return json.loads(result.stdout)
 
 
-def chat_case(actor: Actor, goal: str, question: str, case_id: str) -> dict:
+# Go allows 5 chat runs per intern per minute; ten cases must wait instead of failing on 429.
+RATE_LIMIT_WAIT_SECONDS = 15
+RATE_LIMIT_ATTEMPTS = 6
+
+
+def start_run(actor: Actor, conversation: str, question: str, sleep=time.sleep) -> dict:
+    for attempt in range(RATE_LIMIT_ATTEMPTS):
+        try:
+            return actor.call(
+                "POST", f"/api/v2/conversations/{conversation}/runs", {"content": question}
+            )
+        except AcceptanceFailure as error:
+            if str(error) != "HTTP_429" or attempt == RATE_LIMIT_ATTEMPTS - 1:
+                raise
+            sleep(RATE_LIMIT_WAIT_SECONDS)
+    raise AcceptanceFailure("HTTP_429")
+
+
+def chat_case(actor: Actor, goal: str, question: str, case_id: str, sleep=time.sleep) -> dict:
     conversation = actor.call(
         "POST", "/api/v2/conversations", {"goal_id": goal, "step_id": "check_access"}
     )
-    run = actor.call(
-        "POST", f"/api/v2/conversations/{conversation['id']}/runs", {"content": question}
-    )
+    run = start_run(actor, conversation["id"], question, sleep)
     started = time.monotonic()
     first = None
     event = ""
-    with actor.client.stream("GET", f"/api/v2/runs/{run['id']}/events", timeout=90) as response:
+    # Go answers 422 to an event stream request without this Accept header.
+    with actor.client.stream(
+        "GET",
+        f"/api/v2/runs/{run['id']}/events",
+        timeout=90,
+        headers={"Accept": "text/event-stream"},
+    ) as response:
         if response.status_code != 200:
             raise AcceptanceFailure(f"SSE_HTTP_{response.status_code}")
         for line in response.iter_lines():
@@ -151,7 +173,7 @@ def primary_passed(case: dict) -> bool:
     return (
         case["completion"] == "completed"
         and case["origin"].get("answered_by") == "primary"
-        and case["origin"].get("completion") == "completed"
+        and case["origin"].get("completion") == "complete"
         and case["citation_count"] > 0
         and case["citations_reauthorized"]
         and case["first_content_seconds"] is not None

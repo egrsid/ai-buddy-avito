@@ -173,10 +173,13 @@ class FailoverStream:
             except (ProviderUnavailable, TimeoutError) as error:
                 self.owner.mark_failed(index)
                 self._note("timeout" if isinstance(error, TimeoutError) else "model_unavailable")
+                # Сообщения ProviderUnavailable пишет наш адаптер (код, тип сбоя), без
+                # текста провайдера, поэтому причину можно логировать.
                 logger.warning(
-                    "LLM %s не ответила (%s), пропускаем её %.0f с",
+                    "LLM %s не ответила (%s: %s), пропускаем её %.0f с",
                     name,
                     type(error).__name__,
+                    str(error)[:120],
                     COOLDOWN_SECONDS,
                 )
             finally:
