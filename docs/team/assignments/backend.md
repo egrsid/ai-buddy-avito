@@ -1,3 +1,8 @@
+**Следующее планирование — v4:** [пакет](../../v4/README.md),
+[задачи и handoff по ролям](../../v4/delivery.md), [acceptance](../../v4/testing.md).
+Ветка docs/v4-planning, docs only. Компонентные runtime tasks пока TODO;
+нижний v3/v2 handoff — история, не актуальная очередь новых v4 задач.
+
 # Назначение: Backend
 
 ## Следующая работа — v3

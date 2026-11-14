@@ -1,3 +1,7 @@
+**V4 planning:** [новый backlog и role handoff](../v4/delivery.md).
+В текущем проходе только Markdown в docs/v4-planning; runtime v4 TODO.
+[Архитектура](../v4/architecture.md), [приёмка](../v4/testing.md).
+
 **14 ноября, v3 runtime:** локальная интеграция завершена и offline demo проверен;
 [приёмка, проверки и открытые live/race/CI gates](../v3/integration-acceptance-2026-11-14.md).
 Нижние docs-only/PLANNED записи — история предыдущих поручений.

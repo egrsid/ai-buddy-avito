@@ -6,19 +6,20 @@ Work on project files locally. You may create local Git commits. Do not list Cod
 
 Do not push to any remote, including feature branches and forks. Do not open or merge pull requests, invite collaborators, or change repository permissions. The repository owner handles publishing and access management.
 
-## Current assignment · local v3 integration · 2026-11-14
+## Current assignment · v4 documentation · 2026-11-14
 
-The owner explicitly authorized runtime changes, local integration and fixes across branches,
-superseding the earlier Markdown-only assignment. Work in feature/local-v3-integration.
-Published main b6f940d remains the v2 baseline. No push/PR/remote merge.
-The integrated source includes feature/frontend-v3 363a0e5 and Backend/AI v3.
-Read docs/v3/README.md, product.md, architecture.md, delivery.md, testing.md and the
-six feature SDDs. Current evidence: docs/v3/integration-acceptance-2026-11-14.md.
-Use isolated test DBs and preserve existing demo data. Never reset volumes implicitly.
-The owner chose offline operation; paid primary LLM acceptance stays OPEN.
-Telegram is manual personal messaging with scoped preview/export; versions of mentor task
-briefs and task-clarity reports stay separate from documentation feedback.
-Goal progress/verification and authorization remain Go-owned.
+The owner requests v4 planning only. Read any branch; change only Markdown in
+`docs/v4-planning`, based on v3 integration f4f63a0. Do not implement runtime, schemas,
+migrations, seed, config, CI/Docker or DB changes in this assignment.
+Read docs/v4/README.md, product.md, architecture.md, delivery.md, testing.md,
+decisions.md, demo.md and all five feature spec/design/tasks packages before v4 work.
+V4 joins workspace → trusted evidence → AI revision diff → human publish → descriptive
+version impact comparison. Owners/dependencies and proposed component branches are in
+delivery.md; executable contract review precedes runtime. Never claim planned tests passed.
+Published main remains v2; feature/local-v3-integration is the v3 source baseline.
+The current owner choice is offline: planning a live gate does not authorize paid calls.
+Preserve v3 verification/ACL/budget/manual Telegram/docs feedback and existing data.
+No push/PR/remote merge. Future runtime work requires its own component assignment.
 
 ## Product direction
 

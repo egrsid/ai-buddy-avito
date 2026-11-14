@@ -1,3 +1,12 @@
+## V4 planning · 14 ноября 2026
+
+Единственная ветка изменений этого поручения: `docs/v4-planning`, от локальной
+`feature/local-v3-integration` f4f63a0. Проверенный current checkout перед стартом чист.
+main b6f940d остаётся v2, source frontend-v3 363a0e5 уже включён в интеграцию.
+Remote inventory не обновлялся этим docs-проходом. Новые feature/*-v4 branches
+только предложены в [delivery](../v4/delivery.md), не созданы. Ни push/PR/remote merge.
+Ниже прежние inventory, не текущая база новой разработки.
+
 # Ветки и текущая база команды
 
 Актуальный remote audit: [13 ноября, перед v3](repository-audit-2026-11-13.md).

@@ -1,3 +1,7 @@
+**Новый planning target — [v4](../v4/README.md)**: пять spec/design/tasks комплектов,
+контрактные предложения, owners/dependencies и приёмка. Runtime v4 пока не реализован.
+V3 остаётся baseline; нижние v2/v3 записи — история и сохранённые сценарии.
+
 # Feature Specifications — target v2
 
 ## Текущий план новой разработки — v3
