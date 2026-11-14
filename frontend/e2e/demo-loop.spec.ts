@@ -24,9 +24,12 @@ async function account(page: Page, id: string) {
 async function step(page: Page, id: string) {
   await page.getByRole('link', { name: 'Мои цели', exact: true }).click();
   // v3: подзадачи цели раскрываются кнопкой на карточке.
+  // Список мог ещё грузиться: ждём карточку (свёрнутую или уже раскрытую), потом действуем.
   const expand = page.getByRole('button', { name: 'Раскрыть подзадачи' }).first();
-  if (await expand.isVisible()) await expand.click();
-  await page.locator(`ol a[href$="/steps/${id}"]`).first().click();
+  const link = page.locator(`ol a[href$="/steps/${id}"]`).first();
+  await expect(link.or(expand)).toBeVisible();
+  if (!await link.isVisible()) await expand.click();
+  await link.click();
   await expect(page.getByRole('heading', { name: 'Помощь с этим шагом' })).toBeVisible();
 }
 const button = (page: Page, name: string) => page.getByRole('button', { name, exact: true });
@@ -73,10 +76,9 @@ test('A/B/C full browser loop, ACL and real service restart', async ({ page }, i
     await button(page, 'Одобрить').click();
     await expect(button(page, 'Одобрить')).toHaveCount(0);
     await account(page, id);
-    expect((await read(page, '/goals/' + goalId)).steps.find((s: { id: string }) => s.id === 'check_access').status).not.toBe('verified');
-    await step(page, 'check_access');
-    await button(page, 'Повторить проверку').click();
-    await expect.poll(async () => (await read(page, '/goals/' + goalId)).steps.find((s: { id: string }) => s.id === 'check_access').status).toBe('verified');
+    // После одобрения Go сам повторил IAM-проверку: стажёру ничего нажимать не нужно.
+    expect((await read(page, '/goals/' + goalId)).steps.find((s: { id: string }) => s.id === 'check_access').status).toBe('verified');
+    expect((await read(page, '/access-requests')).items[0]).toMatchObject({ status: 'approved', grant_state: 'present' });
     await step(page, 'check_connection');
     await page.getByLabel('Режим SSL').selectOption('disable');
     await button(page, 'Запустить проверку').click();

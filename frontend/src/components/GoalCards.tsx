@@ -37,6 +37,11 @@ function writeExpanded(accountId: string, ids: Set<string>) {
   }
 }
 
+// Только что начатую цель показываем раскрытой: человек сразу видит, с чего начать.
+export function rememberExpanded(accountId: string, goalId: string) {
+  writeExpanded(accountId, new Set([...readExpanded(accountId), goalId]));
+}
+
 export function GoalCards({ goals, accountId }: { goals: GoalSummaryT[]; accountId: string }) {
   const [expanded, setExpanded] = useState<Set<string>>(() => readExpanded(accountId));
 

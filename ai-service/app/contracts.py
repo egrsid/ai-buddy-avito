@@ -18,6 +18,7 @@ CONTRACTS_DIR = Path(__file__).resolve().parents[2] / "contracts" / "v2"
 AI_SCHEMA_ID = "https://ai-buddy.invalid/contracts/v2/ai.schema.json"
 COMMON_SCHEMA_ID = "https://ai-buddy.invalid/contracts/v2/common.schema.json"
 AI_V3_SCHEMA_ID = "https://ai-buddy.invalid/contracts/v3/ai.schema.json"
+AI_V4_SCHEMA_ID = "https://ai-buddy.invalid/contracts/v4/ai.schema.json"
 # Имя поля в Error.fields обязано быть StableId.
 STABLE_ID = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 MAX_ERROR_FIELDS = 20
@@ -29,6 +30,8 @@ def registry() -> Registry:
     paths = sorted(CONTRACTS_DIR.glob("*.schema.json"))
     # v3 добавляет свои определения (происхождение ответа, черновик отчёта о ТЗ) рядом с v2.
     paths += sorted((CONTRACTS_DIR.parent / "v3").glob("*.schema.json"))
+    # v4: черновик правки ТЗ по отчёту о неясности.
+    paths += sorted((CONTRACTS_DIR.parent / "v4").glob("*.schema.json"))
     for path in paths:
         contents = json.loads(path.read_text(encoding="utf-8"))
         resources.append((contents["$id"], Resource.from_contents(contents)))
