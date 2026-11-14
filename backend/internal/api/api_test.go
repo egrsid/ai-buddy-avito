@@ -407,9 +407,14 @@ func TestAccessJourneyFeedback(t *testing.T) {
 		a.call("POST", "/access-requests/"+id+"/decision", Object{"decision": "approved", "reason": "ok", "expected_version": ar["version"]}, 403)
 		approver.call("GET", "/access-requests", nil, 200)
 		approver.call("POST", "/access-requests/"+id+"/decision", Object{"decision": "approved", "reason": "ok", "expected_version": ar["version"]}, 200)
+		// После одобрения Go сам повторяет IAM-проверку: шаг засчитан по свежему ответу IAM.
 		g = a.call("GET", "/goals/"+str(g["id"]), nil, 200)
-		if stepOf(g, "check_access")["status"] == "verified" {
-			t.Fatal("approval counted as check")
+		if stepOf(g, "check_access")["status"] != "verified" || g["status"] == "waiting_external" {
+			t.Fatal("approval did not trigger IAM recheck", g)
+		}
+		var source string
+		if e := f.admin.QueryRow(context.Background(), "SELECT source FROM app.evidence WHERE goal_id=$1 AND step_id='check_access' AND invalidated_at IS NULL", g["id"]).Scan(&source); e != nil || source != "mock_iam_adapter" {
+			t.Fatal("verified without IAM evidence", source, e)
 		}
 		check := a.check(g, "check_access", "", 201)
 		a.call("GET", "/checks/"+str(check["id"]), nil, 200)

@@ -60,11 +60,12 @@ class OpenAIProvider:
         # read-таймаут — страховка от зависшего соединения: раньше сработает пайплайн.
         self.client = make_client(settings, settings.pipeline_timeout, transport)
 
-    def upper_cost(self, messages: list[dict]) -> float:
+    def upper_cost(self, messages: list[dict], max_output: int | None = None) -> float:
         """Верхняя цена вызова: весь промпт по байтам + полный лимит ответа."""
         prompt = upper_tokens([message["content"] for message in messages])
         input_cost = cost_rub(prompt, self.settings.price_input_rub)
-        output_cost = cost_rub(self.settings.llm_max_output_tokens, self.settings.price_output_rub)
+        limit = max_output or self.settings.llm_max_output_tokens
+        output_cost = cost_rub(limit, self.settings.price_output_rub)
         return input_cost + output_cost
 
     def actual_cost(self, usage: dict) -> float:
@@ -74,18 +75,19 @@ class OpenAIProvider:
 
     async def stream(self, llm_input: LlmInput, scenario: str) -> AsyncIterator[str]:
         # scenario не нужен: X-Mock-Scenario разрешён только в mock-режиме.
+        limit = llm_input.output_limit(self.settings.llm_max_output_tokens)
         body = {
             "model": self.settings.llm_model,
             "messages": llm_input.messages,
             "stream": True,
-            "max_tokens": self.settings.llm_max_output_tokens,
+            "max_tokens": limit,
             # Последним куском провайдер пришлёт usage — по нему считаем факт расходов.
             "stream_options": {"include_usage": True},
         }
         if self.settings.llm_reasoning_effort:
             body["reasoning_effort"] = self.settings.llm_reasoning_effort
         try:
-            reservation = self.ledger.reserve("chat", self.upper_cost(llm_input.messages))
+            reservation = self.ledger.reserve("chat", self.upper_cost(llm_input.messages, limit))
         except BudgetUnavailable as error:
             raise BudgetDenied("Платный вызов запрещён") from error
         async for text in self.chat(body, reservation):
@@ -122,8 +124,9 @@ class OpenAIProvider:
                             yield text
                         if choice.get("finish_reason") == "length":
                             logger.warning(
-                                "Ответ оборван на лимите LLM_MAX_OUTPUT_TOKENS=%s",
-                                self.settings.llm_max_output_tokens,
+                                "Ответ оборван на лимите %s токенов (LLM_MAX_OUTPUT_TOKENS "
+                                "или лимит операции)",
+                                body["max_tokens"],
                             )
                     if chunk.get("usage"):
                         last_usage = chunk["usage"]
