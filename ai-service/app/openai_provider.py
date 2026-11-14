@@ -111,6 +111,9 @@ class OpenAIProvider:
         """
         last_usage = None
         completed = False
+        # finish_reason stop/length — модель сама закончила ответ; если после этого поток
+        # закрылся без [DONE], ответ всё равно полный. Без finish_reason обрыв — сбой.
+        finished = False
         try:
             async with self.client.stream("POST", "/chat/completions", json=body) as response:
                 if response.status_code != 200:
@@ -131,6 +134,8 @@ class OpenAIProvider:
                         text = (choice.get("delta") or {}).get("content") or ""
                         if text:
                             yield text
+                        if choice.get("finish_reason") in ("stop", "length"):
+                            finished = True
                         if choice.get("finish_reason") == "length":
                             logger.warning(
                                 "Ответ оборван на лимите %s токенов (LLM_MAX_OUTPUT_TOKENS "
@@ -143,6 +148,9 @@ class OpenAIProvider:
             raise ProviderUnavailable(f"API недоступен: {type(error).__name__}") from error
         except ValueError as error:
             raise ProviderUnavailable("API прислал не JSON") from error
+        if not completed and finished:
+            logger.warning("Поток API закрыт без [DONE] после finish_reason: ответ полный")
+            completed = True
         if not completed:
             raise ProviderUnavailable("Поток API прерван до завершения")
         if last_usage is not None:
