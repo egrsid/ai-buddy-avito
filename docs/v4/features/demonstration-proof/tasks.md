@@ -1,6 +1,14 @@
 # Проверяемое AI-демо — tasks v4
 
-Runtime TODO: V4-DEMO-TL-01, V4-LIVE-AI-01, V4-E2E-FE-01. Единственные owners/reviewers/directories/dependencies —
+## Текущий результат локальной интеграции
+
+**V4-DEMO-TL-01 / E2E-FE-01 — PARTIAL; V4-LIVE-AI-01 — OPEN**. Изолированный offline Docker и 8 browser tests с реальным restart PASS. Offline AI evals 26/26, safety 12/12. Новый paid/live healthy/fault smoke не выполнялся; events/test-clock/cold CI/race остаются открыты.
+
+[Проверки и ограничения](../../integration-review-2026-11-14.md). Порог покрытия ≥82% отдельно.
+Полное соответствие spec/design и gates не объявляется; checklist ниже — критерии
+полной приёмки, а не утверждение отсутствия уже работающего runtime.
+
+Owners/reviewers/directories/dependencies —
 [delivery](../../delivery.md).
 
 - [ ] Предъявить schemas/examples и semantic negative cases в contract gate.

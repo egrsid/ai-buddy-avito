@@ -301,7 +301,6 @@ func (q *request) ownGoal(templateID string, version int) (string, error) {
 
 func evidenceTimeline(q *request) (response, error) {
 	goalID := q.r.PathValue("id")
-	before := q.countEvents()
 	goal, e := q.one("SELECT jsonb_build_object('id',id,'status',status,'intern_id',intern_id) FROM app.goals WHERE id=$1 AND intern_id=$2", goalID, q.user["id"])
 	if e != nil {
 		return response{}, e
@@ -325,9 +324,6 @@ func evidenceTimeline(q *request) (response, error) {
 	if len(items) > 50 {
 		items = items[:50]
 	}
-	if q.countEvents() != before {
-		return response{}, fail(502, "UPSTREAM_ERROR")
-	}
 	current := Object{"status": goal["status"]}
 	if code, e := q.openBlocker(goalID); e != nil {
 		return response{}, e
@@ -337,13 +333,10 @@ func evidenceTimeline(q *request) (response, error) {
 	return out4("EvidenceTimeline", Object{"goal_id": goalID, "as_of": stamp(q.s.Now()), "current": current, "items": items}), nil
 }
 
-func (q *request) countEvents() int {
-	var n int
-	_ = q.tx.QueryRow(q.Context, "SELECT count(*) FROM app.business_events").Scan(&n)
-	return n
-}
-
 func createRevisionProposal(q *request) (response, error) {
+	if _, err := q.report(q.r.PathValue("id")); err != nil {
+		return response{}, err
+	}
 	report, e := q.one("SELECT to_jsonb(r) FROM app.task_clarity_reports r WHERE id=$1 AND owner_id=$2", q.r.PathValue("id"), q.user["id"])
 	if e != nil {
 		return response{}, e
@@ -363,17 +356,50 @@ func createRevisionProposal(q *request) (response, error) {
 	status, origin := "unavailable", "rule_based"
 	changes := []any{}
 	questions := []any{"Модель недоступна. Отредактируйте черновик вручную."}
-	draft, err := q.call(q.s.Config.AIURL, "POST", "/internal/v4/revision-draft", "v4/public/RevisionDraftOutput", Object{
-		"section_id": report["section_id"], "section_text": text, "base_hash": baseHash, "base_version": report["brief_version"],
-	}, nil)
-	if err == nil && safeRevision(draft, baseHash) {
-		status = str(draft["outcome"])
-		if status == "" {
-			status = "ready"
+	field := "sections." + str(report["section_id"]) + ".text"
+	if report["section_id"] == "goal" || report["section_id"] == "expected_result" {
+		field = str(report["section_id"])
+	}
+	if report["section_id"] == "acceptance_criteria" {
+		field = "acceptance_criteria." + str(obj(list(obj(version["content"])["acceptance_criteria"])[0])["id"]) + ".text"
+	}
+	path := strings.ReplaceAll(field, ".", "/")
+	input := Object{"brief_title": obj(version["content"])["title"], "base_version": report["brief_version"], "base_hash": baseHash,
+		"report": Object{"section_id": report["section_id"], "reason": report["reason"], "affected_count": report["lifetime_count"]},
+		"fields": []any{Object{"path": path, "label": str(report["section_id"]), "text": text, "hash": baseHash}}, "refs": []any{}}
+	if q.body["answers"] != nil {
+		input["answers"] = q.body["answers"]
+	}
+	draft, err := q.call(q.s.Config.AIURL, "POST", "/internal/v4/revision-draft", "v4/ai/RevisionDraftResponse", input, nil)
+	if err == nil && draft["base_hash"] == baseHash && num(draft["base_version"]) == num(report["brief_version"]) && len(list(draft["evidence_refs"])) == 0 {
+		converted := []any{}
+		valid := true
+		for _, value := range list(draft["changes"]) {
+			change := obj(value)
+			if str(change["path"]) != path {
+				valid = false
+				break
+			}
+			converted = append(converted, Object{"id": change["id"], "field": field, "old_hash": change["old_hash"], "replacement": change["replacement"]})
 		}
-		origin = "model"
-		changes = list(draft["changes"])
-		questions = list(draft["questions"])
+		candidate := Object{"changes": converted, "questions": []any{}}
+		if valid && safeRevision(candidate, baseHash) {
+			status = str(draft["outcome"])
+			if status == "no_change" {
+				status = "needs_input"
+			}
+			if obj(draft["origin"])["answered_by"] != "offline" {
+				origin = "model"
+			}
+			changes = converted
+			questions = []any{}
+			for _, value := range list(draft["questions"]) {
+				questions = append(questions, obj(value)["text"])
+			}
+			if status == "needs_input" && len(questions) == 0 {
+				questions = append(questions, "Автоматическая правка не предложена. Проверьте текст вручную.")
+			}
+		}
 	}
 	id := uuid()
 	expires := q.s.Now().UTC().Add(10 * time.Minute)
@@ -391,7 +417,8 @@ func safeRevision(draft Object, baseHash string) bool {
 	for _, item := range list(draft["changes"]) {
 		change := obj(item)
 		field := str(change["field"])
-		if seen[field] || !strings.HasPrefix(field, "sections.") || !strings.HasSuffix(field, ".text") {
+		allowed := field == "goal" || field == "expected_result" || ((strings.HasPrefix(field, "sections.") || strings.HasPrefix(field, "acceptance_criteria.")) && strings.HasSuffix(field, ".text"))
+		if seen[field] || !allowed {
 			return false
 		}
 		seen[field] = true
@@ -404,6 +431,16 @@ func safeRevision(draft Object, baseHash string) bool {
 }
 
 func sectionBody(content Object, sectionID string) string {
+	if sectionID == "goal" || sectionID == "expected_result" {
+		return str(content[sectionID])
+	}
+	if sectionID == "acceptance_criteria" {
+		items := list(content["acceptance_criteria"])
+		if len(items) > 0 {
+			return str(obj(items[0])["text"])
+		}
+		return ""
+	}
 	for _, item := range list(obj(content)["sections"]) {
 		section := obj(item)
 		if str(section["id"]) == sectionID {
@@ -422,7 +459,7 @@ func proposalDTO(id string, reportID any, status, origin string, changes, questi
 	}
 	return Object{
 		"id": id, "report_id": reportID, "status": status, "origin": origin, "changes": changes, "questions": questions,
-		"proposal_revision": revision, "expires_at": stamp(expires), "base_hash": baseHash, "base_version": baseVersion,
+		"preview_hash": digest(encode(changes)), "proposal_revision": revision, "expires_at": stamp(expires), "base_hash": baseHash, "base_version": baseVersion,
 	}
 }
 
@@ -430,6 +467,9 @@ func (q *request) proposal(id string) (Object, error) {
 	row, e := q.one("SELECT to_jsonb(p) FROM app.revision_proposals p WHERE id=$1 AND owner_id=$2 FOR UPDATE", id, q.user["id"])
 	if e != nil {
 		return nil, e
+	}
+	if _, err := q.brief(str(row["brief_id"])); err != nil {
+		return nil, err
 	}
 	expires, err := time.Parse(time.RFC3339, str(row["expires_at"]))
 	if err == nil && !q.s.Now().Before(expires) && str(row["status"]) != "applied" && str(row["status"]) != "discarded" {
@@ -472,6 +512,9 @@ func applyRevision(q *request) (response, error) {
 	if str(row["status"]) != "ready" || num(row["proposal_revision"]) != num(q.body["proposal_revision"]) || digest(encode(list(row["changes"]))) != str(q.body["preview_hash"]) {
 		return response{}, fail(409, "VERSION_CONFLICT")
 	}
+	if _, e = q.brief(str(row["brief_id"])); e != nil {
+		return response{}, e
+	}
 	selected := map[string]Object{}
 	for _, id := range list(q.body["selected_change_ids"]) {
 		for _, item := range list(row["changes"]) {
@@ -507,12 +550,19 @@ func applyRevision(q *request) (response, error) {
 	if e = applyChanges(content, selected); e != nil {
 		return response{}, e
 	}
+	content, e = q.briefContent(content)
+	if e != nil {
+		return response{}, e
+	}
 	raw := string(encode(content))
 	if q.body["expected_draft_revision"] == nil {
 		if e = q.exec("INSERT INTO app.task_brief_versions(brief_id,version,state,content,content_hash,created_at) SELECT $1,max(version)+1,'draft',$2::jsonb,$3,$4 FROM app.task_brief_versions WHERE brief_id=$1", row["brief_id"], raw, digest(encode(content)), q.s.Now()); e != nil {
 			return response{}, e
 		}
 	} else if e = q.exec("UPDATE app.task_brief_versions SET content=$2::jsonb, content_hash=$3 WHERE brief_id=$1 AND state='draft'", row["brief_id"], raw, digest(encode(content))); e != nil {
+		return response{}, e
+	}
+	if e = q.exec("UPDATE app.task_briefs SET revision=revision+1, updated_at=$2 WHERE id=$1", row["brief_id"], q.s.Now()); e != nil {
 		return response{}, e
 	}
 	if e = q.exec("UPDATE app.revision_proposals SET status='applied', proposal_revision=proposal_revision+1 WHERE id=$1", row["id"]); e != nil {
@@ -524,9 +574,20 @@ func applyRevision(q *request) (response, error) {
 }
 
 func applyChanges(content Object, selected map[string]Object) error {
-	sections := list(content["sections"])
 	for field, change := range selected {
-		id := strings.TrimSuffix(strings.TrimPrefix(field, "sections."), ".text")
+		if field == "goal" || field == "expected_result" {
+			if digest([]byte(str(content[field]))) != str(change["old_hash"]) {
+				return fail(409, "VERSION_CONFLICT")
+			}
+			content[field] = change["replacement"]
+			continue
+		}
+		area := "sections"
+		if strings.HasPrefix(field, "acceptance_criteria.") {
+			area = "acceptance_criteria"
+		}
+		sections := list(content[area])
+		id := strings.TrimSuffix(strings.TrimPrefix(field, area+"."), ".text")
 		found := false
 		for _, item := range sections {
 			section := obj(item)
@@ -599,7 +660,7 @@ func getImpact(q *request) (response, error) {
 	asOf := q.s.Now().UTC()
 	body := Object{
 		"brief_id": brief["id"], "section_id": cfg["section_id"], "reason": cfg["reason"], "as_of": stamp(asOf),
-		"policy_revision": impactPolicyRev, "comparable": cfg["comparable"] == true, "synthetic": true, "label": impactLabel,
+		"config_revision": cfg["revision"], "policy_revision": impactPolicyRev, "comparable": cfg["comparable"] == true, "synthetic": true, "label": impactLabel,
 		"before": Object{"version": num(cfg["before_version"]), "state": "no_exposure"},
 		"after":  Object{"version": num(cfg["after_version"]), "state": "no_exposure"},
 	}

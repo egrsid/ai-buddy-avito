@@ -1,3 +1,8 @@
+> **Обновление локальной интеграции 14 ноября:** BE/AI v4 уже поставлены и подключены
+> к FE. [Текущий статус, доказательства и оставшиеся gates](../v4/integration-review-2026-11-14.md).
+> Ниже сохранён первоначальный план/исторический checkpoint; заявления об отсутствии
+> runtime относятся к предыдущему этапу. Полная release-приёмка ещё не закрыта.
+
 **V4 FE/TL implementation checkpoint:** [фактические результаты](../v4/fe-tl-checkpoint.md).
 Coverage≥82% per component; FE view prototypes ready, G1/runtime/E2E integration blocked
 на отсутствующих BE/AI v4 поставках. Никакой fixture не засчитан за working v4 API.

@@ -1,6 +1,14 @@
 # Эффект исправлений — tasks v4
 
-Runtime TODO: V4-IMPACT-BE-01, V4-IMPACT-FE-01. Единственные owners/reviewers/directories/dependencies —
+## Текущий результат локальной интеграции
+
+**V4-IMPACT-BE-01 / FE-01 — PARTIAL integrated**. Go считает экспозиции/7-day окно/suppression, FE настраивает и читает comparison. Unit oracle −40 п.п. проверен; свежая БД честно insufficient_data. Открыт операторский прожитый dataset/test-clock.
+
+[Проверки и ограничения](../../integration-review-2026-11-14.md). Порог покрытия ≥82% отдельно.
+Полное соответствие spec/design и gates не объявляется; checklist ниже — критерии
+полной приёмки, а не утверждение отсутствия уже работающего runtime.
+
+Owners/reviewers/directories/dependencies —
 [delivery](../../delivery.md).
 
 - [ ] Предъявить schemas/examples и semantic negative cases в contract gate.
