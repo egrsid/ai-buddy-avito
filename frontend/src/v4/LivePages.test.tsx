@@ -386,3 +386,36 @@ it('discards a reserved proposal and keeps the human editor available', async ()
   expect(screen.getByText(/Предложение отклонено/)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Применить в черновик' })).toBeDisabled();
 });
+
+it('collapses a long route list once loaded and then keeps the user choice', async () => {
+  m.role = 'buddy';
+  const many = [1, 2, 3, 4].map((n) =>
+    fx.assignment({ id: `30000000-0000-4000-8000-00000000001${n}` }),
+  );
+  let resolve: (value: unknown) => void = () => {};
+  m.assignments.mockReturnValue(new Promise((r) => (resolve = r)));
+  render(<LiveV4Page />);
+  const summary = screen.getByText(/Маршруты назначений/);
+  const details = summary.closest('details')!;
+  expect(details.open).toBe(false);
+  // The user opens the panel before the list arrives: the arrival must not close it.
+  await act(async () => {
+    details.open = true;
+    details.dispatchEvent(new Event('toggle'));
+  });
+  await act(async () => resolve(many));
+  await screen.findByText('Маршруты назначений (4)');
+  expect(details.open).toBe(true);
+  await act(async () => {
+    details.open = false;
+    details.dispatchEvent(new Event('toggle'));
+  });
+  expect(details.open).toBe(false);
+});
+
+it('opens a short route list by default', async () => {
+  m.role = 'buddy';
+  render(<LiveV4Page />);
+  await screen.findByText('Маршруты назначений (1)');
+  expect(screen.getByText(/Маршруты назначений/).closest('details')!.open).toBe(true);
+});
