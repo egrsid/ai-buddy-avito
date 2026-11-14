@@ -48,6 +48,10 @@ def read_env_file(path: Path) -> dict:
     return values
 
 
+# The image's evals/ folder is read-only for the service user; /tmp is writable.
+LIVE_EVAL_REPORT = "/tmp/report-revision-draft-live.md"
+
+
 def config_problems(values: dict) -> list[str]:
     """Что не так с live-настройками. Пустой список — можно запускать."""
     problems = []
@@ -159,6 +163,8 @@ def main(argv=None) -> int:
             "-m",
             "app.revision_draft_evals",
             "--live",
+            "--report",
+            LIVE_EVAL_REPORT,
         ]
     elif args.action == "down":
         command += ["down"]
@@ -172,7 +178,7 @@ def main(argv=None) -> int:
             [
                 "docker",
                 "cp",
-                f"{args.project}-ai-service-1:/workspace/ai-service/evals/report-revision-draft-live.md",
+                f"{args.project}-ai-service-1:{LIVE_EVAL_REPORT}",
                 str(output),
             ],
             check=True,
