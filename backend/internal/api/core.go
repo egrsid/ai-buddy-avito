@@ -43,6 +43,7 @@ type Server struct {
 	mu          sync.Mutex
 	runs        map[string]context.CancelFunc
 	reconcileMu sync.Mutex
+	background  sync.WaitGroup
 }
 type request struct {
 	context.Context
@@ -370,7 +371,7 @@ func (s *Server) route(mux *http.ServeMux, pattern, definition string, role stri
 			return
 		}
 		for _, work := range q.after {
-			go work()
+			s.Background(work)
 		}
 		if login {
 			cookie := result.body.(Object)["_cookie"].(string)
