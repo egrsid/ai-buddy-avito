@@ -84,6 +84,12 @@ class LlmInput:
     messages: list[dict]
     request: dict
     hits: list[Hit]
+    # Лимит ответа для этого вызова; None — общий LLM_MAX_OUTPUT_TOKENS. Резерв бюджета
+    # считается по этому же лимиту, поэтому больший лимит не обходит журнал расходов.
+    max_output_tokens: int | None = None
+
+    def output_limit(self, default: int) -> int:
+        return self.max_output_tokens or default
 
 
 # Действия так, как их видит стажёр на кнопках UI. Модель видит только эти названия,
