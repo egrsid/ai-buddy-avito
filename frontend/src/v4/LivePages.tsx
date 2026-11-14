@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { z } from 'zod';
 import * as C from '../contracts/v4';
 import { apiFetch, newIdempotencyKey, serverNow, userMessage } from '../lib/api';
@@ -9,6 +9,7 @@ import { getGoal } from '../lib/endpoints';
 import { revisionFieldLabel, revisionOriginal } from './revisionOriginal';
 import { Button, Card, LoadingState, ErrorState, PageHeader } from '../components/ui';
 const statusText: Record<string, string> = {
+  generating: 'Генерация предложения',
   ready: 'Готово к проверке',
   blocked: 'Есть препятствие',
   verified: 'Проверено',
@@ -24,7 +25,8 @@ const statusText: Record<string, string> = {
   no_exposure: 'Нет наблюдённой экспозиции',
   not_comparable: 'Версии несопоставимы',
 };
-const get = async <T,>(path: string, schema: z.ZodType<T>) => schema.parse(await apiFetch('/api/v4' + path));
+const get = async <T,>(path: string, schema: z.ZodType<T>, signal?: AbortSignal) =>
+  schema.parse(await apiFetch('/api/v4' + path, { signal }));
 const post = async <T,>(path: string, body: unknown, schema: z.ZodType<T>) =>
   schema.parse(
     await apiFetch('/api/v4' + path, {
@@ -44,7 +46,27 @@ export function LiveV4Page() {
   );
 }
 function Workspaces() {
-  const q = useLiveData(() => get('/workspaces', C.WorkspaceList), [], null);
+  const q = useLiveData(
+    async (signal) => {
+      let page = await get('/workspaces', C.WorkspaceList, signal);
+      const result = { ...page, items: [...page.items], unlinked_goals: [...page.unlinked_goals] };
+      const seen = new Set<string>();
+      while (page.next_cursor) {
+        if (seen.has(page.next_cursor)) throw new Error('Повтор курсора');
+        seen.add(page.next_cursor);
+        page = await get(
+          '/workspaces?cursor=' + encodeURIComponent(page.next_cursor),
+          C.WorkspaceList,
+          signal,
+        );
+        result.items.push(...page.items);
+        result.unlinked_goals.push(...page.unlinked_goals);
+      }
+      return result;
+    },
+    [],
+    null,
+  );
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<z.infer<typeof C.LinkPreview> | null>(null);
@@ -113,7 +135,7 @@ function Workspaces() {
       )}
       <div className="mt-4 space-y-4">
         {[...(q.data?.items ?? []), ...(q.data?.unlinked_goals ?? [])].map((w) => (
-          <Card key={w.id}>
+          <Card key={`${w.kind}:${w.id}`}>
             <h2 className="text-lg font-semibold">{w.title}</h2>
             <p className="my-2">Техническая готовность: {statusText[w.technical_status]}</p>
             <p className="text-xs text-text-secondary">Приёмка результата ТЗ автоматически не выполняется.</p>
@@ -139,18 +161,39 @@ function Workspaces() {
   );
 }
 function GoalDetails({ id }: { id: string }) {
+  const controls = useId();
   const [open, setOpen] = useState(false);
   const goal = useLiveData(() => getGoal(id), [id], null, { enabled: open });
-  const proof = useLiveData(() => get(`/goals/${id}/evidence-timeline`, C.EvidenceTimeline), [id], null, {
-    enabled: open,
-  });
+  const proof = useLiveData(
+    async (signal) => {
+      let page = await get(`/goals/${id}/evidence-timeline`, C.EvidenceTimeline, signal);
+      const result = { ...page, items: [...page.items] };
+      const seen = new Set<string>();
+      while (page.next_cursor) {
+        if (seen.has(page.next_cursor)) throw new Error('Повтор курсора');
+        seen.add(page.next_cursor);
+        page = await get(
+          `/goals/${id}/evidence-timeline?cursor=` + encodeURIComponent(page.next_cursor),
+          C.EvidenceTimeline,
+          signal,
+        );
+        result.items.push(...page.items);
+      }
+      return result;
+    },
+    [id],
+    null,
+    {
+      enabled: open,
+    },
+  );
   return (
     <>
-      <Button variant="secondary" ariaExpanded={open} onClick={() => setOpen(!open)}>
+      <Button variant="secondary" ariaExpanded={open} ariaControls={controls} onClick={() => setOpen(!open)}>
         Подзадачи и доказательства
       </Button>
       {open && (
-        <div className="mt-3 space-y-3">
+        <div id={controls} className="mt-3 space-y-3">
           {goal.state === 'error' && <ErrorState message={userMessage(goal.error)} onRetry={goal.refetch} />}
           <ul>
             {goal.data?.steps.map((s) => (
@@ -162,6 +205,8 @@ function GoalDetails({ id }: { id: string }) {
             ))}
           </ul>
           <h3 className="font-semibold">Почему такой статус?</h3>
+          {proof.data && <p>Текущий статус: {statusText[proof.data.current.status] ?? 'Нет сведений'}</p>}
+          {proof.data?.items.length === 0 && <p>История пока недоступна. Текущий статус хранит сервер.</p>}
           {proof.state === 'error' && (
             <ErrorState message={userMessage(proof.error)} onRetry={proof.refetch} />
           )}
@@ -196,6 +241,26 @@ function MentorTools() {
   const [busy, setBusy] = useState(false);
   const [answer, setAnswer] = useState('');
   const [impact, setImpact] = useState<z.infer<typeof C.ImpactComparison> | null>(null);
+  useEffect(() => {
+    if (proposal?.status !== 'generating') return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        const updated = await get(`/revision-proposals/${proposal.id}`, C.RevisionProposal);
+        if (cancelled) return;
+        setProposal(updated);
+        if (updated.status === 'generating') timer = setTimeout(poll, 500);
+      } catch (error) {
+        if (!cancelled) setNotice(userMessage(error));
+      }
+    };
+    timer = setTimeout(poll, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [proposal?.id, proposal?.status]);
   const current = reports.data?.find((r) => r.id === report);
   async function generate() {
     if (!current || busy) return;
@@ -239,7 +304,11 @@ function MentorTools() {
           `/revision-proposals/${proposal.id}/apply`,
           {
             selected_change_ids: selected,
-            expected_draft_revision: brief.draft?.version ?? null,
+            expected_draft_revision: (
+              proposal.draft_version !== undefined ? proposal.draft_version !== null : !!brief.draft
+            )
+              ? (proposal.base_revision ?? brief.revision)
+              : null,
             proposal_revision: proposal.proposal_revision,
             preview_hash: proposal.preview_hash,
           },
@@ -249,6 +318,25 @@ function MentorTools() {
       setNotice('Изменения сохранены в черновик. Откройте ТЗ, проверьте и опубликуйте отдельно.');
     } catch (e) {
       setNotice(userMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function discard() {
+    if (!proposal || busy) return;
+    setBusy(true);
+    try {
+      setProposal(
+        await post(
+          `/revision-proposals/${proposal.id}/discard`,
+          { expected_revision: proposal.proposal_revision },
+          C.RevisionProposal,
+        ),
+      );
+      setSelected([]);
+      setNotice('Предложение отклонено. Черновик и публикация не менялись.');
+    } catch (error) {
+      setNotice(userMessage(error));
     } finally {
       setBusy(false);
     }
@@ -286,18 +374,25 @@ function MentorTools() {
         </p>
       )}
       <Card className="my-4">
-        <h2 className="font-semibold">Разрешить технический маршрут для назначения</h2>
-        <ul>
-          {assignments.data?.map((a) => (
-            <li key={a.id} className="my-3 text-sm">
-              {a.content.title} · {a.intern.display_name}{' '}
-              <Button disabled={busy} variant="secondary" onClick={() => permit(a.id)}>
-                Разрешить DB-маршрут
-              </Button>
-            </li>
-          ))}
-        </ul>
-        {assignments.state === 'error' && <ErrorState message={userMessage(assignments.error)} />}
+        <details open={(assignments.data?.length ?? 0) <= 3}>
+          <summary className="cursor-pointer font-semibold">
+            Маршруты назначений ({assignments.data?.length ?? 0})
+          </summary>
+          <p className="my-3 text-sm text-text-secondary">
+            Автор разрешает маршрут, стажёр подтверждает связь. Доступ к БД выдаётся отдельно.
+          </p>
+          <ul>
+            {assignments.data?.map((a) => (
+              <li key={a.id} className="my-3 text-sm">
+                {a.content.title} · {a.intern.display_name}{' '}
+                <Button disabled={busy} variant="secondary" onClick={() => permit(a.id)}>
+                  Разрешить DB-маршрут
+                </Button>
+              </li>
+            ))}
+          </ul>
+          {assignments.state === 'error' && <ErrorState message={userMessage(assignments.error)} />}
+        </details>
       </Card>
       <Card className="my-4">
         <label className="block text-sm">
@@ -322,11 +417,30 @@ function MentorTools() {
             ))}
           </select>
         </label>
-        <Button disabled={!current || busy} onClick={generate}>
+        <Button
+          disabled={
+            !current ||
+            busy ||
+            current.brief_version !== current.latest_published_version ||
+            proposal?.status === 'generating'
+          }
+          onClick={generate}
+        >
           Предложить уточнение
         </Button>
         {reports.state === 'error' && <ErrorState message={userMessage(reports.error)} />}
       </Card>
+      {current && current.brief_version !== current.latest_published_version && (
+        <p className="my-3 text-sm text-text-secondary">
+          Отчёт относится к прежней версии. Для новой правки выберите отчёт текущей версии; сравнение версий
+          остаётся доступным.
+        </p>
+      )}
+      {current && (
+        <a className="my-3 block text-primary underline" href={`#/mentor/briefs/${current.brief_id}`}>
+          Открыть редактор ТЗ
+        </a>
+      )}
       {current && (
         <label className="my-3 block text-sm">
           Уточнение автора (для новой генерации)
@@ -343,8 +457,14 @@ function MentorTools() {
         <Card className="my-4">
           <h2 className="font-semibold">Предложение: {statusText[proposal.status]}</h2>
           <p className="my-2 text-xs">
-            {proposal.origin === 'rule_based' ? 'Шаблон без LLM' : 'Ответ модели'} · истекает{' '}
-            {proposal.expires_at}
+            {proposal.status === 'generating'
+              ? 'Ожидаем ответ'
+              : proposal.origin === 'rule_based'
+                ? 'Шаблон без LLM'
+                : proposal.answered_by === 'secondary'
+                  ? 'Ответ резервной модели'
+                  : 'Ответ модели'}{' '}
+            · истекает {proposal.expires_at}
           </p>
           {proposal.questions.map((q, i) => (
             <p key={i}>{q}</p>
@@ -358,11 +478,17 @@ function MentorTools() {
                   setSelected((ids) => (ids.includes(c.id) ? ids.filter((x) => x !== c.id) : [...ids, c.id]))
                 }
               />
-              <span className="ml-2">{revisionFieldLabel(brief, c.field)}</span>
+              <span className="ml-2">
+                {proposal.base_fields?.find((f) => f.field === c.field)?.label ??
+                  revisionFieldLabel(brief, c.field)}
+              </span>
               <p className="my-2 text-sm text-text-secondary">
-                Было: {revisionOriginal(brief, proposal.base_version, c.field)}
+                Было:{' '}
+                {proposal.base_fields?.find((f) => f.field === c.field)?.text ??
+                  revisionOriginal(brief, proposal.base_version, c.field)}
               </p>
               <p className="whitespace-pre-wrap text-sm">Предлагается: {c.replacement}</p>
+              {c.rationale && <p className="mt-2 text-sm text-text-secondary">Почему: {c.rationale}</p>}
             </label>
           ))}
           <Button
@@ -376,11 +502,12 @@ function MentorTools() {
           >
             Применить в черновик
           </Button>
-          {brief && (
-            <a className="ml-3 text-primary underline" href={`#/mentor/briefs/${brief.id}`}>
-              Открыть редактор ТЗ
-            </a>
+          {!['applied', 'discarded', 'expired'].includes(proposal.status) && (
+            <Button variant="ghost" disabled={busy} onClick={discard}>
+              Отклонить предложение
+            </Button>
           )}
+          {proposal.rationale && <p className="my-3 text-sm">Обоснование: {proposal.rationale}</p>}
         </Card>
       )}
       {current && (

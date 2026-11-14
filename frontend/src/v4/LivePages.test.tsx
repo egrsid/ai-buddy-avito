@@ -295,7 +295,7 @@ it('handles questions, a fresh generation error, apply conflict and configuratio
   expect(screen.queryByText(/Изменения сохранены в черновик/)).not.toBeInTheDocument();
   expect(m.api).toHaveBeenLastCalledWith(
     expect.any(String),
-    expect.objectContaining({ body: expect.objectContaining({ expected_draft_revision: 2 }) }),
+    expect.objectContaining({ body: expect.objectContaining({ expected_draft_revision: 3 }) }),
   );
   m.api.mockRejectedValueOnce(new Error('down'));
   await click('Предложить уточнение');
@@ -329,4 +329,60 @@ it('renders individual read errors and never invents proof', async () => {
   await click('Подзадачи и доказательства');
   await waitFor(() => expect(screen.getAllByRole('alert')).toHaveLength(2));
   expect(screen.queryByText('Доверенный факт')).not.toBeInTheDocument();
+});
+
+it('polls a reserved generation and shows the pinned draft preview', async () => {
+  m.role = 'buddy';
+  m.api.mockResolvedValueOnce(proposal({ status: 'generating', changes: [] }));
+  m.api.mockResolvedValueOnce(
+    proposal({
+      base_revision: 3,
+      base_fields: [{ field: 'sections.report-format.text', label: 'Формат', text: 'Исходный черновик' }],
+      answered_by: 'primary',
+    }),
+  );
+  render(<LiveV4Page />);
+  await selectReport();
+  await click('Предложить уточнение');
+  expect(screen.getByRole('button', { name: 'Предложить уточнение' })).toBeDisabled();
+  expect(await screen.findByText('Было: Исходный черновик')).toBeInTheDocument();
+  expect(m.api).toHaveBeenLastCalledWith(`/api/v4/revision-proposals/${PROPOSAL}`, expect.any(Object));
+});
+
+it('loads every workspace page before rendering all simultaneous results', async () => {
+  m.api.mockResolvedValueOnce({
+    items: [workspaceCard()],
+    unlinked_goals: [],
+    as_of: fx.STAMP,
+    next_cursor: 'second',
+  });
+  m.api.mockResolvedValueOnce({
+    items: [{ ...workspaceCard(), id: PREVIEW, title: 'Второй результат' }],
+    unlinked_goals: [],
+    as_of: fx.STAMP,
+    next_cursor: null,
+  });
+  render(<LiveV4Page />);
+  expect(await screen.findByText('Второй результат')).toBeInTheDocument();
+  expect(screen.getByText('Рабочий отчёт')).toBeInTheDocument();
+  expect(m.api).toHaveBeenLastCalledWith(
+    '/api/v4/workspaces?cursor=second',
+    expect.objectContaining({ signal: expect.any(AbortSignal) }),
+  );
+});
+
+it('discards a reserved proposal and keeps the human editor available', async () => {
+  m.role = 'buddy';
+  m.api.mockResolvedValueOnce(proposal());
+  render(<LiveV4Page />);
+  await selectReport();
+  expect(screen.getByRole('link', { name: 'Открыть редактор ТЗ' })).toHaveAttribute(
+    'href',
+    `#/mentor/briefs/${fx.BRIEF_ID}`,
+  );
+  await click('Предложить уточнение');
+  m.api.mockResolvedValueOnce(proposal({ status: 'discarded', proposal_revision: 2 }));
+  await click('Отклонить предложение');
+  expect(screen.getByText(/Предложение отклонено/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Применить в черновик' })).toBeDisabled();
 });

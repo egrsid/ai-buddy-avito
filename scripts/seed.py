@@ -13,11 +13,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main() -> None:
-    if os.environ.get("SEED_DATASET", "legacy") == "v2":
+    if os.environ.get("SEED_DATASET", "legacy") in ("v2", "v4-demo"):
         from scripts.seed_v2 import seed
 
         with connect() as connection:
             seed(connection)
+            if os.environ.get("SEED_DATASET") == "v4-demo":
+                from scripts.seed_v4_cohorts import seed_cohorts
+
+                seed_cohorts(connection)
         return
     if os.environ.get("SEED_DATASET", "legacy") != "legacy":
         raise ValueError("SEED_DATASET must be legacy or v2")

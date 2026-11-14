@@ -23,17 +23,19 @@ const internB = "10000000-0000-4000-8000-000000000004"
 const buddyA = "10000000-0000-4000-8000-000000000001"
 
 type fixture struct {
-	t       *testing.T
-	s       *Server
-	admin   *pgxpool.Pool
-	url     string
-	mu      sync.Mutex
-	grants  map[string]bool
-	records map[string]Object
-	mode    string
-	stream  string
-	mock    *httptest.Server
-	ai      *httptest.Server
+	revisionStarted chan struct{}
+	revisionRelease chan struct{}
+	t               *testing.T
+	s               *Server
+	admin           *pgxpool.Pool
+	url             string
+	mu              sync.Mutex
+	grants          map[string]bool
+	records         map[string]Object
+	mode            string
+	stream          string
+	mock            *httptest.Server
+	ai              *httptest.Server
 }
 type browser struct {
 	f      *fixture
@@ -199,6 +201,14 @@ func (f *fixture) intelligence(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, 200, Object{"summary": "Кратко: стажёр застрял на шаге и спрашивает про доступ."})
 	case strings.HasSuffix(r.URL.Path, "/revision-draft"):
+		if stream == "revision_hold" {
+			close(f.revisionStarted)
+			select {
+			case <-f.revisionRelease:
+			case <-r.Context().Done():
+				return
+			}
+		}
 		var d Object
 		_ = json.NewDecoder(r.Body).Decode(&d)
 		if stream == "bad_revision" {

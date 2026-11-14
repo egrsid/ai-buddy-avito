@@ -1,7 +1,10 @@
 package api
 
-import "testing"
-import "time"
+import (
+	"strings"
+	"testing"
+	"time"
+)
 
 func TestV4StatusLabels(t *testing.T) {
 	if schemaStatus("waiting_external") != "unverified" || technicalStatus("nope") != "unknown" {
@@ -74,5 +77,15 @@ func TestRevisionReservedFields(t *testing.T) {
 	}
 	if sectionBody(Object{}, "acceptance_criteria") != "" {
 		t.Fatal("empty criteria")
+	}
+}
+
+func TestRevisionLengthUsesCharactersAcrossTheBoundary(t *testing.T) {
+	hash := digest([]byte("base"))
+	candidate := func(n int) Object {
+		return Object{"changes": []any{Object{"field": "sections.report.text", "old_hash": hash, "replacement": strings.Repeat("я", n)}}}
+	}
+	if !safeRevision(candidate(4000), hash) || safeRevision(candidate(4001), hash) {
+		t.Fatal("Unicode character limit differs from JSON schema")
 	}
 }

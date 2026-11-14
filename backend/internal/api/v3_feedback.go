@@ -187,7 +187,13 @@ func reviewReport(q *request) (response, error) {
 func (s *Server) enrichReport(id string, input Object) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.Config.EnrichTimeout)
 	defer cancel()
-	q := &request{Context: ctx, s: s, requestID: uuid(), client: &http.Client{Transport: s.Client.Transport, CheckRedirect: s.Client.CheckRedirect, Timeout: s.Config.EnrichTimeout}}
+	transport := s.Client.Transport
+	if original, ok := transport.(*http.Transport); ok {
+		copy := original.Clone()
+		copy.ResponseHeaderTimeout = s.Config.EnrichTimeout
+		transport = copy
+	}
+	q := &request{Context: ctx, s: s, requestID: uuid(), client: &http.Client{Transport: transport, CheckRedirect: s.Client.CheckRedirect, Timeout: s.Config.EnrichTimeout}}
 	draft, e := q.call(s.Config.AIURL, "POST", "/internal/v3/task-clarity-draft", "v3/ai/TaskClarityDraftResponse", input, nil)
 	if e != nil {
 		_, _ = s.Pool.Exec(context.Background(), "UPDATE app.task_clarity_reports SET enrichment_status='failed' WHERE id=$1 AND enrichment_status='pending'", id)
