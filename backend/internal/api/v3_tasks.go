@@ -338,6 +338,9 @@ func createAssignment(q *request) (response, error) {
 	if e = q.taskEvent("task_assigned", "go_task_workflow", "task_assignment", id, Object{"brief_id": b["id"], "brief_version": q.body["brief_version"], "assignment_id": id}); e != nil {
 		return response{}, e
 	}
+	if e = q.openExposure(id, str(intern["id"]), str(b["id"]), num(q.body["brief_version"]), "assigned"); e != nil {
+		return response{}, e
+	}
 	a, e := q.assignment(id)
 	if e != nil {
 		return response{}, e
@@ -443,6 +446,12 @@ func adoptVersion(q *request) (response, error) {
 		return response{}, e
 	}
 	if e = q.taskEvent("task_assignment_adopted", "go_task_workflow", "task_assignment", str(a["id"]), Object{"assignment_id": a["id"], "brief_id": a["brief_id"], "brief_version": target}); e != nil {
+		return response{}, e
+	}
+	if e = q.closeExposure(str(a["id"]), "adopted"); e != nil {
+		return response{}, e
+	}
+	if e = q.openExposure(str(a["id"]), str(a["intern_id"]), str(a["brief_id"]), target, "adopted"); e != nil {
 		return response{}, e
 	}
 	a, e = q.assignment(str(a["id"]))
