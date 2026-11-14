@@ -12,7 +12,7 @@ import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from scripts.demo import configuration
+from scripts.demo import configuration, offline_images_present
 from scripts.seed_v4_cohorts import cohort_id
 from scripts.v4_live_acceptance import Actor
 
@@ -38,7 +38,7 @@ def write_clock(directory: Path, at: datetime) -> None:
     temporary.replace(target)
 
 
-def setup(project: str, directory: Path):
+def setup(project: str, directory: Path, offline: bool | None = None):
     if not re.fullmatch(r"ai-buddy-demo-v4-cohorts(?:-[a-z0-9-]+)?", project):
         raise ValueError("dedicated ai-buddy-demo-v4-cohorts-* project required")
     command, env = configuration(project)
@@ -50,12 +50,13 @@ def setup(project: str, directory: Path):
             "V4_COHORT_CLOCK_DIR": str(directory.resolve()),
         }
     )
-    command += [
-        "-f",
-        str(ROOT / "compose.offline.yaml"),
-        "-f",
-        str(ROOT / "compose.v4-cohorts.yaml"),
-    ]
+    # Cached dependency images exist only on a machine that already built them once;
+    # elsewhere the stack is built normally from the network.
+    if offline is None:
+        offline = offline_images_present()
+    if offline:
+        command += ["-f", str(ROOT / "compose.offline.yaml")]
+    command += ["-f", str(ROOT / "compose.v4-cohorts.yaml")]
     return command, env
 
 
