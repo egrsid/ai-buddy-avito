@@ -23,3 +23,15 @@ func TestErrorClassHasNoMessageText(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestRouteInfoForLogs(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	active := activeRoute{"GET /api/v3/goals", ctx}
+	if routeName(active) != "GET /api/v3/goals" || clientGone(active) || routeName(nil) != "" || clientGone(nil) {
+		t.Fatal("route info")
+	}
+	cancel()
+	if !clientGone(active) {
+		t.Fatal("aborted request must be recognised")
+	}
+}
