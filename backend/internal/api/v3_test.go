@@ -191,7 +191,7 @@ func TestTaskBriefLifecycle(t *testing.T) {
 		t.Fatal("published version was mutable")
 	}
 	interns := list(buddy.call("GET", "/api/v3/mentor/interns", nil, 200)["items"])
-	if len(interns) != 2 || strings.Contains(string(encode(interns)), internC) {
+	if len(interns) != 8 || strings.Contains(string(encode(interns)), internC) {
 		t.Fatal(interns)
 	}
 	buddy.call("POST", "/api/v3/task-assignments", Object{"brief_id": id, "brief_version": 1, "intern_id": internC}, 404)
@@ -199,7 +199,10 @@ func TestTaskBriefLifecycle(t *testing.T) {
 	buddy.call("POST", "/api/v3/task-assignments", Object{"brief_id": id, "brief_version": 2, "intern_id": internA}, 409)
 	f.browser("buddy-b").call("POST", "/api/v3/task-assignments", Object{"brief_id": id, "brief_version": 1, "intern_id": internA}, 404)
 	a := buddy.call("POST", "/api/v3/task-assignments", Object{"brief_id": id, "brief_version": 1, "intern_id": internA}, 201)
-	buddy.call("POST", "/api/v3/task-assignments", Object{"brief_id": id, "brief_version": 1, "intern_id": internA}, 409)
+	repeated := buddy.call("POST", "/api/v3/task-assignments", Object{"brief_id": id, "brief_version": 1, "intern_id": internA}, 201)
+	if repeated["id"] != a["id"] {
+		t.Fatal("repeat created another assignment")
+	}
 	if a["verification"] != "not_verified" || obj(a["intern"])["id"] != internA || obj(a["author"])["id"] != buddyA {
 		t.Fatal(a)
 	}
@@ -508,5 +511,23 @@ func TestAssignmentSuccessorPreviewAndWindowDecay(t *testing.T) {
 	report := obj(list(reports["items"])[0])
 	if num(report["current_count"]) != 0 || num(report["lifetime_count"]) != 2 || report["state"] != "proposed" {
 		t.Fatal(report)
+	}
+}
+
+func TestCompletedGoalCannotBeStartedAgain(t *testing.T) {
+	f := newFixture(t)
+	b := f.browser("intern-a")
+	g := b.goal()
+	f.setGrant(internA, true)
+	g = b.call("GET", "/goals/"+str(g["id"]), nil, 200)
+	b.check(g, "check_access", "", 201)
+	g = b.call("GET", "/goals/"+str(g["id"]), nil, 200)
+	b.check(g, "check_connection", "require", 201)
+	again := b.call("POST", "/goals", Object{"journey_id": "db-access-team-a", "journey_version": 1}, 200)
+	if again["id"] != g["id"] || again["status"] != "verified" {
+		t.Fatal(again)
+	}
+	if f.count("SELECT count(*) FROM app.goals") != 1 {
+		t.Fatal("repeated completed goal")
 	}
 }

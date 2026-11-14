@@ -246,7 +246,7 @@ function AssignPanel({ brief, onAssigned }: { brief: TaskBriefT; onAssigned: () 
       setMessage({ ok: true, text: `Назначено: ${assignment.intern.display_name}, версия ${assignment.brief_version}.` });
       onAssigned();
     } catch (e) {
-      setMessage({ ok: false, text: userMessage(e, 'Не удалось назначить. Возможно, стажёр уже получил это ТЗ.') });
+      setMessage({ ok: false, text: 'Не удалось назначить ТЗ. Обновите список назначений и проверьте опубликованную версию.' });
     } finally {
       setBusy(false);
     }

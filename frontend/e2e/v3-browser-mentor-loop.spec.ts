@@ -29,7 +29,7 @@ const button = (page: Page, name: string | RegExp) =>
   typeof name === 'string' ? page.getByRole('button', { name, exact: true }) : page.getByRole('button', { name });
 
 async function openTask(page: Page, title: string) {
-  await page.getByRole('link', { name: 'Мои задания', exact: true }).click();
+  await page.getByRole('link', { name: 'ТЗ от наставника', exact: true }).click();
   await page.getByRole('link', { name: new RegExp(title) }).click();
   await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible();
 }
@@ -67,7 +67,7 @@ test('v3: ТЗ → две неясности → отчёт → новая ве�
   await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible({ timeout: 15_000 });
   await button(page, /Опубликовать версию 1/).click();
   await expect(page.getByText('Опубликованная версия 1')).toBeVisible();
-  for (const intern of ['intern-a', 'intern-b']) {
+  for (const intern of ['intern-a', 'intern-a', 'intern-b']) {
     await page.getByLabel('Кому назначить').selectOption({ label: intern });
     await button(page, 'Назначить').click();
     await expect(page.getByRole('status')).toContainText(`Назначено: ${intern}`);
@@ -82,7 +82,6 @@ test('v3: ТЗ → две неясности → отчёт → новая ве�
   section = await markUnclear(page, 'Срок', 'Неясен результат');
   await expect(section.getByRole('status')).toContainText('учтена один раз');
   await section.getByRole('button', { name: 'Спросить наставника' }).click();
-  await button(page, 'Подготовить сообщение').click();
   await button(page, 'Показать текст сообщения').click();
   const text = page.getByLabel('Текст для наставника');
   await expect(text).toContainText(`Задание: ${title} (версия 1)`);

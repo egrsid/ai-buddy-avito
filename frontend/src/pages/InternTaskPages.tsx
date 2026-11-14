@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, HelpCircle, RefreshCw } from 'lucide-react';
 import { userMessage } from '../lib/api';
 import { useLiveData } from '../lib/live';
@@ -22,7 +22,7 @@ export function InternTasksPage() {
   const tasks = useLiveData(() => listAssignments(), [], []);
   return (
     <>
-      <PageHeader title="Мои задания" subtitle="ТЗ от наставника. Если раздел непонятен — отметьте его, автор увидит обобщённый отчёт." />
+      <PageHeader title="Мои задания" subtitle="Здесь наставник описывает ожидаемый результат, требования и критерии приёмки. Откройте ТЗ, изучите его и сообщите, что непонятно. Проверяемые технические шаги находятся в разделе «Мои цели»." />
       {tasks.state === 'loading' && <Card><LoadingState /></Card>}
       {tasks.state === 'error' && <ErrorState message={userMessage(tasks.error)} onRetry={tasks.refetch} />}
       {tasks.state === 'empty' && (
@@ -60,6 +60,9 @@ export function InternTaskDetailPage({ id }: { id: string }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [contactSection, setContactSection] = useState<string | undefined>(undefined);
+  const contactRef = useRef<HTMLDivElement>(null);
+  const [askTick, setAskTick] = useState(0);
+  useEffect(() => { if (askTick) { contactRef.current?.scrollIntoView?.({behavior: 'smooth', block: 'center'}); contactRef.current?.focus(); } }, [askTick]);
   // Свежие отметки показываем сразу, не перезагружая страницу (иначе пропадёт подтверждение).
   const [extraMarks, setExtraMarks] = useState<{ section_id: string; reason: FrictionReasonT }[]>([]);
 
@@ -130,14 +133,15 @@ export function InternTaskDetailPage({ id }: { id: string }) {
             section={section}
             marked={marked(section.id)}
             onMarked={onMarked}
-            onAsk={() => setContactSection(section.id)}
+            onAsk={() => { setContactSection(section.id); setAskTick(v => v + 1); }}
           />
         ))}
-        <MentorContactCard
-          key={contactSection ?? 'task'}
+        <div ref={contactRef} tabIndex={-1} className="rounded-2xl focus:outline-2 focus:outline-primary" aria-label="Связь с наставником"><MentorContactCard
+          initiallyOpen={askTick > 0}
+          key={`${contactSection ?? 'task'}:${askTick}`}
           context={{ assignmentId: t.id, sectionId: contactSection }}
           title={contactSection ? 'Спросить наставника про этот раздел' : 'Написать наставнику в Telegram'}
-        />
+        /></div>
       </div>
     </>
   );

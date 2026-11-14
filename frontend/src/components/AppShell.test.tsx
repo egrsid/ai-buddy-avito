@@ -33,7 +33,7 @@ describe('AppShell', () => {
     fireEvent.click(screen.getByLabelText('Дополнительные участники'));
     expect(screen.getAllByRole('option').map(o => o.textContent)).toEqual([
       'Стажёр', 'Наставник', 'Согласующий доступ', 'Владелец документации',
-      'Второй стажёр', 'Стажёр другой команды', 'Наставник другой команды',
+      'Второй стажёр', 'Стажёр 3 · команда A', 'Стажёр 4 · команда A', 'Стажёр 5 · команда A', 'Стажёр 6 · команда A', 'Стажёр 7 · команда A', 'Стажёр 8 · команда A', 'Стажёр другой команды', 'Наставник другой команды',
     ]);
   });
 
@@ -52,13 +52,13 @@ describe('AppShell', () => {
   it('в fixtures видны наставник и стажёр другой команды', () => {
     renderShell('buddy-b', '/buddy/escalations');
     expect(screen.getByRole('option', { name: 'Наставник другой команды' })).toBeInTheDocument();
-    expect(screen.getByRole('navigation', { name: 'Основная навигация' })).toHaveTextContent('Архив обращений');
+    expect(screen.getByRole('navigation', { name: 'Основная навигация' })).not.toHaveTextContent('Архив обращений');
   });
   it('intern: цели/задания/заявки/чат, активный пункт помечен', () => {
     renderShell('intern-a');
     const nav = screen.getByRole('navigation', { name: 'Основная навигация' });
     expect(nav).toHaveTextContent('Мои цели');
-    expect(nav).toHaveTextContent('Мои задания');
+    expect(nav).toHaveTextContent('ТЗ от наставника');
     expect(nav).toHaveTextContent('Мои заявки');
     expect(nav).toHaveTextContent('AI-помощник');
     expect(screen.getByRole('link', { name: 'Мои цели' })).toHaveAttribute('aria-current', 'page');
@@ -70,7 +70,7 @@ describe('AppShell', () => {
     expect(nav).toHaveTextContent('Мои задания');
     expect(nav).toHaveTextContent('Понятность заданий');
     expect(nav).toHaveTextContent('Статистика');
-    expect(nav).toHaveTextContent('Архив обращений');
+    expect(nav).not.toHaveTextContent('Архив обращений');
     expect(nav).not.toHaveTextContent('Мои цели');
     expect(screen.getByRole('link', { name: 'Понятность заданий' })).toHaveAttribute('aria-current', 'page');
   });

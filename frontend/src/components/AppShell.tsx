@@ -29,7 +29,7 @@ function navFor(user: User): NavItem[] {
   if (user.roles.includes('intern')) {
     return [
       { to: '/onboarding', label: 'Мои цели', icon: <Target size={20} /> },
-      { to: '/tasks', label: 'Мои задания', icon: <FileText size={20} /> },
+      { to: '/tasks', label: 'ТЗ от наставника', icon: <FileText size={20} /> },
       { to: '/requests', label: 'Мои заявки', icon: <ClipboardList size={20} /> },
       { to: '/chat', label: 'AI-помощник', icon: <MessageSquare size={20} /> },
     ];
@@ -39,7 +39,6 @@ function navFor(user: User): NavItem[] {
       { to: '/mentor/briefs', label: 'Мои задания', icon: <FileText size={20} /> },
       { to: '/mentor/reports', label: 'Понятность заданий', icon: <Lightbulb size={20} /> },
       { to: '/mentor/stats', label: 'Статистика', icon: <BarChart3 size={20} /> },
-      { to: '/buddy/escalations', label: 'Архив обращений', icon: <Archive size={20} /> },
     ];
   }
   if (user.roles.includes('access_approver')) {
@@ -91,6 +90,12 @@ export function AppShell({
   ];
   const extra = [
     { id: 'intern-b', label: 'Второй стажёр' },
+    { id: 'intern-d', label: 'Стажёр 3 · команда A' },
+    { id: 'intern-e', label: 'Стажёр 4 · команда A' },
+    { id: 'intern-f', label: 'Стажёр 5 · команда A' },
+    { id: 'intern-g', label: 'Стажёр 6 · команда A' },
+    { id: 'intern-h', label: 'Стажёр 7 · команда A' },
+    { id: 'intern-i', label: 'Стажёр 8 · команда A' },
     { id: 'intern-c', label: 'Стажёр другой команды' },
     { id: 'buddy-b', label: 'Наставник другой команды' },
   ];

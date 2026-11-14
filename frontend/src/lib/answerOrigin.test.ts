@@ -49,7 +49,7 @@ describe('originFromServer', () => {
     expect(originFromServer({ mode: 'live', answered_by: 'primary', completion: 'complete' })).toEqual({ origin: 'ai', interrupted: false });
     expect(originFromServer({ mode: 'live', answered_by: 'secondary', completion: 'interrupted', reason_code: 'timeout' })).toEqual({ origin: 'ai-reserve', interrupted: true });
     expect(originFromServer({ mode: 'live', answered_by: 'offline', completion: 'complete' })).toEqual({ origin: 'fallback', interrupted: false });
-    expect(originFromServer({ mode: 'mock', answered_by: 'offline', completion: 'complete', reason_code: 'config_mock' })?.origin).toBe('fallback');
+    expect(originFromServer({ mode: 'mock', answered_by: 'offline', completion: 'complete', reason_code: 'config_mock' })?.origin).toBe('mock');
     expect(originFromServer({ mode: 'unknown', answered_by: 'unknown', completion: 'complete' })).toBeNull();
     expect(originFromServer(undefined)).toBeNull();
   });

@@ -16,12 +16,16 @@ ROOT = Path(__file__).resolve().parents[1]
 def configuration(project: str, cached_overlay: str | None = None):
     if not re.fullmatch(r"ai-buddy-demo-[a-z0-9-]+", project):
         raise ValueError("Use a separate ai-buddy-demo-* project, never the legacy project")
+    frontend_port = int(os.environ.get("DEMO_FRONTEND_PORT", "15173"))
+    backend_port = int(os.environ.get("DEMO_BACKEND_PORT", "18080"))
+    if not all(1024 <= port <= 65535 for port in (frontend_port, backend_port)):
+        raise ValueError("Demo ports must be between 1024 and 65535")
     env = {
         **os.environ,
         "APP_ENV": "local",
-        "APP_ORIGIN": "http://localhost:15173",
-        "BACKEND_PORT": "18080",
-        "FRONTEND_PORT": "15173",
+        "APP_ORIGIN": f"http://localhost:{frontend_port}",
+        "BACKEND_PORT": str(backend_port),
+        "FRONTEND_PORT": str(frontend_port),
         "LLM_MODE": "mock",
         "LLM_API_KEY": "",
         "MOCK_FAULTS_ENABLED": "false",
