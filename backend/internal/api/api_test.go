@@ -201,11 +201,31 @@ func (f *fixture) intelligence(w http.ResponseWriter, r *http.Request) {
 	case strings.HasSuffix(r.URL.Path, "/revision-draft"):
 		var d Object
 		_ = json.NewDecoder(r.Body).Decode(&d)
-		if stream == "bad_revision" {
-			writeJSON(w, 200, Object{"changes": []any{Object{"id": "c1", "field": "sections.report-format.text", "old_hash": strings.Repeat("a", 64), "replacement": "<script>alert(1)</script>"}}, "questions": []any{}, "outcome": "ready"})
+		if f.s.Validate("v4/ai/RevisionDraftRequest", d) != nil || strings.Contains(string(encode(d)), "intern") {
+			f.t.Error("unsafe revision draft request", d)
+		}
+		field := obj(list(d["fields"])[0])
+		reply := Object{"base_version": d["base_version"], "base_hash": d["base_hash"], "rationale": "Раздел уточнён по отчёту.", "evidence_refs": []any{}, "origin": Object{"mode": "live", "answered_by": "primary"}}
+		change := Object{"id": "c1", "path": field["path"], "label": field["label"], "old_hash": field["hash"], "replacement": "Опишите шаги нумерованным списком.", "rationale": "Стажёры не понимали формат."}
+		reply["outcome"], reply["changes"], reply["questions"] = "ready", []any{change}, []any{}
+		switch stream {
+		case "bad_revision":
+			change["replacement"] = "<script>alert(1)</script>"
+		case "revision_wrong_hash":
+			change["old_hash"] = strings.Repeat("a", 64)
+		case "revision_wrong_base":
+			reply["base_hash"] = strings.Repeat("b", 64)
+		case "revision_no_change":
+			reply["outcome"], reply["changes"] = "no_change", []any{}
+		case "revision_offline":
+			reply["outcome"], reply["changes"] = "needs_input", []any{}
+			reply["questions"] = []any{Object{"id": "q1", "text": "Какой формат отчёта нужен?", "path": field["path"]}}
+			reply["origin"] = Object{"mode": "live", "answered_by": "offline", "reason_code": "timeout"}
+		case "revision_schema":
+			writeJSON(w, 200, Object{"changes": []any{}, "questions": []any{}, "outcome": "ready"})
 			return
 		}
-		writeJSON(w, 200, Object{"changes": []any{Object{"id": "c1", "field": "sections.report-format.text", "old_hash": d["base_hash"], "replacement": "Опишите шаги нумерованным списком."}}, "questions": []any{}, "outcome": "ready"})
+		writeJSON(w, 200, reply)
 	case strings.HasSuffix(r.URL.Path, "/task-clarity-draft"):
 		var d Object
 		_ = json.NewDecoder(r.Body).Decode(&d)

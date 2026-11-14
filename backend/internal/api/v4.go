@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -355,25 +354,23 @@ func createRevisionProposal(q *request) (response, error) {
 	if e != nil {
 		return response{}, e
 	}
-	text := sectionBody(obj(version["content"]), str(report["section_id"]))
-	if text == "" {
+	content := obj(version["content"])
+	fields := reportedFields(content, str(report["section_id"]))
+	if len(fields) == 0 {
 		return response{}, fail(422, "VALIDATION_ERROR")
 	}
-	baseHash := digest([]byte(text))
+	baseHash := str(version["content_hash"])
+	if len(baseHash) != 64 {
+		baseHash = digest(encode(content))
+	}
 	status, origin := "unavailable", "rule_based"
 	changes := []any{}
 	questions := []any{"Модель недоступна. Отредактируйте черновик вручную."}
-	draft, err := q.call(q.s.Config.AIURL, "POST", "/internal/v4/revision-draft", "v4/public/RevisionDraftOutput", Object{
-		"section_id": report["section_id"], "section_text": text, "base_hash": baseHash, "base_version": report["brief_version"],
-	}, nil)
-	if err == nil && safeRevision(draft, baseHash) {
-		status = str(draft["outcome"])
-		if status == "" {
-			status = "ready"
+	draft, err := q.draftRevision(revisionDraftRequest(content, report, fields, baseHash))
+	if err == nil {
+		if st, or, ch, qs, bad := mapRevisionDraft(draft, fields, baseHash, num(report["brief_version"])); bad == nil {
+			status, origin, changes, questions = st, or, ch, qs
 		}
-		origin = "model"
-		changes = list(draft["changes"])
-		questions = list(draft["questions"])
 	}
 	id := uuid()
 	expires := q.s.Now().UTC().Add(10 * time.Minute)
@@ -381,36 +378,6 @@ func createRevisionProposal(q *request) (response, error) {
 		return response{}, e
 	}
 	return created4("RevisionProposal", proposalDTO(id, report["id"], status, origin, changes, questions, 1, expires, baseHash, num(report["brief_version"]))), nil
-}
-
-func safeRevision(draft Object, baseHash string) bool {
-	if len(list(draft["changes"])) > 10 || len(list(draft["questions"])) > 10 {
-		return false
-	}
-	seen := map[string]bool{}
-	for _, item := range list(draft["changes"]) {
-		change := obj(item)
-		field := str(change["field"])
-		if seen[field] || !strings.HasPrefix(field, "sections.") || !strings.HasSuffix(field, ".text") {
-			return false
-		}
-		seen[field] = true
-		replacement := str(change["replacement"])
-		if replacement == "" || len(replacement) > 4000 || strings.Contains(replacement, "<") || str(change["old_hash"]) != baseHash {
-			return false
-		}
-	}
-	return true
-}
-
-func sectionBody(content Object, sectionID string) string {
-	for _, item := range list(obj(content)["sections"]) {
-		section := obj(item)
-		if str(section["id"]) == sectionID {
-			return str(section["text"])
-		}
-	}
-	return ""
 }
 
 func proposalDTO(id string, reportID any, status, origin string, changes, questions []any, revision int, expires time.Time, baseHash string, baseVersion int) Object {
@@ -524,23 +491,9 @@ func applyRevision(q *request) (response, error) {
 }
 
 func applyChanges(content Object, selected map[string]Object) error {
-	sections := list(content["sections"])
 	for field, change := range selected {
-		id := strings.TrimSuffix(strings.TrimPrefix(field, "sections."), ".text")
-		found := false
-		for _, item := range sections {
-			section := obj(item)
-			if str(section["id"]) != id {
-				continue
-			}
-			if digest([]byte(str(section["text"]))) != str(change["old_hash"]) {
-				return fail(409, "VERSION_CONFLICT")
-			}
-			section["text"] = change["replacement"]
-			found = true
-		}
-		if !found {
-			return fail(422, "VALIDATION_ERROR")
+		if e := applyField(content, field, change); e != nil {
+			return e
 		}
 	}
 	return nil

@@ -132,19 +132,11 @@
       "required": ["id", "field", "old_hash", "replacement"],
       "properties": {
         "id": {"type": "string", "minLength": 1, "maxLength": 40},
-        "field": {"type": "string", "minLength": 1, "maxLength": 80},
+        "field": {"description": "goal, expected_result, sections/{id}/text or acceptance_criteria/{id}/text", "type": "string", "minLength": 1, "maxLength": 100, "pattern": "^(goal|expected_result|(sections|acceptance_criteria)/[a-z][a-z0-9_-]{0,63}/text)$"},
+        "label": {"type": "string", "minLength": 1, "maxLength": 120},
         "old_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-        "replacement": {"type": "string", "minLength": 1, "maxLength": 4000}
-      }
-    },
-    "RevisionDraftOutput": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["changes", "questions", "outcome"],
-      "properties": {
-        "changes": {"type": "array", "maxItems": 10, "items": {"$ref": "#/$defs/RevisionChange"}},
-        "questions": {"type": "array", "maxItems": 10, "items": {"type": "string", "minLength": 1, "maxLength": 500}},
-        "outcome": {"type": "string", "enum": ["ready", "needs_input"]}
+        "replacement": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "rationale": {"type": "string", "minLength": 1, "maxLength": 500}
       }
     },
     "RevisionProposal": {

@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"time"
 )
 
@@ -187,7 +186,7 @@ func reviewReport(q *request) (response, error) {
 func (s *Server) enrichReport(id string, input Object) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.Config.EnrichTimeout)
 	defer cancel()
-	q := &request{Context: ctx, s: s, requestID: uuid(), client: &http.Client{Transport: s.Client.Transport, CheckRedirect: s.Client.CheckRedirect, Timeout: s.Config.EnrichTimeout}}
+	q := &request{Context: ctx, s: s, requestID: uuid(), client: s.slowClient(s.Config.EnrichTimeout)}
 	draft, e := q.call(s.Config.AIURL, "POST", "/internal/v3/task-clarity-draft", "v3/ai/TaskClarityDraftResponse", input, nil)
 	if e != nil {
 		_, _ = s.Pool.Exec(context.Background(), "UPDATE app.task_clarity_reports SET enrichment_status='failed' WHERE id=$1 AND enrichment_status='pending'", id)
