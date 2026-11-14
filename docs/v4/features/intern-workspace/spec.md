@@ -1,6 +1,6 @@
 # Единое рабочее пространство — specification v4
 
-PLANNED; runtime отсутствует. [Product](../../product.md), [delivery](../../delivery.md).
+Target specification. [Текущая реализация и приёмка](../../final-acceptance-2026-11-14.md). [Product](../../product.md), [delivery](../../delivery.md).
 Задачи: V4-WORK-BE-01, V4-WORK-FE-01.
 
 Стажёр видит все свои рабочие результаты сразу: название, зачем, pinned ТЗ, техническую

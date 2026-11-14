@@ -20,7 +20,7 @@ VALUES = {
 def good_case():
     return {
         "completion": "completed",
-        "origin": {"answered_by": "primary", "completion": "completed"},
+        "origin": {"answered_by": "primary", "completion": "complete"},
         "citation_count": 1,
         "citations_reauthorized": True,
         "first_content_seconds": 1,
@@ -32,7 +32,7 @@ def good_case():
 @pytest.mark.parametrize(
     "patch",
     [
-        {"origin": {"answered_by": "secondary", "completion": "completed"}},
+        {"origin": {"answered_by": "secondary", "completion": "complete"}},
         {"origin": {"answered_by": "offline"}},
         {"citation_count": 0},
         {"citations_reauthorized": False},
@@ -84,6 +84,7 @@ def test_chat_reads_real_go_sse_shape_and_reauthorizes_citations():
         if request.method == "POST" and path.endswith("runs"):
             return httpx.Response(201, json={"id": "run"})
         if path.endswith("/events"):
+            assert request.headers.get("accept") == "text/event-stream"
             return httpx.Response(
                 200,
                 text=(
@@ -105,7 +106,7 @@ def test_chat_reads_real_go_sse_shape_and_reauthorizes_citations():
                     "items": [
                         {
                             "run_id": "run",
-                            "origin": {"answered_by": "primary", "completion": "completed"},
+                            "origin": {"answered_by": "primary", "completion": "complete"},
                         }
                     ]
                 },

@@ -159,12 +159,14 @@ def main(argv=None) -> int:
             "-m",
             "app.revision_draft_evals",
             "--live",
+            "--output",
+            "/tmp/v4-revision-live.md",
         ]
     elif args.action == "down":
         command += ["down"]
     else:
         command += ["ps", "-a"]
-    subprocess.run(command, env=env, cwd=ROOT, check=True)
+    completed = subprocess.run(command, env=env, cwd=ROOT, check=args.action != "evals")
     if args.action == "evals":
         output = ROOT / ".cache" / "v4-revision-live.md"
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -172,11 +174,12 @@ def main(argv=None) -> int:
             [
                 "docker",
                 "cp",
-                f"{args.project}-ai-service-1:/workspace/ai-service/evals/report-revision-draft-live.md",
+                f"{args.project}-ai-service-1:/tmp/v4-revision-live.md",
                 str(output),
             ],
             check=True,
         )
+        return completed.returncode
     if args.action == "up":
         print(f"Live-демо: {env['APP_ORIGIN']} (источник ответа указан в интерфейсе).")
     return 0

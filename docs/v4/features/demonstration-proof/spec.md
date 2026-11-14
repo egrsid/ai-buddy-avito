@@ -1,6 +1,6 @@
 # Проверяемое AI-демо — specification v4
 
-PLANNED; runtime отсутствует. [Product](../../product.md), [delivery](../../delivery.md).
+Target specification. [Текущая реализация и приёмка](../../final-acceptance-2026-11-14.md). [Product](../../product.md), [delivery](../../delivery.md).
 Задачи: V4-DEMO-TL-01, V4-LIVE-AI-01, V4-E2E-FE-01.
 
 Пять–семь минут показывают пользу для стажёра, human-reviewed исправление и измерение

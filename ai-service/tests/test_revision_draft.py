@@ -450,3 +450,11 @@ def test_eval_prepare_fills_hashes_and_rejects_broken_case(tmp_path):
     path.write_text(json.dumps({"cases": [{"id": "x", "input": wrong_section}]}), encoding="utf-8")
     with pytest.raises(ValueError):
         run_mock(path)
+
+
+def test_eval_report_can_be_written_outside_read_only_sources(tmp_path):
+    from app.revision_draft_evals import main
+
+    output = tmp_path / "operator-report.md"
+    assert main(["--output", str(output)]) == 0
+    assert "26/26" in output.read_text()

@@ -16,9 +16,11 @@ Read docs/v4 and its five SDD triples. Latest status:
 docs/v4/integration-review-2026-11-14.md; root manual: DEFENSE_V4.md.
 BE/AI v4 runtime is now merged locally and wired to FE; /v4-preview remains a separately
 marked prototype. Keep v3 functional and preserve existing data. Do not treat this
-integration as full G1/G4 acceptance: the events schema/contract lock, test-clock cohort
-harness, cold CI/race and actual-live gates remain open. Paid/live acceptance stays
-OPEN under the owner's existing offline decision.
+integration as full G1/G4 acceptance: the events producers and test-clock cohort harness are implemented, while formal
+contract approval and cold CI/race remain open. Actual primary smoke is 10/10;
+see docs/v4/final-acceptance-2026-11-14.md for measured evidence and limitations. The latest owner explicitly authorized paid live testing with the local key.
+Use the existing persistent ledger and configured 20 RUB cap; never reset spending.
+Latest operator guide: TESTING_FINAL_V4.md. Report actual live results separately from fixtures.
 
 ## Product direction
 

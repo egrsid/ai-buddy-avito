@@ -189,6 +189,8 @@ def main(argv: list[str]) -> int:
         results = run_mock()
         title = "Evals правки ТЗ — без модели (явный шаблон)"
         report = EVALS_DIR / "report-revision-draft-mock.md"
+    if "--output" in argv:
+        report = Path(argv[argv.index("--output") + 1])
     report.write_text(render(results, title), encoding="utf-8", newline="\n")
     totals = summary(results)
     print(

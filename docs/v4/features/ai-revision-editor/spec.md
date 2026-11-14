@@ -1,6 +1,6 @@
 # AI-редактор исправления ТЗ — specification v4
 
-PLANNED; runtime отсутствует. [Product](../../product.md), [delivery](../../delivery.md).
+Target specification. [Текущая реализация и приёмка](../../final-acceptance-2026-11-14.md). [Product](../../product.md), [delivery](../../delivery.md).
 Задачи: V4-EDIT-BE-01, V4-EDIT-AI-01, V4-EDIT-FE-01.
 
 Автор открывает собственный task report, выбирает «Предложить уточнение» и видит

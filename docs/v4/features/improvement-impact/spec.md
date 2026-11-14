@@ -1,6 +1,6 @@
 # Эффект исправлений — specification v4
 
-PLANNED; runtime отсутствует. [Product](../../product.md), [delivery](../../delivery.md).
+Target specification. [Текущая реализация и приёмка](../../final-acceptance-2026-11-14.md). [Product](../../product.md), [delivery](../../delivery.md).
 Задачи: V4-IMPACT-BE-01, V4-IMPACT-FE-01.
 
 Автор открывает report → опубликованное исправление → «Наблюдения по версиям».
