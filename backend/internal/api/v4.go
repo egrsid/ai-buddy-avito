@@ -1,10 +1,12 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 func out4(def string, v any) response     { return response{200, v, "v4/public/" + def} }
@@ -29,46 +31,66 @@ func (q *request) openExposure(assignmentID, internID, briefID string, version i
 	if e := q.closeExposure(assignmentID, source); e != nil {
 		return e
 	}
-	return q.exec("INSERT INTO app.version_exposure_episodes(id,intern_id,assignment_id,brief_id,version,source,started_at) VALUES ($1,$2,$3,$4,$5,$6,$7)", uuid(), internID, assignmentID, briefID, version, source, q.s.Now())
+	id := uuid()
+	if e := q.exec("INSERT INTO app.version_exposure_episodes(id,intern_id,assignment_id,brief_id,version,source,started_at) VALUES ($1,$2,$3,$4,$5,$6,$7)", id, internID, assignmentID, briefID, version, source, q.s.Now()); e != nil {
+		return e
+	}
+	return q.v4WorkflowEvent("brief_version_exposed", "task_assignment", assignmentID, Object{"assignment_id": assignmentID, "brief_id": briefID, "brief_version": version, "episode_id": id})
 }
-
 func (q *request) closeExposure(assignmentID, reason string) error {
-	return q.exec("UPDATE app.version_exposure_episodes SET ended_at=$3, end_reason=$2 WHERE assignment_id=$1 AND ended_at IS NULL", assignmentID, reason, q.s.Now())
+	tag, e := q.tx.Exec(q.Context, "UPDATE app.version_exposure_episodes SET ended_at=$3,end_reason=$2 WHERE assignment_id=$1 AND ended_at IS NULL", assignmentID, reason, q.s.Now())
+	if e != nil || tag.RowsAffected() == 0 {
+		return e
+	}
+	return q.v4WorkflowEvent("brief_version_exposure_ended", "task_assignment", assignmentID, Object{"assignment_id": assignmentID, "reason": reason})
 }
 
 func listWorkspaces(q *request) (response, error) {
-	rows, e := q.many("SELECT jsonb_build_object('id',id) FROM app.task_assignments WHERE intern_id=$1 ORDER BY created_at,id LIMIT 20", q.user["id"])
+	c, limit, e := q.v4Page("workspace", 20)
 	if e != nil {
 		return response{}, e
 	}
-	items := []any{}
-	for _, row := range rows {
-		card, err := q.workspaceCard(str(obj(row)["id"]))
+	var after any
+	if c.Sort != "" {
+		after = c.Sort
+	}
+	id := c.ID
+	if id == "" {
+		id = "00000000-0000-4000-8000-000000000000"
+	}
+	rows, e := q.many(`SELECT jsonb_build_object('id',id,'kind',kind,'sort_time',created_at) FROM (
+ SELECT id,'assignment' AS kind,created_at FROM app.task_assignments WHERE intern_id=$1
+ UNION ALL SELECT g.id,'goal',g.created_at FROM app.goals g WHERE g.intern_id=$1 AND NOT EXISTS(SELECT 1 FROM app.workspace_links l WHERE l.goal_id=g.id AND l.active)
+ ) entries WHERE created_at<=$2 AND ($3::timestamptz IS NULL OR (created_at,kind,id)<($3,$4,$5::uuid)) ORDER BY created_at DESC,kind DESC,id DESC LIMIT $6`, q.user["id"], c.At, after, c.Kind, id, limit+1)
+	if e != nil {
+		return response{}, e
+	}
+	var next any
+	if len(rows) > limit {
+		rows = rows[:limit]
+		next = c.next(obj(rows[len(rows)-1]))
+	}
+	items, unlinked := []any{}, []any{}
+	for _, r := range rows {
+		row := obj(r)
+		if row["kind"] == "assignment" {
+			card, err := q.workspaceCard(str(row["id"]))
+			if err != nil {
+				return response{}, err
+			}
+			items = append(items, card)
+			continue
+		}
+		if !q.goalVisible(str(row["id"])) {
+			continue
+		}
+		g, err := q.one("SELECT jsonb_build_object('id',g.id,'title',COALESCE(NULLIF(t.document->>'title',''),g.journey_id),'status',g.status) FROM app.goals g JOIN app.journey_templates t ON t.journey_id=g.journey_id AND t.version=g.journey_version WHERE g.id=$1", row["id"])
 		if err != nil {
 			return response{}, err
 		}
-		items = append(items, card)
+		unlinked = append(unlinked, Object{"kind": "goal", "id": g["id"], "title": g["title"], "link_status": "unlinked", "technical_status": technicalStatus(str(g["status"])), "next_action": nextAction(str(g["status"]), false), "goal": Object{"id": g["id"], "title": g["title"], "status": schemaStatus(str(g["status"]))}})
 	}
-	goals, e := q.many("SELECT jsonb_build_object('id',g.id,'title',COALESCE(NULLIF(t.document->>'title',''), g.journey_id),'status',g.status) FROM app.goals g JOIN app.journey_templates t ON t.journey_id=g.journey_id AND t.version=g.journey_version WHERE g.intern_id=$1 AND NOT EXISTS (SELECT 1 FROM app.workspace_links l WHERE l.goal_id=g.id AND l.active) ORDER BY g.created_at,g.id LIMIT 20", q.user["id"])
-	if e != nil {
-		return response{}, e
-	}
-	unlinked := []any{}
-	for _, row := range goals {
-		g := obj(row)
-		if !q.goalVisible(str(g["id"])) {
-			continue
-		}
-		unlinked = append(unlinked, Object{
-			"kind": "goal", "id": g["id"], "title": g["title"], "link_status": "unlinked",
-			"technical_status": technicalStatus(str(g["status"])), "next_action": nextAction(str(g["status"]), false),
-			"goal": Object{"status": schemaStatus(str(g["status"])), "id": g["id"], "title": g["title"]},
-		})
-	}
-	if items == nil {
-		items = []any{}
-	}
-	return out4("WorkspaceList", Object{"items": items, "unlinked_goals": unlinked, "as_of": stamp(q.s.Now())}), nil
+	return out4("WorkspaceList", Object{"items": items, "unlinked_goals": unlinked, "as_of": c.At.Format(time.RFC3339Nano), "next_cursor": next}), nil
 }
 
 func getWorkspace(q *request) (response, error) {
@@ -275,7 +297,7 @@ func linkConfirm(q *request) (response, error) {
 	if e = q.exec("UPDATE app.task_assignments SET revision=revision+1, updated_at=$2 WHERE id=$1", a["id"], q.s.Now()); e != nil {
 		return response{}, e
 	}
-	if e = q.exec("INSERT INTO app.business_events VALUES ($1,'workspace_linked',1,$2,'go_v4','goal',$3,$4,$5::jsonb,true)", uuid(), q.s.Now(), goalID, q.requestID, string(encode(Object{"assignment_id": a["id"]}))); e != nil {
+	if e = q.v4WorkflowEvent("workspace_linked", "goal", goalID, Object{"assignment_id": a["id"], "goal_id": goalID, "template_id": preview["template_id"], "template_version": preview["template_version"]}); e != nil {
 		return response{}, e
 	}
 	return getWorkspace(q)
@@ -301,112 +323,217 @@ func (q *request) ownGoal(templateID string, version int) (string, error) {
 
 func evidenceTimeline(q *request) (response, error) {
 	goalID := q.r.PathValue("id")
-	goal, e := q.one("SELECT jsonb_build_object('id',id,'status',status,'intern_id',intern_id) FROM app.goals WHERE id=$1 AND intern_id=$2", goalID, q.user["id"])
+	if !q.goalVisible(goalID) {
+		return response{}, fail(404, "NOT_FOUND")
+	}
+	c, limit, e := q.v4Page("proof:"+goalID, 50)
 	if e != nil {
 		return response{}, e
 	}
-	checks, e := q.many("SELECT jsonb_build_object('id',id,'kind','check','observed_at',observed_at,'label',CASE WHEN status='passed' THEN 'Проверка пройдена' WHEN error_code IS NOT NULL THEN 'Проверка не пройдена: '||error_code ELSE 'Проверка: '||status END,'source','go_check','trusted',true,'validity','current','step_id',step_id) FROM app.verification_checks WHERE goal_id=$1 AND observed_at IS NOT NULL", goalID)
+	goal, e := q.one("SELECT jsonb_build_object('status',status) FROM app.goals WHERE id=$1", goalID)
 	if e != nil {
 		return response{}, e
 	}
-	evidence, e := q.many("SELECT jsonb_build_object('id',id,'kind','evidence','observed_at',observed_at,'label','Факт проверки: '||result,'source',source,'trusted',true,'validity',CASE WHEN invalidated_at IS NULL THEN 'current' ELSE 'invalidated' END,'step_id',step_id) FROM app.evidence WHERE goal_id=$1", goalID)
+	var after any
+	if c.Sort != "" {
+		after = c.Sort
+	}
+	id := c.ID
+	if id == "" {
+		id = "00000000-0000-4000-8000-000000000000"
+	}
+	rows, e := q.many(`SELECT jsonb_build_object('id',id,'kind',kind,'sort_time',observed_at,'entry',entry) FROM (
+ SELECT id,'check' AS kind,observed_at,received_at,jsonb_strip_nulls(jsonb_build_object('id',id,'kind','check','observed_at',observed_at,'received_at',received_at,'label',CASE WHEN status='passed' THEN 'Проверка пройдена' WHEN error_code IS NOT NULL THEN 'Проверка не пройдена: '||error_code ELSE 'Проверка: '||status END,'source','go_check','trusted',true,'validity','current','step_id',step_id)) AS entry FROM app.verification_checks WHERE goal_id=$1
+ UNION ALL SELECT id,'evidence',observed_at,received_at,jsonb_strip_nulls(jsonb_build_object('id',id,'kind','evidence','observed_at',observed_at,'received_at',received_at,'label','Факт проверки: '||result,'source',source,'trusted',true,'validity',CASE WHEN invalidated_at IS NULL THEN 'current' ELSE 'invalidated' END,'step_id',step_id)) FROM app.evidence WHERE goal_id=$1
+ UNION ALL SELECT id,'access_request',created_at,received_at,jsonb_strip_nulls(jsonb_build_object('id',id,'kind','access_request','observed_at',created_at,'received_at',received_at,'label','Заявка зарегистрирована','source','go_access','trusted',true,'validity','current')) FROM app.access_requests WHERE goal_id=$1
+ UNION ALL SELECT e.id,'access_request',e.occurred_at,e.received_at,jsonb_strip_nulls(jsonb_build_object('id',e.id,'kind','access_request','observed_at',e.occurred_at,'received_at',e.received_at,'label',CASE e.event_type WHEN 'access_request_created' THEN 'Заявка отправлена' WHEN 'access_request_approved' THEN 'Заявка одобрена; доступ подтверждает IAM' ELSE 'Заявка отклонена' END,'source',e.source,'trusted',true,'validity','current')) FROM app.business_events e JOIN app.access_requests a ON e.entity_type='access_request' AND e.entity_id=a.id WHERE a.goal_id=$1 AND e.event_type IN ('access_request_created','access_request_approved','access_request_rejected')
+ ) entries WHERE observed_at IS NOT NULL AND (received_at IS NULL OR received_at<=$2) AND ($3::timestamptz IS NULL OR (observed_at,kind,id)<($3,$4,$5::uuid)) ORDER BY observed_at DESC,kind DESC,id DESC LIMIT $6`, goalID, c.At, after, c.Kind, id, limit+1)
 	if e != nil {
 		return response{}, e
 	}
-	requests, e := q.many("SELECT jsonb_build_object('id',id,'kind','access_request','observed_at',created_at,'label','Заявка: '||status,'source','go_access','trusted',true,'validity','current') FROM app.access_requests WHERE goal_id=$1", goalID)
-	if e != nil {
-		return response{}, e
+	var next any
+	if len(rows) > limit {
+		rows = rows[:limit]
+		next = c.next(obj(rows[len(rows)-1]))
 	}
-	items := append(append(checks, evidence...), requests...)
-	if items == nil {
-		items = []any{}
+	items := []any{}
+	for _, row := range rows {
+		items = append(items, obj(row)["entry"])
 	}
-	if len(items) > 50 {
-		items = items[:50]
-	}
-	current := Object{"status": goal["status"]}
-	if code, e := q.openBlocker(goalID); e != nil {
-		return response{}, e
+	if code, err := q.openBlocker(goalID); err != nil {
+		return response{}, err
 	} else if code != "" {
-		current["blocker_code"] = code
+		goal["blocker_code"] = code
 	}
-	return out4("EvidenceTimeline", Object{"goal_id": goalID, "as_of": stamp(q.s.Now()), "current": current, "items": items}), nil
+	return out4("EvidenceTimeline", Object{"goal_id": goalID, "as_of": c.At.Format(time.RFC3339Nano), "current": goal, "items": items, "next_cursor": next}), nil
 }
 
 func createRevisionProposal(q *request) (response, error) {
-	if _, err := q.report(q.r.PathValue("id")); err != nil {
-		return response{}, err
+	report, e := q.report(q.r.PathValue("id"))
+	if e != nil {
+		return response{}, e
 	}
-	report, e := q.one("SELECT to_jsonb(r) FROM app.task_clarity_reports r WHERE id=$1 AND owner_id=$2", q.r.PathValue("id"), q.user["id"])
+	brief, e := q.brief(str(report["brief_id"]))
 	if e != nil {
 		return response{}, e
 	}
 	if num(report["version"]) != num(q.body["expected_report_version"]) || num(report["brief_version"]) != num(q.body["base_brief_version"]) {
 		return response{}, fail(409, "VERSION_CONFLICT")
 	}
-	version, e := q.one("SELECT jsonb_build_object('content',content,'content_hash',content_hash) FROM app.task_brief_versions WHERE brief_id=$1 AND version=$2 AND state='published'", report["brief_id"], report["brief_version"])
+	versions, e := q.many("SELECT jsonb_build_object('content',content,'version',version,'state',state) FROM app.task_brief_versions WHERE brief_id=$1 ORDER BY version DESC", brief["id"])
 	if e != nil {
 		return response{}, e
 	}
-	text := sectionBody(obj(version["content"]), str(report["section_id"]))
+	var content Object
+	var draftVersion any
+	latest := 0
+	for _, item := range versions {
+		v := obj(item)
+		if v["state"] == "published" && latest == 0 {
+			latest = num(v["version"])
+		}
+		if content == nil {
+			if v["state"] == "draft" {
+				draftVersion = v["version"]
+			}
+			content = obj(v["content"])
+		}
+	}
+	if latest != num(report["brief_version"]) || brief["archived_at"] != nil {
+		return response{}, fail(409, "VERSION_CONFLICT")
+	}
+	text := sectionBody(content, str(report["section_id"]))
 	if text == "" {
 		return response{}, fail(422, "VALIDATION_ERROR")
 	}
-	baseHash := digest([]byte(text))
-	status, origin := "unavailable", "rule_based"
-	changes := []any{}
-	questions := []any{"Модель недоступна. Отредактируйте черновик вручную."}
 	field := "sections." + str(report["section_id"]) + ".text"
 	if report["section_id"] == "goal" || report["section_id"] == "expected_result" {
 		field = str(report["section_id"])
 	}
 	if report["section_id"] == "acceptance_criteria" {
-		field = "acceptance_criteria." + str(obj(list(obj(version["content"])["acceptance_criteria"])[0])["id"]) + ".text"
+		field = "acceptance_criteria." + str(obj(list(content["acceptance_criteria"])[0])["id"]) + ".text"
 	}
-	path := strings.ReplaceAll(field, ".", "/")
-	input := Object{"brief_title": obj(version["content"])["title"], "base_version": report["brief_version"], "base_hash": baseHash,
+	label, _ := sectionTitle(content, str(report["section_id"]))
+	hash := digest([]byte(text))
+	input := Object{"brief_title": content["title"], "base_version": report["brief_version"], "base_hash": hash,
 		"report": Object{"section_id": report["section_id"], "reason": report["reason"], "affected_count": report["lifetime_count"]},
-		"fields": []any{Object{"path": path, "label": str(report["section_id"]), "text": text, "hash": baseHash}}, "refs": []any{}}
+		"fields": []any{Object{"path": strings.ReplaceAll(field, ".", "/"), "label": label, "text": text, "hash": hash}}, "refs": []any{}}
 	if q.body["answers"] != nil {
 		input["answers"] = q.body["answers"]
 	}
-	draft, err := q.call(q.s.Config.AIURL, "POST", "/internal/v4/revision-draft", "v4/ai/RevisionDraftResponse", input, nil)
-	if err == nil && draft["base_hash"] == baseHash && num(draft["base_version"]) == num(report["brief_version"]) && len(list(draft["evidence_refs"])) == 0 {
-		converted := []any{}
+	id, token := uuid(), uuid()
+	if e = q.exec("INSERT INTO app.revision_proposals(id,owner_id,report_id,brief_id,section_id,base_version,base_hash,status,origin,changes,questions,expires_at,generation_token,base_revision,base_fields,draft_version) VALUES ($1,$2,$3,$4,$5,$6,$7,'generating','rule_based','[]','[]',$8,$9,$10,$11::jsonb,$12)", id, q.user["id"], report["id"], brief["id"], report["section_id"], report["brief_version"], hash, q.s.Now().Add(10*time.Minute), token, brief["revision"], string(encode([]any{Object{"field": field, "label": label, "text": text}})), draftVersion); e != nil {
+		return response{}, e
+	}
+	if e = q.v4WorkflowEvent("proposal_requested", "revision_proposal", id, Object{"brief_id": brief["id"], "report_id": report["id"], "base_version": report["brief_version"], "base_revision": brief["revision"], "base_hash": hash}); e != nil {
+		return response{}, e
+	}
+	row, e := q.proposal(id)
+	if e != nil {
+		return response{}, e
+	}
+	owner := clone(q.user)
+	q.after = append(q.after, func() { q.s.generateRevision(id, token, owner, input, field) })
+	return created4("RevisionProposal", revisionDTO(row)), nil
+}
+
+// The provider runs after reservation commit: no application transaction/lock is held.
+func (s *Server) generateRevision(id, token string, owner, input Object, field string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	transport := s.Client.Transport
+	if original, ok := transport.(*http.Transport); ok {
+		copy := original.Clone()
+		copy.ResponseHeaderTimeout = 85 * time.Second
+		transport = copy
+	}
+	call := &request{Context: ctx, s: s, requestID: uuid(), client: &http.Client{Transport: transport, CheckRedirect: s.Client.CheckRedirect, Timeout: 85 * time.Second}}
+	draft, callErr := call.call(s.Config.AIURL, "POST", "/internal/v4/revision-draft", "v4/ai/RevisionDraftResponse", input, nil)
+	finishCtx, finishCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer finishCancel()
+	tx, e := s.Pool.Begin(finishCtx)
+	if e != nil {
+		return
+	}
+	defer tx.Rollback(context.Background())
+	q := &request{Context: finishCtx, s: s, tx: tx, user: owner, requestID: call.requestID}
+	// Read current roles and team, and reject old scope rather than upgrading a captured one.
+	current, e := q.one(userSQL, owner["id"])
+	if e != nil {
+		return
+	}
+	if current["team_id"] != owner["team_id"] || !has(current["roles"], "buddy") {
+		return
+	}
+	q.user = current
+	row, e := q.proposal(id)
+	if e != nil || row["status"] != "generating" || row["generation_token"] != token {
+		return
+	}
+	brief, e := q.brief(str(row["brief_id"]))
+	if e != nil {
+		return
+	}
+	status, origin := "unavailable", "rule_based"
+	changes := []any{}
+	questions := []any{"Модель недоступна. Отредактируйте черновик вручную."}
+	detail := Object{"answered_by": "offline", "reason_code": "generation_unavailable"}
+	rationale := ""
+	if num(brief["revision"]) != num(row["base_revision"]) || brief["archived_at"] != nil {
+		questions = []any{"ТЗ изменилось во время генерации. Запросите новое предложение."}
+	} else if callErr == nil && draft["base_hash"] == input["base_hash"] && num(draft["base_version"]) == num(input["base_version"]) && len(list(draft["evidence_refs"])) == 0 {
 		valid := true
 		for _, value := range list(draft["changes"]) {
-			change := obj(value)
-			if str(change["path"]) != path {
+			c := obj(value)
+			if c["path"] != strings.ReplaceAll(field, ".", "/") {
 				valid = false
 				break
 			}
-			converted = append(converted, Object{"id": change["id"], "field": field, "old_hash": change["old_hash"], "replacement": change["replacement"]})
+			changes = append(changes, Object{"id": c["id"], "field": field, "old_hash": c["old_hash"], "replacement": c["replacement"], "label": c["label"], "rationale": c["rationale"]})
 		}
-		candidate := Object{"changes": converted, "questions": []any{}}
-		if valid && safeRevision(candidate, baseHash) {
+		if valid && safeRevision(Object{"changes": changes}, str(input["base_hash"])) {
 			status = str(draft["outcome"])
 			if status == "no_change" {
 				status = "needs_input"
 			}
-			if obj(draft["origin"])["answered_by"] != "offline" {
+			detail = obj(draft["origin"])
+			rationale = str(draft["rationale"])
+			if detail["answered_by"] != "offline" {
 				origin = "model"
 			}
-			changes = converted
 			questions = []any{}
-			for _, value := range list(draft["questions"]) {
-				questions = append(questions, obj(value)["text"])
+			for _, v := range list(draft["questions"]) {
+				questions = append(questions, obj(v)["text"])
 			}
 			if status == "needs_input" && len(questions) == 0 {
 				questions = append(questions, "Автоматическая правка не предложена. Проверьте текст вручную.")
 			}
+		} else {
+			changes = []any{}
 		}
 	}
-	id := uuid()
-	expires := q.s.Now().UTC().Add(10 * time.Minute)
-	if e = q.exec("INSERT INTO app.revision_proposals(id,owner_id,report_id,brief_id,section_id,base_version,base_hash,status,origin,changes,questions,expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12)", id, q.user["id"], report["id"], report["brief_id"], report["section_id"], report["brief_version"], baseHash, status, origin, string(encode(changes)), string(encode(questions)), expires); e != nil {
-		return response{}, e
+	if e = q.exec("UPDATE app.revision_proposals SET status=$2,origin=$3,changes=$4::jsonb,questions=$5::jsonb,origin_detail=$6::jsonb,rationale=$8,proposal_revision=proposal_revision+1 WHERE id=$1 AND generation_token=$7 AND status='generating'", id, status, origin, string(encode(changes)), string(encode(questions)), string(encode(detail)), token, rationale); e == nil {
+		if e = q.v4WorkflowEvent("proposal_generated", "revision_proposal", id, Object{"brief_id": row["brief_id"], "report_id": row["report_id"], "status": status, "origin": origin, "preview_hash": digest(encode(changes))}); e == nil {
+			_ = tx.Commit(finishCtx)
+		}
 	}
-	return created4("RevisionProposal", proposalDTO(id, report["id"], status, origin, changes, questions, 1, expires, baseHash, num(report["brief_version"]))), nil
+}
+
+func revisionDTO(row Object) Object {
+	expires, _ := time.Parse(time.RFC3339, str(row["expires_at"]))
+	result := proposalDTO(str(row["id"]), row["report_id"], str(row["status"]), str(row["origin"]), list(row["changes"]), list(row["questions"]), num(row["proposal_revision"]), expires, str(row["base_hash"]), num(row["base_version"]))
+	result["draft_version"] = row["draft_version"]
+	if row["rationale"] != nil {
+		result["rationale"] = row["rationale"]
+	}
+	if row["base_revision"] != nil {
+		result["base_revision"] = row["base_revision"]
+		result["base_fields"] = row["base_fields"]
+	}
+	if d := obj(row["origin_detail"]); d != nil {
+		result["answered_by"] = d["answered_by"]
+	}
+	return result
 }
 
 func safeRevision(draft Object, baseHash string) bool {
@@ -423,7 +550,7 @@ func safeRevision(draft Object, baseHash string) bool {
 		}
 		seen[field] = true
 		replacement := str(change["replacement"])
-		if replacement == "" || len(replacement) > 4000 || strings.Contains(replacement, "<") || str(change["old_hash"]) != baseHash {
+		if replacement == "" || utf8.RuneCountInString(replacement) > 4000 || strings.Contains(replacement, "<") || str(change["old_hash"]) != baseHash {
 			return false
 		}
 	}
@@ -483,8 +610,7 @@ func getRevisionProposal(q *request) (response, error) {
 	if e != nil {
 		return response{}, e
 	}
-	expires, _ := time.Parse(time.RFC3339, str(row["expires_at"]))
-	return out4("RevisionProposal", proposalDTO(str(row["id"]), row["report_id"], str(row["status"]), str(row["origin"]), list(row["changes"]), list(row["questions"]), num(row["proposal_revision"]), expires, str(row["base_hash"]), num(row["base_version"]))), nil
+	return out4("RevisionProposal", revisionDTO(row)), nil
 }
 
 func discardRevision(q *request) (response, error) {
@@ -498,10 +624,12 @@ func discardRevision(q *request) (response, error) {
 	if e = q.exec("UPDATE app.revision_proposals SET status='discarded', proposal_revision=proposal_revision+1 WHERE id=$1", row["id"]); e != nil {
 		return response{}, e
 	}
+	if e = q.v4WorkflowEvent("proposal_discarded", "revision_proposal", str(row["id"]), Object{"brief_id": row["brief_id"]}); e != nil {
+		return response{}, e
+	}
 	row["status"] = "discarded"
 	row["proposal_revision"] = num(row["proposal_revision"]) + 1
-	expires, _ := time.Parse(time.RFC3339, str(row["expires_at"]))
-	return out4("RevisionProposal", proposalDTO(str(row["id"]), row["report_id"], "discarded", str(row["origin"]), list(row["changes"]), list(row["questions"]), num(row["proposal_revision"]), expires, str(row["base_hash"]), num(row["base_version"]))), nil
+	return out4("RevisionProposal", revisionDTO(row)), nil
 }
 
 func applyRevision(q *request) (response, error) {
@@ -512,7 +640,11 @@ func applyRevision(q *request) (response, error) {
 	if str(row["status"]) != "ready" || num(row["proposal_revision"]) != num(q.body["proposal_revision"]) || digest(encode(list(row["changes"]))) != str(q.body["preview_hash"]) {
 		return response{}, fail(409, "VERSION_CONFLICT")
 	}
-	if _, e = q.brief(str(row["brief_id"])); e != nil {
+	brief, e := q.brief(str(row["brief_id"]))
+	if e == nil && (brief["archived_at"] != nil || (row["base_revision"] != nil && num(brief["revision"]) != num(row["base_revision"]))) {
+		return response{}, fail(409, "VERSION_CONFLICT")
+	}
+	if e != nil {
 		return response{}, e
 	}
 	selected := map[string]Object{}
@@ -542,7 +674,7 @@ func applyRevision(q *request) (response, error) {
 		}
 		content = obj(published["content"])
 	} else {
-		if len(drafts) != 1 || num(obj(drafts[0])["version"]) != num(q.body["expected_draft_revision"]) {
+		if len(drafts) != 1 || num(brief["revision"]) != num(q.body["expected_draft_revision"]) {
 			return response{}, fail(409, "VERSION_CONFLICT")
 		}
 		content = obj(obj(drafts[0])["content"])
@@ -565,12 +697,20 @@ func applyRevision(q *request) (response, error) {
 	if e = q.exec("UPDATE app.task_briefs SET revision=revision+1, updated_at=$2 WHERE id=$1", row["brief_id"], q.s.Now()); e != nil {
 		return response{}, e
 	}
-	if e = q.exec("UPDATE app.revision_proposals SET status='applied', proposal_revision=proposal_revision+1 WHERE id=$1", row["id"]); e != nil {
+	if e = q.exec("UPDATE app.revision_proposals SET status='applied', proposal_revision=proposal_revision+1,draft_version=(SELECT version FROM app.task_brief_versions WHERE brief_id=app.revision_proposals.brief_id AND state='draft') WHERE id=$1", row["id"]); e != nil {
 		return response{}, e
 	}
+	var draftVersion int
+	if e = q.tx.QueryRow(q.Context, "SELECT version FROM app.task_brief_versions WHERE brief_id=$1 AND state='draft'", row["brief_id"]).Scan(&draftVersion); e != nil {
+		return response{}, e
+	}
+	if e = q.v4WorkflowEvent("proposal_applied", "revision_proposal", str(row["id"]), Object{"brief_id": row["brief_id"], "draft_version": draftVersion, "preview_hash": q.body["preview_hash"]}); e != nil {
+		return response{}, e
+	}
+	row["draft_version"] = draftVersion
 	row["status"] = "applied"
-	expires, _ := time.Parse(time.RFC3339, str(row["expires_at"]))
-	return out4("RevisionProposal", proposalDTO(str(row["id"]), row["report_id"], "applied", str(row["origin"]), list(row["changes"]), list(row["questions"]), num(row["proposal_revision"])+1, expires, str(row["base_hash"]), num(row["base_version"]))), nil
+	row["proposal_revision"] = num(row["proposal_revision"]) + 1
+	return out4("RevisionProposal", revisionDTO(row)), nil
 }
 
 func applyChanges(content Object, selected map[string]Object) error {
@@ -611,6 +751,18 @@ func saveImpactConfig(q *request) (response, error) {
 	brief, e := q.brief(q.r.PathValue("id"))
 	if e != nil {
 		return response{}, e
+	}
+	if brief["archived_at"] != nil {
+		return response{}, fail(409, "VERSION_CONFLICT")
+	}
+	for _, version := range []any{q.body["before_version"], q.body["after_version"]} {
+		published, err := q.publishedVersion(brief["id"], version)
+		if err != nil {
+			return response{}, err
+		}
+		if !published {
+			return response{}, fail(422, "VALIDATION_ERROR")
+		}
 	}
 	current := 0
 	_ = q.tx.QueryRow(q.Context, "SELECT COALESCE(max(revision),0) FROM app.impact_configs WHERE brief_id=$1", brief["id"]).Scan(&current)
@@ -664,6 +816,11 @@ func getImpact(q *request) (response, error) {
 		"before": Object{"version": num(cfg["before_version"]), "state": "no_exposure"},
 		"after":  Object{"version": num(cfg["after_version"]), "state": "no_exposure"},
 	}
+	body["clock_source"] = "server_wall_clock"
+	if q.s.Config.DemoClockFile != "" {
+		body["clock_source"] = "synthetic_test_clock"
+		body["label"] = "Синтетическая история на тестовых часах; " + impactLabel
+	}
 	if cfg["comparable"] != true {
 		body["state"] = "not_comparable"
 		return out4("ImpactComparison", body), nil
@@ -686,7 +843,7 @@ func getImpact(q *request) (response, error) {
 }
 
 func (q *request) cohorts(briefID string, versionA, versionB int, section, reason string, asOf time.Time, cfg Object) (Object, Object, error) {
-	rows, e := q.many("SELECT jsonb_build_object('intern_id',intern_id,'version',version,'started_at',started_at,'ended_at',ended_at) FROM app.version_exposure_episodes WHERE brief_id=$1 AND version IN ($2,$3)", briefID, versionA, versionB)
+	rows, e := q.many("SELECT jsonb_build_object('intern_id',e.intern_id,'version',e.version,'started_at',e.started_at,'ended_at',e.ended_at,'received_at',e.received_at) FROM app.version_exposure_episodes e JOIN app.users u ON u.id=e.intern_id JOIN app.task_briefs b ON b.id=e.brief_id WHERE e.brief_id=$1 AND e.version IN ($2,$3) AND u.team=b.team_id AND EXISTS(SELECT 1 FROM app.role_assignments r WHERE r.user_id=u.id AND r.role='intern')", briefID, versionA, versionB)
 	if e != nil {
 		return nil, nil, e
 	}
@@ -696,8 +853,17 @@ func (q *request) cohorts(briefID string, versionA, versionB int, section, reaso
 	toB, _ := time.Parse(time.RFC3339, str(cfg["to_b"]))
 	type seen struct{ a, b bool }
 	people := map[string]*seen{}
+	eligibleA, eligibleB := map[string]bool{}, map[string]bool{}
+	unknown := map[int]bool{}
+	observed := map[int]bool{}
 	for _, row := range rows {
 		item := obj(row)
+		version := num(item["version"])
+		observed[version] = true
+		if item["received_at"] == nil {
+			unknown[version] = true
+			continue
+		}
 		started, err := time.Parse(time.RFC3339Nano, str(item["started_at"]))
 		if err != nil {
 			started, err = time.Parse(time.RFC3339, str(item["started_at"]))
@@ -715,23 +881,23 @@ func (q *request) cohorts(briefID string, versionA, versionB int, section, reaso
 		if people[id] == nil {
 			people[id] = &seen{}
 		}
-		if num(item["version"]) == versionA && exposureEligible(started, ended, asOf, fromA, toA) {
+		if version == versionA {
 			people[id].a = true
+			if exposureEligible(started, ended, asOf, fromA, toA) {
+				eligibleA[id] = true
+			}
 		}
-		if num(item["version"]) == versionB && exposureEligible(started, ended, asOf, fromB, toB) {
+		if version == versionB {
 			people[id].b = true
+			if exposureEligible(started, ended, asOf, fromB, toB) {
+				eligibleB[id] = true
+			}
 		}
 	}
-	eligibleA, eligibleB := map[string]bool{}, map[string]bool{}
 	for id, flags := range people {
 		if flags.a && flags.b {
-			continue
-		}
-		if flags.a {
-			eligibleA[id] = true
-		}
-		if flags.b {
-			eligibleB[id] = true
+			delete(eligibleA, id)
+			delete(eligibleB, id)
 		}
 	}
 	affectedA, e := q.affected(briefID, versionA, section, reason, eligibleA)
@@ -742,14 +908,32 @@ func (q *request) cohorts(briefID string, versionA, versionB int, section, reaso
 	if e != nil {
 		return nil, nil, e
 	}
-	return cohortView(versionA, len(eligibleA), affectedA), cohortView(versionB, len(eligibleB), affectedB), nil
+	if affectedA < 0 {
+		unknown[versionA] = true
+		affectedA = 0
+	}
+	if affectedB < 0 {
+		unknown[versionB] = true
+		affectedB = 0
+	}
+	left, right := cohortView(versionA, len(eligibleA), affectedA), cohortView(versionB, len(eligibleB), affectedB)
+	for version, side := range map[int]Object{versionA: left, versionB: right} {
+		if unknown[version] || (side["state"] == "no_exposure" && observed[version]) {
+			for key := range side {
+				delete(side, key)
+			}
+			side["version"] = version
+			side["state"] = "insufficient_data"
+		}
+	}
+	return left, right, nil
 }
 
 func (q *request) affected(briefID string, version int, section, reason string, eligible map[string]bool) (int, error) {
 	if len(eligible) == 0 {
 		return 0, nil
 	}
-	rows, e := q.many("SELECT jsonb_build_object('intern_id',f.intern_id,'first_seen',f.first_seen,'started_at',e.started_at) FROM app.task_frictions f JOIN app.version_exposure_episodes e ON e.assignment_id=f.assignment_id AND e.version=f.brief_version AND e.intern_id=f.intern_id JOIN app.task_clarity_reports r ON r.brief_id=f.brief_id AND r.brief_version=f.brief_version AND r.section_id=f.section_id AND r.reason=f.reason WHERE f.brief_id=$1 AND f.brief_version=$2 AND f.section_id=$3 AND f.reason=$4 AND r.state='accepted'", briefID, version, section, reason)
+	rows, e := q.many("SELECT jsonb_build_object('intern_id',f.intern_id,'first_seen',f.first_seen,'received_at',f.received_at,'started_at',e.started_at) FROM app.task_frictions f JOIN app.version_exposure_episodes e ON e.assignment_id=f.assignment_id AND e.version=f.brief_version AND e.intern_id=f.intern_id JOIN app.task_clarity_reports r ON r.brief_id=f.brief_id AND r.brief_version=f.brief_version AND r.section_id=f.section_id AND r.reason=f.reason WHERE f.brief_id=$1 AND f.brief_version=$2 AND f.section_id=$3 AND f.reason=$4 AND r.state IN ('accepted','resolved')", briefID, version, section, reason)
 	if e != nil {
 		return 0, e
 	}
@@ -760,6 +944,9 @@ func (q *request) affected(briefID string, version int, section, reason string, 
 		if !eligible[id] {
 			continue
 		}
+		if item["received_at"] == nil {
+			return -1, nil
+		} // Unknown history cannot become a known zero.
 		started, e1 := time.Parse(time.RFC3339Nano, str(item["started_at"]))
 		seen, e2 := time.Parse(time.RFC3339Nano, str(item["first_seen"]))
 		if e1 != nil || e2 != nil {

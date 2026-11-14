@@ -31,6 +31,9 @@ test('real v4 workspace and safe AI revision to human-published successor', asyn
     await expect(page.getByRole('status')).toContainText(`Назначено: ${id}`);
   }
   await page.getByRole('link', { name: 'Улучшение заданий', exact: true }).click();
+  const assignmentsPanel = page.locator('details').first();
+  if (!(await assignmentsPanel.evaluate((node) => (node as HTMLDetailsElement).open)))
+    await assignmentsPanel.locator('summary').click();
   const assign = page.locator('li').filter({ hasText: title }).filter({ hasText: 'intern-a' });
   await assign.getByRole('button', { name: 'Разрешить DB-маршрут' }).click();
   await expect(page.getByRole('status')).toContainText('Маршрут разрешён');
@@ -43,6 +46,19 @@ test('real v4 workspace and safe AI revision to human-published successor', asyn
   await page.getByRole('button', { name: 'Подтвердить связь', exact: true }).click();
   await card.getByRole('button', { name: 'Подзадачи и доказательства' }).click();
   await expect(card.getByText('Почему такой статус?')).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(card.getByText('Почему такой статус?')).toBeVisible();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
+  ).toBeTruthy();
+  const collapse = card.getByRole('button', { name: 'Подзадачи и доказательства' });
+  await collapse.focus();
+  await page.keyboard.press('Enter');
+  await expect(collapse).toHaveAttribute('aria-expanded', 'false');
+  await page.keyboard.press('Enter');
+  await expect(collapse).toHaveAttribute('aria-expanded', 'true');
+  await page.setViewportSize({ width: 1280, height: 900 });
+
   for (const id of ['intern-a', 'intern-b']) {
     await account(page, id);
     await page.getByRole('link', { name: 'ТЗ от наставника', exact: true }).click();

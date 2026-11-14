@@ -31,6 +31,10 @@ EMBED_READ_TIMEOUT = 60.0
 EMBED_RETRY_DELAYS = (0.5, 2.0)
 
 
+def valid_usage(usage: dict, *keys: str) -> bool:
+    return all(type(usage.get(key)) is int and usage[key] >= 0 for key in keys)
+
+
 def make_client(settings: Settings, read_timeout: float, transport) -> httpx.AsyncClient:
     return httpx.AsyncClient(
         base_url=settings.llm_base_url,
@@ -87,7 +91,12 @@ class OpenAIProvider:
         if self.settings.llm_reasoning_effort:
             body["reasoning_effort"] = self.settings.llm_reasoning_effort
         try:
-            reservation = self.ledger.reserve("chat", self.upper_cost(llm_input.messages, limit))
+            reservation = self.ledger.reserve(
+                "chat",
+                self.upper_cost(llm_input.messages, limit),
+                model=self.settings.llm_model,
+                correlation_id=llm_input.request.get("run_id"),
+            )
         except BudgetUnavailable as error:
             raise BudgetDenied("Платный вызов запрещён") from error
         async for text in self.chat(body, reservation):
@@ -140,8 +149,11 @@ class OpenAIProvider:
             self.settle(reservation, last_usage)
 
     def settle(self, reservation: str, usage: dict) -> None:
+        if not valid_usage(usage, "prompt_tokens", "completion_tokens"):
+            logger.warning("Некорректный usage: резерв сохранён")
+            return
         cost = self.actual_cost(usage)
-        self.ledger.settle(reservation, cost)
+        self.ledger.settle(reservation, cost, usage=usage)
         logger.info(
             "LLM usage: вход %s, выход %s токенов, ~%.4f ₽",
             usage.get("prompt_tokens"),
@@ -172,7 +184,9 @@ class OpenAIEmbedder:
     async def embed(self, texts: list[str]) -> list[list[float]]:
         upper = cost_rub(upper_tokens(texts), self.settings.price_embedding_rub)
         try:
-            reservation = self.ledger.reserve("embedding", upper)
+            reservation = self.ledger.reserve(
+                "embedding", upper, model=self.settings.embedding_model
+            )
         except BudgetUnavailable as error:
             raise EmbeddingError(f"Платный вызов запрещён: {error}") from error
         body = {"model": self.settings.embedding_model, "input": texts}
@@ -189,9 +203,9 @@ class OpenAIEmbedder:
         except (ValueError, KeyError, TypeError) as error:
             raise EmbeddingError("API прислал ответ без embeddings") from error
         usage = payload.get("usage") or {}
-        if "prompt_tokens" in usage:
+        if valid_usage(usage, "prompt_tokens"):
             actual = cost_rub(usage["prompt_tokens"], self.settings.price_embedding_rub)
-            self.ledger.settle(reservation, actual)
+            self.ledger.settle(reservation, actual, usage=usage)
         if len(vectors) != len(texts):
             raise EmbeddingError("число векторов не совпадает с числом текстов")
         for vector in vectors:

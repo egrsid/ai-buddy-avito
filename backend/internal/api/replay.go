@@ -4,6 +4,22 @@ package api
 func (q *request) authorizeReplay(pattern string, value any) error {
 	v := obj(value)
 	switch pattern {
+	case "POST /api/v4/workspaces/{id}/link-confirm":
+		if _, _, _, e := q.workspaceView(q.r.PathValue("id")); e != nil {
+			return e
+		}
+		goal := str(obj(obj(v["card"])["goal"])["id"])
+		if goal != "" && !q.goalVisible(goal) {
+			return fail(404, "NOT_FOUND")
+		}
+		return nil
+	case "POST /api/v4/task-clarity-reports/{id}/revision-proposals", "POST /api/v4/revision-proposals/{id}/apply":
+		_, e := q.proposal(str(v["id"]))
+		return e
+	case "POST /api/v4/task-briefs/{id}/impact-config":
+		_, e := q.brief(q.r.PathValue("id"))
+		return e
+
 	case "POST /api/v2/goals/{goal}/steps/{step}/checks":
 		_, e := q.goal(str(v["goal_id"]))
 		return e

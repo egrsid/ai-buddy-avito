@@ -31,6 +31,7 @@ type Object = map[string]any
 type Config struct {
 	Env, Origin, Token, AIURL, MockURL, Contracts string
 	ContractsV3                                   string
+	DemoClockFile                                 string
 	RunTimeout, SubscribeTimeout, EnrichTimeout   time.Duration
 }
 type Server struct {
@@ -189,7 +190,7 @@ func New(pool *pgxpool.Pool, c Config) (*Server, error) {
 		files = append(files, schemaFile{c.ContractsV3, "v3/", name})
 	}
 	v4dir := filepath.Join(filepath.Dir(filepath.Clean(c.Contracts)), "v4")
-	files = append(files, schemaFile{v4dir, "v4/", "public"}, schemaFile{v4dir, "v4/", "ai"})
+	files = append(files, schemaFile{v4dir, "v4/", "public"}, schemaFile{v4dir, "v4/", "ai"}, schemaFile{v4dir, "v4/", "events"})
 	refs := map[string]string{}
 	for _, f := range files {
 		data, e := os.ReadFile(filepath.Join(f.dir, f.name+".schema.json"))
@@ -218,7 +219,15 @@ func New(pool *pgxpool.Pool, c Config) (*Server, error) {
 		}
 		schemas[key] = schema
 	}
-	return &Server{Pool: pool, Config: c, schemas: schemas, Client: &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{DialContext: (&net.Dialer{Timeout: 3 * time.Second}).DialContext, TLSHandshakeTimeout: 3 * time.Second, ResponseHeaderTimeout: 5 * time.Second}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, Now: time.Now, runs: map[string]context.CancelFunc{}}, nil
+	server := &Server{Pool: pool, Config: c, schemas: schemas, Client: &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{DialContext: (&net.Dialer{Timeout: 3 * time.Second}).DialContext, TLSHandshakeTimeout: 3 * time.Second, ResponseHeaderTimeout: 5 * time.Second}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, Now: time.Now, runs: map[string]context.CancelFunc{}}
+	if c.DemoClockFile != "" {
+		clock, e := localDemoClock(c.Env, c.DemoClockFile)
+		if e != nil {
+			return nil, e
+		}
+		server.Now = clock
+	}
+	return server, nil
 }
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
@@ -446,7 +455,7 @@ func normalizeTimes(v any) {
 	case map[string]any:
 		for k, value := range x {
 			switch k {
-			case "created_at", "updated_at", "observed_at", "invalidated_at", "expires_at", "resolved_at", "published_at", "last_seen", "last_seen_at", "first_seen", "started_at", "ended_at", "as_of", "unlinked_at", "from_a", "to_a", "from_b", "to_b":
+			case "created_at", "updated_at", "observed_at", "received_at", "invalidated_at", "expires_at", "resolved_at", "published_at", "last_seen", "last_seen_at", "first_seen", "started_at", "ended_at", "as_of", "unlinked_at", "from_a", "to_a", "from_b", "to_b":
 				if parsed, e := time.Parse(time.RFC3339Nano, str(value)); e == nil {
 					x[k] = stamp(parsed)
 				}
