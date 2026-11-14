@@ -54,13 +54,26 @@ func TestV4WorkspaceTimelineAndRevision(t *testing.T) {
 	f.sql(`INSERT INTO app.task_clarity_reports(id,team_id,owner_id,brief_id,brief_version,section_id,reason,state,current_count,lifetime_count,last_seen,hypothesis,suggestion,enrichment_status)
 		VALUES ($1,'team-a',$2,$3,1,'report-format','requirement_unclear','accepted',6,6,now(),'Раздел общий.','Уточните формат.','completed')`, reportID, buddyA, brief["id"])
 	proposal := buddy.call("POST", "/api/v4/task-clarity-reports/"+reportID+"/revision-proposals", Object{"expected_report_version": 1, "base_brief_version": 1}, 201)
-	if proposal["origin"] != "model" || proposal["status"] != "ready" {
+	change := obj(list(proposal["changes"])[0])
+	if proposal["origin"] != "model" || proposal["status"] != "ready" || change["field"] != "sections/report-format/text" || change["label"] != "Формат отчёта" || change["rationale"] == nil {
 		t.Fatal(proposal)
 	}
-	f.setStream("bad_revision")
-	unsafe := buddy.call("POST", "/api/v4/task-clarity-reports/"+reportID+"/revision-proposals", Object{"expected_report_version": 1, "base_brief_version": 1}, 201)
-	if unsafe["status"] != "unavailable" || unsafe["origin"] != "rule_based" {
-		t.Fatal(unsafe)
+	for _, mode := range []string{"bad_revision", "revision_wrong_hash", "revision_wrong_base", "revision_schema"} {
+		f.setStream(mode)
+		unsafe := buddy.call("POST", "/api/v4/task-clarity-reports/"+reportID+"/revision-proposals", Object{"expected_report_version": 1, "base_brief_version": 1}, 201)
+		if unsafe["status"] != "unavailable" || unsafe["origin"] != "rule_based" || len(list(unsafe["changes"])) != 0 {
+			t.Fatal(mode, unsafe)
+		}
+	}
+	f.setStream("revision_no_change")
+	same := buddy.call("POST", "/api/v4/task-clarity-reports/"+reportID+"/revision-proposals", Object{"expected_report_version": 1, "base_brief_version": 1}, 201)
+	if same["status"] != "needs_input" || same["origin"] != "model" || len(list(same["questions"])) != 1 {
+		t.Fatal(same)
+	}
+	f.setStream("revision_offline")
+	offline := buddy.call("POST", "/api/v4/task-clarity-reports/"+reportID+"/revision-proposals", Object{"expected_report_version": 1, "base_brief_version": 1}, 201)
+	if offline["status"] != "needs_input" || offline["origin"] != "rule_based" || list(offline["questions"])[0] != "Какой формат отчёта нужен?" {
+		t.Fatal(offline)
 	}
 	f.setStream("")
 	hash := digest(encode(proposal["changes"]))
@@ -87,8 +100,8 @@ func TestV4WorkspaceTimelineAndRevision(t *testing.T) {
 	if strings.Contains(string(encode(impact)), internA) {
 		t.Fatal("impact leaked an intern id")
 	}
-	stored := buddy.call("GET", "/api/v4/revision-proposals/"+str(unsafe["id"]), nil, 200)
-	discarded := buddy.call("POST", "/api/v4/revision-proposals/"+str(unsafe["id"])+"/discard", Object{"expected_revision": stored["proposal_revision"]}, 200)
+	stored := buddy.call("GET", "/api/v4/revision-proposals/"+str(offline["id"]), nil, 200)
+	discarded := buddy.call("POST", "/api/v4/revision-proposals/"+str(offline["id"])+"/discard", Object{"expected_revision": stored["proposal_revision"]}, 200)
 	if discarded["status"] != "discarded" {
 		t.Fatal(discarded)
 	}
@@ -100,7 +113,7 @@ func TestV4WorkspaceTimelineAndRevision(t *testing.T) {
 	if notComparable["state"] != "not_comparable" || notComparable["delta_pp"] != nil {
 		t.Fatal(notComparable)
 	}
-	buddy.call("POST", "/api/v4/revision-proposals/"+str(unsafe["id"])+"/discard", Object{"expected_revision": 99}, 409)
+	buddy.call("POST", "/api/v4/revision-proposals/"+str(offline["id"])+"/discard", Object{"expected_revision": 99}, 409)
 	buddy.call("GET", "/api/v4/revision-proposals/"+uuid(), nil, 404)
 	intern.call("GET", "/api/v4/workspaces/"+uuid(), nil, 404)
 	current := intern.call("GET", "/api/v4/workspaces/"+assignmentID, nil, 200)

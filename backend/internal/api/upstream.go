@@ -7,11 +7,26 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"time"
 )
 
 func (q *request) upstream(method, path, definition string, body any) (Object, error) {
 	return q.call(q.s.Config.MockURL, method, path, "corporate/"+definition, body, nil)
 }
+
+// slowClient waits up to timeout for the response headers: AI services answer only after the
+// whole model output. Keep-alives are off so the cloned transport leaves no idle connections.
+func (s *Server) slowClient(timeout time.Duration) *http.Client {
+	transport := s.Client.Transport
+	if t, ok := transport.(*http.Transport); ok {
+		clone := t.Clone()
+		clone.ResponseHeaderTimeout = timeout
+		clone.DisableKeepAlives = true
+		transport = clone
+	}
+	return &http.Client{Transport: transport, CheckRedirect: s.Client.CheckRedirect, Timeout: timeout}
+}
+
 func (q *request) call(base, method, path, definition string, body any, headers map[string]string) (Object, error) {
 	var input io.Reader
 	if body != nil {
