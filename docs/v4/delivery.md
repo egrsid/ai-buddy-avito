@@ -1,3 +1,7 @@
+**FE/TL checkpoint 14 ноября:** [фактическая поставка и блокеры](fe-tl-checkpoint.md).
+FE prototypes/component tests и TL 82% gates готовы; G1/full runtime integration
+BLOCKED на отсутствующих BE/AI v4 schemas/endpoints. Нижние TODO — первоначальный план.
+
 # V4 — задачи, зависимости и handoff
 
 Только V4-DOC-01 выполняется текущим поручением. Все runtime задачи ниже **TODO**,

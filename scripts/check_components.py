@@ -6,6 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from scripts.coverage_policy import MIN_LINE_PERCENT, meets_line_threshold
 from scripts.go_coverage import line_coverage
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -45,8 +46,8 @@ def main() -> None:
             (directory / "coverage.coverprofile").read_text(encoding="utf-8")
         )
         print(f"Go line coverage: {covered}/{total}")
-        if total == 0 or covered * 100 <= total * 80:
-            raise SystemExit("Go line coverage must be strictly >80%")
+        if not meets_line_threshold(covered, total):
+            raise SystemExit(f"Go line coverage must be >= {MIN_LINE_PERCENT}%")
     elif component in {"ai", "mock"}:
         folder, module = (
             ("ai-service", "app") if component == "ai" else ("mock-services", "corporate")
@@ -71,7 +72,7 @@ def main() -> None:
                 "pytest",
                 f"{folder}/tests",
                 f"--cov={module}",
-                "--cov-fail-under=80.01",
+                f"--cov-fail-under={MIN_LINE_PERCENT}",
                 "--cov-report=term-missing",
                 f"--cov-report=xml:{output / 'coverage.xml'}",
             ],

@@ -1,3 +1,7 @@
+**V4 FE/TL implementation checkpoint:** [фактические результаты](../v4/fe-tl-checkpoint.md).
+Coverage≥82% per component; FE view prototypes ready, G1/runtime/E2E integration blocked
+на отсутствующих BE/AI v4 поставках. Никакой fixture не засчитан за working v4 API.
+
 **V4 planning:** [новый backlog и role handoff](../v4/delivery.md).
 В текущем проходе только Markdown в docs/v4-planning; runtime v4 TODO.
 [Архитектура](../v4/architecture.md), [приёмка](../v4/testing.md).

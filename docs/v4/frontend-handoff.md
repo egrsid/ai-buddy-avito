@@ -30,4 +30,4 @@ V4-E2E-FE-01: preview browser test поставлен отдельно от full
 
 Проверки: frontend build PASS; 609 component tests PASS, all-code lines >95%, новые
 presentation components v4 100% lines (statement/branch coverage также измеряются).
-Точный итог после TL-проверки: FE/TL checkpoint в docs/v4/fe-tl-checkpoint.md (поставляет TL).
+Точный итог после TL-проверки: [FE/TL checkpoint](fe-tl-checkpoint.md).

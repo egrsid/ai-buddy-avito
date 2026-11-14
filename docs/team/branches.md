@@ -1,3 +1,9 @@
+## FE/TL v4 · 14 ноября 2026
+
+Созданы локальные feature/frontend-v4 (8055c9b, c576daa) и feature/tl-v4 от planning
+9a0d95f. Изменялись только эти ветки. Remote BE/AI v4 при fetch не обнаружены.
+[Checkpoint](../v4/fe-tl-checkpoint.md). Нижний proposed inventory исторический.
+
 ## V4 planning · 14 ноября 2026
 
 Единственная ветка изменений этого поручения: `docs/v4-planning`, от локальной

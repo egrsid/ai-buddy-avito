@@ -6,20 +6,16 @@ Work on project files locally. You may create local Git commits. Do not list Cod
 
 Do not push to any remote, including feature branches and forks. Do not open or merge pull requests, invite collaborators, or change repository permissions. The repository owner handles publishing and access management.
 
-## Current assignment · v4 documentation · 2026-11-14
+## Current assignment · FE + TL v4 · 2026-11-14
 
-The owner requests v4 planning only. Read any branch; change only Markdown in
-`docs/v4-planning`, based on v3 integration f4f63a0. Do not implement runtime, schemas,
-migrations, seed, config, CI/Docker or DB changes in this assignment.
-Read docs/v4/README.md, product.md, architecture.md, delivery.md, testing.md,
-decisions.md, demo.md and all five feature spec/design/tasks packages before v4 work.
-V4 joins workspace → trusted evidence → AI revision diff → human publish → descriptive
-version impact comparison. Owners/dependencies and proposed component branches are in
-delivery.md; executable contract review precedes runtime. Never claim planned tests passed.
-Published main remains v2; feature/local-v3-integration is the v3 source baseline.
-The current owner choice is offline: planning a live gate does not authorize paid calls.
-Preserve v3 verification/ACL/budget/manual Telegram/docs feedback and existing data.
-No push/PR/remote merge. Future runtime work requires its own component assignment.
+The owner authorizes FE/TL work only. Read any branch; change only branches owned by
+Frontend or TL: feature/frontend-v4 and feature/tl-v4. No push/PR/remote merge.
+Independent component line coverage must be >=82%, without changing denominators.
+Read docs/v4 and its five SDD triples. Current status: docs/v4/fe-tl-checkpoint.md.
+BE/AI v4 contracts/runtime are not available: do not implement their owned code or
+pretend presentation fixtures satisfy G1/G4. Keep v3 functional and preserve existing data.
+Only explicitly marked FE prototypes until accepted DTOs and server endpoints arrive.
+Paid/live acceptance stays OPEN under the owner's existing offline decision.
 
 ## Product direction
 

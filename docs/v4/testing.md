@@ -43,7 +43,7 @@ External Telegram navigation можно spy, без отправки. Fault harn
 Synthetic cohorts подготовить через sanctioned harness/events; не править SQL вручную
 на пользовательском dataset и не выдавать за прожитую неделю.
 
-Component line coverage строго >80% отдельно Go/AI/mock/FE. Tests не заменяются schemas,
+Component line coverage ≥82% по новому поручению владельца отдельно Go/AI/mock/FE. Tests не заменяются schemas,
 liveness/readiness и общим покрытием репозитория. Сохранить прежние negative ACL/budget,
 confirm/approval/IAM/evidence/docs-loop tests, seed replay, real restart и migration checksum.
 
