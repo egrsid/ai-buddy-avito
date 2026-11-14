@@ -113,7 +113,12 @@ def chat_case(actor: Actor, goal: str, question: str, case_id: str) -> dict:
     started = time.monotonic()
     first = None
     event = ""
-    with actor.client.stream("GET", f"/api/v2/runs/{run['id']}/events", timeout=90) as response:
+    with actor.client.stream(
+        "GET",
+        f"/api/v2/runs/{run['id']}/events",
+        headers={"Accept": "text/event-stream"},
+        timeout=90,
+    ) as response:
         if response.status_code != 200:
             raise AcceptanceFailure(f"SSE_HTTP_{response.status_code}")
         for line in response.iter_lines():
@@ -151,7 +156,7 @@ def primary_passed(case: dict) -> bool:
     return (
         case["completion"] == "completed"
         and case["origin"].get("answered_by") == "primary"
-        and case["origin"].get("completion") == "completed"
+        and case["origin"].get("completion") == "complete"
         and case["citation_count"] > 0
         and case["citations_reauthorized"]
         and case["first_content_seconds"] is not None
@@ -182,13 +187,15 @@ def manifest() -> dict:
     }
 
 
-def run(values: dict, command: list[str], env: dict, count: int, result: dict) -> None:
+def run(
+    values: dict, command: list[str], env: dict, count: int, result: dict, account: str = "intern-i"
+) -> None:
     result["catalog"] = catalog(values)
     if not result["catalog"]["ok"]:
         return
     before = ledger_rows(command, env)
     last = max((row["rowid"] for row in before), default=0)
-    actor = Actor(env["APP_ORIGIN"], "intern-d")
+    actor = Actor(env["APP_ORIGIN"], account)
     try:
         goals = actor.call("GET", "/api/v3/goals")["items"]
         own = next((g for g in goals if g["journey_id"] == "db-access-team-a"), None)
@@ -197,7 +204,11 @@ def run(values: dict, command: list[str], env: dict, count: int, result: dict) -
                 "POST", "/api/v2/goals", {"journey_id": "db-access-team-a", "journey_version": 1}
             )
         result["goal_id"] = own["id"]
+        last_started = 0.0
         for index, question in enumerate(QUESTIONS[:count], 1):
+            if index > 1:
+                time.sleep(max(0, 13 - (time.monotonic() - last_started)))
+            last_started = time.monotonic()
             result["provider_calls_executed"] = None
             case = chat_case(actor, own["id"], question, f"primary-{index:02}")
             rows = ledger_rows(command, env)
@@ -260,6 +271,8 @@ def main(argv=None) -> int:
         KeyError,
     ) as error:
         result["error"] = type(error).__name__
+        if isinstance(error, AcceptanceFailure):
+            result["error_code"] = str(error)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
     print("Live acceptance:", result["status"], "→", args.output)
