@@ -14,21 +14,24 @@
 статистика, живая модель) + v4 (рабочее пространство стажёра, лента доказательств,
 AI-правка ТЗ с ручной публикацией, сравнение версий). Та же v4 выпущена лидом в main.
 
-Запуск (Docker Desktop/Engine, Compose v2, Python 3; первая сборка скачивает зависимости):
+**Основной запуск — с настоящей моделью** (Docker Desktop/Engine, Compose v2, Python 3):
+скопируйте `.env.example` в `.env.live-v4`, впишите ключ Cloud.ru, `LLM_MODE=live`,
+`FRONTEND_PORT=15180`, `BACKEND_PORT=18087`, затем `make v4-live-up` → **http://localhost:15180**.
+Чат, AI-правка ТЗ и обратная связь отвечают моделью; источник каждого ответа виден в интерфейсе.
+Слева выбирается роль: стажёр, наставник, согласующий, владелец документации.
+
+Без ключа (только для проверки без сети к модели; ответы — явный шаблон «без ИИ», не для показа):
 
 ```sh
 DEMO_FRONTEND_PORT=15178 DEMO_BACKEND_PORT=18085 python3 -m scripts.demo up --project ai-buddy-demo-v4-final
 ```
-
-http://localhost:15178 — модель в этом режиме не нужна (явный шаблон, без ключа).
-Слева выбирается роль: стажёр, наставник, согласующий, владелец документации.
 
 | Что | Как |
 |---|---|
 | Сценарий показа и ручная проверка | [DEFENSE_V4.md](DEFENSE_V4.md) |
 | Итоговая приёмка, исправления, T01–T24 | [docs/v4/acceptance-2026-11-14-final.md](docs/v4/acceptance-2026-11-14-final.md) |
 | Сравнение версий на синтетической истории (тестовые часы) | `python3 -m scripts.v4_cohorts up` → http://localhost:15181 |
-| Живая модель Cloud.ru (свой ключ) | `.env.live-v4` из `.env.example` + ключ, `make v4-live-up` → адрес из `FRONTEND_PORT` в `.env.live-v4` (в инструкциях лида 15180), проверка `make v4-live-check` |
+| Живая модель Cloud.ru (свой ключ) | `.env.live-v4` из `.env.example` + ключ, `make v4-live-up` → http://localhost:15180, проверка `make v4-live-check` |
 
 **LLM:** Cloud.ru Foundation Models (OpenAI-совместимый `/v1`), основная модель
 `GigaChat/GigaChat-3-Pro`, запасная `ai-sage/GigaChat3.5-432B-A28B`, эмбеддинги `BAAI/bge-m3`.
