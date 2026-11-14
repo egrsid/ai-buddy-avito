@@ -260,8 +260,10 @@ func (s *Server) writeError(w http.ResponseWriter, id string, e error) {
 	var known problem
 	if errors.As(e, &known) {
 		p = known
-	} else {
-		log.Printf("backend operation failed request_id=%s type=%T", id, e)
+	} else if !errors.Is(e, context.Canceled) {
+		// A browser that aborted its own request is not a backend failure.
+		route, _ := activeRoutes.Load(id)
+		log.Printf("backend operation failed request_id=%s route=%v type=%T %s", id, route, e, errorClass(e))
 	}
 	writeJSON(w, p.status, Object{"error": Object{"code": p.code, "message": p.code, "request_id": id}})
 }
@@ -269,6 +271,8 @@ func (s *Server) route(mux *http.ServeMux, pattern, definition string, role stri
 	mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
 		rid := uuid()
 		w.Header().Set("X-Request-ID", rid)
+		activeRoutes.Store(rid, pattern)
+		defer activeRoutes.Delete(rid)
 		tx, e := s.Pool.Begin(r.Context())
 		if e != nil {
 			s.writeError(w, rid, e)

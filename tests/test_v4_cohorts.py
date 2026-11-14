@@ -26,8 +26,11 @@ def test_clock_is_atomic_explicit_and_never_rewinds(tmp_path):
 def test_only_dedicated_cohort_project_can_mount_clock(tmp_path):
     with pytest.raises(ValueError):
         setup("ai-buddy-demo-v4-final", tmp_path)
-    command, env = setup("ai-buddy-demo-v4-cohorts", tmp_path)
+    command, env = setup("ai-buddy-demo-v4-cohorts", tmp_path, offline=False)
     assert command[-1].endswith("compose.v4-cohorts.yaml")
+    assert not any(part.endswith("compose.offline.yaml") for part in command)
+    cached, _ = setup("ai-buddy-demo-v4-cohorts", tmp_path, offline=True)
+    assert cached[-3].endswith("compose.offline.yaml") and cached[-1] == command[-1]
     assert env["APP_ORIGIN"] == "http://localhost:15181"
     assert env["V4_COHORT_CLOCK_DIR"] == str(tmp_path.resolve())
     assert "--volumes" not in command
@@ -54,3 +57,16 @@ def test_oracle_requires_real_api_counts_and_explicit_test_clock():
     ):
         with pytest.raises(ValueError):
             verify({**result, **change})
+
+
+def test_offline_overlay_is_chosen_by_cached_images(tmp_path, monkeypatch):
+    calls = []
+
+    def fake_run(args, **kwargs):
+        calls.append(args)
+        return type("Result", (), {"returncode": 0 if len(calls) < 4 else 1})()
+
+    monkeypatch.setattr("scripts.demo.subprocess.run", fake_run)
+    command, _ = setup("ai-buddy-demo-v4-cohorts", tmp_path)
+    assert not any(part.endswith("compose.offline.yaml") for part in command)
+    assert all(args[:3] == ["docker", "image", "inspect"] for args in calls)

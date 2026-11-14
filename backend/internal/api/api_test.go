@@ -218,6 +218,9 @@ func (f *fixture) intelligence(w http.ResponseWriter, r *http.Request) {
 		if f.s.Validate("v4/ai/RevisionDraftRequest", d) != nil {
 			f.t.Error("invalid revision boundary")
 		}
+		if obj(d["report"])["hypothesis"] == nil || strings.Contains(string(encode(d)), internA) || strings.Contains(string(encode(d)), internB) {
+			f.t.Error("revision request must carry the report hypothesis and no intern identity", d)
+		}
 		if stream == "revision_questions" || stream == "revision_no_change" {
 			outcome := "needs_input"
 			questions := []any{Object{"id": "q1", "text": "Уточните результат"}}

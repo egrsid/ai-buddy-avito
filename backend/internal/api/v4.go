@@ -416,7 +416,7 @@ func createRevisionProposal(q *request) (response, error) {
 	label, _ := sectionTitle(content, str(report["section_id"]))
 	hash := digest([]byte(text))
 	input := Object{"brief_title": content["title"], "base_version": report["brief_version"], "base_hash": hash,
-		"report": Object{"section_id": report["section_id"], "reason": report["reason"], "affected_count": report["lifetime_count"]},
+		"report": revisionReport(report),
 		"fields": []any{Object{"path": strings.ReplaceAll(field, ".", "/"), "label": label, "text": text, "hash": hash}}, "refs": []any{}}
 	if q.body["answers"] != nil {
 		input["answers"] = q.body["answers"]
@@ -441,13 +441,7 @@ func createRevisionProposal(q *request) (response, error) {
 func (s *Server) generateRevision(id, token string, owner, input Object, field string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	transport := s.Client.Transport
-	if original, ok := transport.(*http.Transport); ok {
-		copy := original.Clone()
-		copy.ResponseHeaderTimeout = 85 * time.Second
-		transport = copy
-	}
-	call := &request{Context: ctx, s: s, requestID: uuid(), client: &http.Client{Transport: transport, CheckRedirect: s.Client.CheckRedirect, Timeout: 85 * time.Second}}
+	call := &request{Context: ctx, s: s, requestID: uuid(), client: s.slowClient(85 * time.Second)}
 	draft, callErr := call.call(s.Config.AIURL, "POST", "/internal/v4/revision-draft", "v4/ai/RevisionDraftResponse", input, nil)
 	finishCtx, finishCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer finishCancel()
@@ -517,6 +511,25 @@ func (s *Server) generateRevision(id, token string, owner, input Object, field s
 			_ = tx.Commit(finishCtx)
 		}
 	}
+}
+
+// revisionReport is the safe aggregate for the AI: no intern IDs, names or chat; the v3
+// hypothesis is shared text about the brief and helps the model aim the edit.
+func revisionReport(report Object) Object {
+	count := num(report["lifetime_count"])
+	if count < 2 {
+		count = 2
+	} else if count > 100 {
+		count = 100
+	}
+	out := Object{"section_id": report["section_id"], "reason": report["reason"], "affected_count": count}
+	if h := []rune(strings.TrimSpace(str(report["hypothesis"]))); len(h) > 0 {
+		if len(h) > 2000 {
+			h = h[:2000]
+		}
+		out["hypothesis"] = string(h)
+	}
+	return out
 }
 
 func revisionDTO(row Object) Object {
