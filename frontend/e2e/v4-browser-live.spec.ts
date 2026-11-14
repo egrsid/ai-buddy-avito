@@ -35,10 +35,11 @@ test('real v4 workspace and safe AI revision to human-published successor', asyn
   if (!(await assignmentsPanel.evaluate((node) => (node as HTMLDetailsElement).open)))
     await assignmentsPanel.locator('summary').click();
   const assign = page.locator('li').filter({ hasText: title }).filter({ hasText: 'intern-a' });
-  await assign.getByRole('button', { name: 'Разрешить DB-маршрут' }).click();
-  await expect(page.getByRole('status')).toContainText('Маршрут разрешён');
+  await assign.getByLabel('Для этого назначения нужен доступ к БД команды A').check();
+  await assign.getByRole('button', { name: 'Добавить цель доступа к БД' }).click();
+  await expect(page.getByRole('status')).toContainText('Цель доступа к БД добавлена');
   await account(page, 'intern-a');
-  await page.getByRole('link', { name: 'Рабочие результаты', exact: true }).click();
+  await page.getByRole('link', { name: 'Задания и цели', exact: true }).click();
   const card = page
     .locator('section')
     .filter({ has: page.getByRole('heading', { name: title, exact: true }) });
@@ -80,7 +81,7 @@ test('real v4 workspace and safe AI revision to human-published successor', asyn
     .fill('Отчёт должен содержать нумерованный список выполненных проверок и их результаты.');
   await page.getByRole('button', { name: 'Предложить уточнение', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Предложение: Готово к проверке' })).toBeVisible();
-  await page.locator('main input[type=checkbox]').first().check();
+  await page.getByRole('checkbox', { name: /Было:.*Предлагается:/ }).first().check();
   await page.getByRole('button', { name: 'Применить в черновик', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('сохранены в черновик');
   await page.getByRole('link', { name: 'Открыть редактор ТЗ' }).click();

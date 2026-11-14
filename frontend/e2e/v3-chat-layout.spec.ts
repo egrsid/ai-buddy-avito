@@ -6,8 +6,6 @@ test('чат: подсказка сразу в чат, ввод внизу, ст
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/#/chat');
-  const live = page.getByRole('button', { name: 'Live API', exact: true });
-  if ((await live.getAttribute('aria-pressed')) !== 'true') await live.click();
   await expect(page.getByRole('heading', { name: 'AI-помощник', exact: true })).toBeVisible();
 
   const input = page.getByLabel('Сообщение AI-помощнику');

@@ -112,9 +112,20 @@ function Workspaces() {
   return (
     <>
       <PageHeader
-        title="Рабочие результаты"
-        subtitle="Назначенные ТЗ и технические цели. Приёмка результата не равна проверке доступа."
+        title="Задания и цели"
+        subtitle="Здесь видно, что поручил наставник и какие технические шаги нужны для выполнения задания."
       />
+      <Card className="my-4">
+        <h2 className="font-semibold">Как пользоваться этим разделом</h2>
+        <p className="mt-2 text-sm">
+          Откройте ТЗ, чтобы прочитать требования и задать вопрос наставнику. Если для задания нужен доступ к
+          БД, здесь появится связанная цель с проверяемыми подзадачами. Выполняйте их по порядку.
+        </p>
+        <p className="mt-2 text-sm text-text-secondary">
+          «Мои цели» — все технические проверки. «ТЗ от наставника» — тексты заданий. Здесь они собраны
+          вместе; успешная проверка доступа ещё не означает приёмку отчёта наставником.
+        </p>
+      </Card>
       {q.state === 'loading' && <LoadingState />}
       {q.state === 'error' && <ErrorState message={userMessage(q.error)} onRetry={q.refetch} />}
       {notice && <p role="alert">{notice}</p>}
@@ -137,7 +148,11 @@ function Workspaces() {
         {[...(q.data?.items ?? []), ...(q.data?.unlinked_goals ?? [])].map((w) => (
           <Card key={`${w.kind}:${w.id}`}>
             <h2 className="text-lg font-semibold">{w.title}</h2>
-            <p className="my-2">Техническая готовность: {statusText[w.technical_status]}</p>
+            <p className="my-2">
+              {w.link_status === 'unlinked'
+                ? 'Техническая цель пока не связана с заданием'
+                : `Техническая готовность: ${statusText[w.technical_status]}`}
+            </p>
             <p className="text-xs text-text-secondary">Приёмка результата ТЗ автоматически не выполняется.</p>
             {w.blocker_code && <p className="my-2 text-error">{w.blocker_code}</p>}
             {w.kind === 'assignment' && (
@@ -145,12 +160,23 @@ function Workspaces() {
                 Открыть ТЗ
               </a>
             )}
-            {w.link_status === 'unlinked' && w.kind === 'assignment' && (
+            {w.link_status === 'unlinked' && w.kind === 'assignment' && w.can_link !== false && (
               <Button disabled={busy} onClick={() => prepare(w.id)}>
                 Связать с технической целью
               </Button>
             )}
-            {w.goal.id && <GoalDetails id={w.goal.id} />}
+            {w.can_link === false && w.link_status === 'unlinked' && (
+              <p className="my-2 text-sm text-text-secondary">
+                Выполняйте требования ТЗ. Если понадобится техническая проверка доступа, наставник добавит её
+                к этому назначению.
+              </p>
+            )}
+            {w.goal.id && (
+              <>
+                <p className="my-3 text-sm font-medium">Связанная цель: {w.goal.title}</p>
+                <GoalDetails id={w.goal.id} />
+              </>
+            )}
           </Card>
         ))}
       </div>
@@ -261,6 +287,8 @@ function MentorTools() {
       clearTimeout(timer);
     };
   }, [proposal?.id, proposal?.status]);
+  const [routeChoices, setRouteChoices] = useState<string[]>([]);
+  const [enabledRoutes, setEnabledRoutes] = useState<string[]>([]);
   const current = reports.data?.find((r) => r.id === report);
   async function generate() {
     if (!current || busy) return;
@@ -354,7 +382,10 @@ function MentorTools() {
         },
         C.Workspace,
       );
-      setNotice('Маршрут разрешён. Стажёр может подтвердить связь.');
+      setEnabledRoutes((ids) => [...ids, id]);
+      setNotice(
+        'Цель доступа к БД добавлена к назначению. Следующий шаг: стажёр открывает «Задания и цели», проверяет связь и нажимает «Подтвердить связь». После этого он выполняет подзадачи и отдельно запрашивает доступ у согласующего.',
+      );
       assignments.refetch();
     } catch (e) {
       setNotice(userMessage(e));
@@ -366,7 +397,7 @@ function MentorTools() {
     <>
       <PageHeader
         title="Улучшение заданий"
-        subtitle="Выбор маршрута, правки по отчёту и наблюдения по версиям. Только ваши ТЗ."
+        subtitle="Исправляйте формулировки, которые затруднили работу нескольких стажёров: выберите отчёт → проверьте AI-правку → опубликуйте новую версию ТЗ."
       />
       {notice && (
         <p role="status" className="my-3">
@@ -376,18 +407,46 @@ function MentorTools() {
       <Card className="my-4">
         <details open={(assignments.data?.length ?? 0) <= 3}>
           <summary className="cursor-pointer font-semibold">
-            Маршруты назначений ({assignments.data?.length ?? 0})
+            Дополнительно: технические цели назначений ({assignments.data?.length ?? 0})
           </summary>
           <p className="my-3 text-sm text-text-secondary">
-            Автор разрешает маршрут, стажёр подтверждает связь. Доступ к БД выдаётся отдельно.
+            Необязательная настройка для заданий, которым действительно нужен доступ к БД команды A. Связь
+            действует только для выбранного ТЗ и стажёра. Обычному отчёту или другому заданию без работы с БД
+            её добавлять не нужно. Задание само по себе не даёт прав на БД.
           </p>
           <ul>
             {assignments.data?.map((a) => (
               <li key={a.id} className="my-3 text-sm">
-                {a.content.title} · {a.intern.display_name}{' '}
-                <Button disabled={busy} variant="secondary" onClick={() => permit(a.id)}>
-                  Разрешить DB-маршрут
-                </Button>
+                <p className="font-medium">
+                  {a.content.title} · версия {a.brief_version}
+                </p>
+                <p className="my-2">Назначено: {a.intern.display_name}</p>
+                {a.db_route_enabled || enabledRoutes.includes(a.id) ? (
+                  <p className="text-sm text-success">
+                    Цель «Доступ к БД команды A» подключена. Стажёр подтверждает связь в «Заданиях и целях»,
+                    затем выполняет проверки. Сам доступ одобряет согласующий.
+                  </p>
+                ) : (
+                  <>
+                    <label className="my-2 block">
+                      <input
+                        type="checkbox"
+                        checked={routeChoices.includes(a.id)}
+                        onChange={() =>
+                          setRouteChoices((ids) =>
+                            ids.includes(a.id) ? ids.filter((x) => x !== a.id) : [...ids, a.id],
+                          )
+                        }
+                      />{' '}
+                      Для этого назначения нужен доступ к БД команды A
+                    </label>
+                    {routeChoices.includes(a.id) && (
+                      <Button disabled={busy} variant="secondary" onClick={() => permit(a.id)}>
+                        Добавить цель доступа к БД
+                      </Button>
+                    )}
+                  </>
+                )}
               </li>
             ))}
           </ul>
@@ -395,6 +454,11 @@ function MentorTools() {
         </details>
       </Card>
       <Card className="my-4">
+        <h2 className="mb-3 font-semibold">1. Выберите, какое ТЗ нужно улучшить</h2>
+        <p className="mb-3 text-sm text-text-secondary">
+          Отчёт появляется, когда как минимум два разных стажёра отмечают одну причину неясности в одном
+          разделе одной версии ТЗ. Это сигнал о тексте задания, а не оценка людей.
+        </p>
         <label className="block text-sm">
           Отчёт о неясности
           <select
@@ -435,6 +499,17 @@ function MentorTools() {
           Отчёт относится к прежней версии. Для новой правки выберите отчёт текущей версии; сравнение версий
           остаётся доступным.
         </p>
+      )}
+      {current && (
+        <Card className="my-4">
+          <h2 className="font-semibold">Вы работаете с заданием «{current.brief_title}»</h2>
+          <p className="mt-2 text-sm">
+            Версия {current.brief_version} · раздел «{current.section_title}» · отметили{' '}
+            {current.current_count} участника. AI предлагает изменения только для этого контекста. Сначала
+            просмотрите предложение, затем сохраните выбранные правки в черновик. Публикация — отдельный шаг в
+            редакторе ТЗ.
+          </p>
+        </Card>
       )}
       {current && (
         <a className="my-3 block text-primary underline" href={`#/mentor/briefs/${current.brief_id}`}>

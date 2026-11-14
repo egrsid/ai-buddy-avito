@@ -212,7 +212,9 @@ it('keeps generation, selected apply, human publication and impact configuration
   });
   render(<LiveV4Page />);
   await screen.findByText(/intern-a/);
-  await click('Разрешить DB-маршрут');
+  expect(screen.queryByRole('button', { name: 'Добавить цель доступа к БД' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByLabelText('Для этого назначения нужен доступ к БД команды A'));
+  await click('Добавить цель доступа к БД');
   expect(m.api).toHaveBeenCalledWith(
     `/api/v4/assignments/${fx.ASSIGNMENT_ID}/permitted-template`,
     expect.objectContaining({ body: expect.objectContaining({ expected_revision: 1 }) }),
@@ -266,6 +268,24 @@ it('keeps generation, selected apply, human publication and impact configuration
   await click('Загрузить сравнение');
   expect(screen.getByText('Разница: -40.0 п.п.')).toBeInTheDocument();
   expect(screen.getByText('Версия 1: 6 из 10, 60.0%')).toBeInTheDocument();
+});
+it('keeps an unrelated assignment usable without offering an unauthorized DB link', async () => {
+  m.api.mockResolvedValue({ items: [{ ...workspaceCard(), can_link: false }], unlinked_goals: [], as_of: fx.STAMP });
+  render(<LiveV4Page />);
+  await screen.findByText('Рабочий отчёт');
+  expect(screen.getByRole('link', { name: 'Открыть ТЗ' })).toHaveAttribute('href', `#/tasks/${fx.ASSIGNMENT_ID}`);
+  expect(screen.queryByRole('button', { name: 'Связать с технической целью' })).not.toBeInTheDocument();
+  expect(screen.getByText(/Если понадобится техническая проверка доступа/)).toBeInTheDocument();
+  expect(m.api).toHaveBeenCalledTimes(1);
+});
+it('shows the saved per-assignment DB choice after a new page mount without offering it twice', async () => {
+  m.role = 'buddy';
+  m.assignments.mockResolvedValue([{ ...fx.assignment(), db_route_enabled: true }]);
+  render(<LiveV4Page />);
+  await screen.findByText(/Цель «Доступ к БД команды A» подключена/);
+  expect(screen.queryByLabelText('Для этого назначения нужен доступ к БД команды A')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Добавить цель доступа к БД' })).not.toBeInTheDocument();
+  expect(m.api).not.toHaveBeenCalled();
 });
 it('handles questions, a fresh generation error, apply conflict and configuration failure without success', async () => {
   m.role = 'buddy';

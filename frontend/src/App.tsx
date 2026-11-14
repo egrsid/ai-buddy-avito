@@ -104,7 +104,7 @@ function AppInner() {
   if (route === '/workspaces' || route === '/mentor/improvements') {
     page = mode === 'live' ? <LiveV4Page /> : <LiveOnlyNote />;
   } else if (route === '/v4-preview') {
-    page = <V4PreviewPage />;
+    page = import.meta.env.MODE === 'test' ? <V4PreviewPage /> : <LiveV4Page />;
   } else if (mode === 'live') {
     if (taskId) {
       page = <InternTaskDetailPage key={taskId} id={taskId} />;
