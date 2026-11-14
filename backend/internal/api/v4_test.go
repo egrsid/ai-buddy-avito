@@ -57,6 +57,13 @@ func TestV4WorkspaceTimelineAndRevision(t *testing.T) {
 	if proposal["origin"] != "model" || proposal["status"] != "ready" {
 		t.Fatal(proposal)
 	}
+	for _, scenario := range []string{"revision_questions", "revision_no_change"} {
+		f.setStream(scenario)
+		questions := buddy.call("POST", "/api/v4/task-clarity-reports/"+reportID+"/revision-proposals", Object{"expected_report_version": 1, "base_brief_version": 1, "answers": []any{Object{"question": "Какой формат?", "answer": "Нумерованный список"}}}, 201)
+		if questions["status"] != "needs_input" || questions["origin"] != "rule_based" || len(list(questions["questions"])) == 0 {
+			t.Fatal(questions)
+		}
+	}
 	f.setStream("bad_revision")
 	unsafe := buddy.call("POST", "/api/v4/task-clarity-reports/"+reportID+"/revision-proposals", Object{"expected_report_version": 1, "base_brief_version": 1}, 201)
 	if unsafe["status"] != "unavailable" || unsafe["origin"] != "rule_based" {
@@ -109,4 +116,32 @@ func TestV4WorkspaceTimelineAndRevision(t *testing.T) {
 		"before_version": 1, "after_version": 2, "section_id": "deadline", "reason": "outcome_unclear",
 		"comparable": true, "from_a": to, "to_a": from, "from_b": from, "to_b": to, "expected_revision": 2,
 	}, 422)
+}
+
+func TestRevisionApplyValidatesContentAndInvalidatesStaleEditor(t *testing.T) {
+	f := newFixture(t)
+	buddy := f.browser("buddy-a")
+	brief, _ := buddy.publishedBrief(internA)
+	reportID := uuid()
+	f.sql(`INSERT INTO app.task_clarity_reports(id,team_id,owner_id,brief_id,brief_version,section_id,reason,state,current_count,lifetime_count,last_seen,hypothesis,suggestion,enrichment_status)
+ VALUES ($1,'team-a',$2,$3,1,'goal','requirement_unclear','accepted',2,2,now(),'Уточнить цель.','Уточните результат.','completed')`, reportID, buddyA, brief["id"])
+	before := buddy.call("GET", "/api/v3/task-briefs/"+str(brief["id"]), nil, 200)
+	f.setStream("revision_long")
+	proposal := buddy.call("POST", "/api/v4/task-clarity-reports/"+reportID+"/revision-proposals", Object{"expected_report_version": 1, "base_brief_version": 1}, 201)
+	input := func(p Object) Object {
+		return Object{"selected_change_ids": []any{"c1"}, "expected_draft_revision": nil, "proposal_revision": 1, "preview_hash": p["preview_hash"]}
+	}
+	buddy.call("POST", "/api/v4/revision-proposals/"+str(proposal["id"])+"/apply", input(proposal), 422)
+	failed := buddy.call("GET", "/api/v3/task-briefs/"+str(brief["id"]), nil, 200)
+	if failed["draft"] != nil || failed["revision"] != before["revision"] {
+		t.Fatal("invalid draft persisted", failed)
+	}
+	f.setStream("")
+	proposal = buddy.call("POST", "/api/v4/task-clarity-reports/"+reportID+"/revision-proposals", Object{"expected_report_version": 1, "base_brief_version": 1}, 201)
+	buddy.call("POST", "/api/v4/revision-proposals/"+str(proposal["id"])+"/apply", input(proposal), 200)
+	after := buddy.call("GET", "/api/v3/task-briefs/"+str(brief["id"]), nil, 200)
+	if num(after["revision"]) != num(before["revision"])+1 {
+		t.Fatal("apply did not invalidate stale editor", after)
+	}
+	buddy.call("POST", "/api/v3/task-briefs/"+str(brief["id"])+"/draft", Object{"content": obj(before["latest_published_version"])["content"], "expected_revision": before["revision"]}, 409)
 }

@@ -205,7 +205,24 @@ func (f *fixture) intelligence(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, 200, Object{"changes": []any{Object{"id": "c1", "field": "sections.report-format.text", "old_hash": strings.Repeat("a", 64), "replacement": "<script>alert(1)</script>"}}, "questions": []any{}, "outcome": "ready"})
 			return
 		}
-		writeJSON(w, 200, Object{"changes": []any{Object{"id": "c1", "field": "sections.report-format.text", "old_hash": d["base_hash"], "replacement": "Опишите шаги нумерованным списком."}}, "questions": []any{}, "outcome": "ready"})
+		if f.s.Validate("v4/ai/RevisionDraftRequest", d) != nil {
+			f.t.Error("invalid revision boundary")
+		}
+		if stream == "revision_questions" || stream == "revision_no_change" {
+			outcome := "needs_input"
+			questions := []any{Object{"id": "q1", "text": "Уточните результат"}}
+			if stream == "revision_no_change" {
+				outcome = "no_change"
+				questions = []any{}
+			}
+			writeJSON(w, 200, Object{"outcome": outcome, "base_hash": d["base_hash"], "base_version": d["base_version"], "changes": []any{}, "questions": questions, "rationale": "Нужно решение автора", "evidence_refs": []any{}, "origin": Object{"mode": "mock", "answered_by": "offline", "reason_code": "config_mock"}})
+			return
+		}
+		replacement := "Опишите шаги нумерованным списком."
+		if stream == "revision_long" {
+			replacement = strings.Repeat("x", 2001)
+		}
+		writeJSON(w, 200, Object{"outcome": "ready", "base_hash": d["base_hash"], "base_version": d["base_version"], "changes": []any{Object{"id": "c1", "path": obj(list(d["fields"])[0])["path"], "label": "Уточнение", "old_hash": d["base_hash"], "replacement": replacement, "rationale": "Уточняет формат"}}, "questions": []any{}, "rationale": "Уточнение", "evidence_refs": []any{}, "origin": Object{"mode": "live", "answered_by": "primary"}})
 	case strings.HasSuffix(r.URL.Path, "/task-clarity-draft"):
 		var d Object
 		_ = json.NewDecoder(r.Body).Decode(&d)

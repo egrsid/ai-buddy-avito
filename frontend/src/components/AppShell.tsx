@@ -28,6 +28,7 @@ interface NavItem {
 function navFor(user: User): NavItem[] {
   if (user.roles.includes('intern')) {
     return [
+      { to: '/workspaces', label: 'Рабочие результаты', icon: <Target size={20} /> },
       { to: '/onboarding', label: 'Мои цели', icon: <Target size={20} /> },
       { to: '/tasks', label: 'ТЗ от наставника', icon: <FileText size={20} /> },
       { to: '/requests', label: 'Мои заявки', icon: <ClipboardList size={20} /> },
@@ -36,6 +37,7 @@ function navFor(user: User): NavItem[] {
   }
   if (user.roles.includes('buddy')) {
     return [
+      { to: '/mentor/improvements', label: 'Улучшение заданий', icon: <FileText size={20} /> },
       { to: '/mentor/briefs', label: 'Мои задания', icon: <FileText size={20} /> },
       { to: '/mentor/reports', label: 'Понятность заданий', icon: <Lightbulb size={20} /> },
       { to: '/mentor/stats', label: 'Статистика', icon: <BarChart3 size={20} /> },

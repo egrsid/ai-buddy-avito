@@ -162,7 +162,8 @@
         "draft_version": {"type": ["integer", "null"]},
         "expires_at": {"type": "string", "minLength": 20, "maxLength": 40},
         "base_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-        "base_version": {"type": "integer", "minimum": 1}
+        "base_version": {"type": "integer", "minimum": 1},
+        "preview_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
       }
     },
     "RevisionProposalRequest": {
@@ -171,7 +172,8 @@
       "required": ["expected_report_version", "base_brief_version"],
       "properties": {
         "expected_report_version": {"type": "integer", "minimum": 1},
-        "base_brief_version": {"type": "integer", "minimum": 1}
+        "base_brief_version": {"type": "integer", "minimum": 1},
+        "answers": {"type": "array", "maxItems": 10, "items": {"type": "object", "additionalProperties": false, "required": ["question", "answer"], "properties": {"question": {"type": "string", "minLength": 1, "maxLength": 500}, "answer": {"type": "string", "minLength": 1, "maxLength": 1000}}}}
       }
     },
     "RevisionApplyRequest": {
@@ -236,7 +238,8 @@
         "state": {"type": "string", "enum": ["ready", "not_comparable", "insufficient_data"]},
         "before": {"$ref": "#/$defs/ImpactSide"},
         "after": {"$ref": "#/$defs/ImpactSide"},
-        "delta_pp": {"type": "number"}
+        "delta_pp": {"type": "number"},
+        "config_revision": {"type": "integer", "minimum": 1}
       }
     }
   }

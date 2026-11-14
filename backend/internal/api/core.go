@@ -189,7 +189,7 @@ func New(pool *pgxpool.Pool, c Config) (*Server, error) {
 		files = append(files, schemaFile{c.ContractsV3, "v3/", name})
 	}
 	v4dir := filepath.Join(filepath.Dir(filepath.Clean(c.Contracts)), "v4")
-	files = append(files, schemaFile{v4dir, "v4/", "public"})
+	files = append(files, schemaFile{v4dir, "v4/", "public"}, schemaFile{v4dir, "v4/", "ai"})
 	refs := map[string]string{}
 	for _, f := range files {
 		data, e := os.ReadFile(filepath.Join(f.dir, f.name+".schema.json"))

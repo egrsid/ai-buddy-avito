@@ -54,3 +54,25 @@ func TestImpactArithmetic(t *testing.T) {
 		t.Fatal("before enrollment")
 	}
 }
+
+func TestRevisionReservedFields(t *testing.T) {
+	content := Object{"goal": "Исходная цель", "expected_result": "Отчёт", "acceptance_criteria": []any{Object{"id": "result", "text": "Исходный критерий"}}}
+	for field, old := range map[string]string{"goal": "Исходная цель", "expected_result": "Отчёт", "acceptance_criteria.result.text": "Исходный критерий"} {
+		change := Object{"id": "c1", "field": field, "old_hash": digest([]byte(old)), "replacement": "Уточнённый текст"}
+		if !safeRevision(Object{"changes": []any{change}}, str(change["old_hash"])) {
+			t.Fatal("safe field rejected")
+		}
+		if e := applyChanges(content, map[string]Object{field: change}); e != nil {
+			t.Fatal(e)
+		}
+		if e := applyChanges(content, map[string]Object{field: change}); e == nil {
+			t.Fatal("stale field overwritten")
+		}
+	}
+	if sectionBody(content, "goal") != "Уточнённый текст" || sectionBody(content, "expected_result") != "Уточнённый текст" || sectionBody(content, "acceptance_criteria") != "Уточнённый текст" {
+		t.Fatal(content)
+	}
+	if sectionBody(Object{}, "acceptance_criteria") != "" {
+		t.Fatal("empty criteria")
+	}
+}
