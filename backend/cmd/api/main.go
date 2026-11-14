@@ -35,13 +35,11 @@ func main() {
 	}
 	go server.Maintain(ctx)
 	httpServer := &http.Server{Addr: ":8080", Handler: server.Handler(), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second}
-	go func() {
-		<-ctx.Done()
-		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = httpServer.Shutdown(shutdown)
-	}()
-	if e = httpServer.ListenAndServe(); e != nil && e != http.ErrServerClosed {
+	// Requests and after-commit work finish before the deferred pool.Close runs.
+	drain := func() (context.Context, context.CancelFunc) {
+		return context.WithTimeout(context.Background(), 8*time.Second)
+	}
+	if e = server.Serve(ctx, httpServer, drain); e != nil {
 		log.Fatal(e)
 	}
 }
