@@ -35,3 +35,6 @@ select = ["E", "F", "I"]
 
 [tool.coverage.run]
 omit = ["*/tests/*", "ai-service/app/main.py", "mock-services/corporate/main.py", "*/__init__.py"]
+
+[tool.coverage.report]
+fail_under = 82
