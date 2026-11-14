@@ -97,6 +97,24 @@ def test_request_has_model_cap_usage_and_key_header(ledger):
     assert "reasoning_effort" not in body
 
 
+def test_per_call_output_limit_is_sent_and_reserved(ledger):
+    # Лимит операции (правка ТЗ) уходит в API и в резерв журнала: обойти бюджет им нельзя.
+    seen = []
+    provider = provider_with(
+        answer_with(delta("Ок"), "[DONE]", seen=seen), ledger, llm_max_output_tokens=400
+    )
+    messages = [{"role": "user", "content": "привет"}]
+    llm_input = LlmInput(messages, generate_request(), [], max_output_tokens=1000)
+
+    async def read_all():
+        return [text async for text in provider.stream(llm_input, "normal")]
+
+    asyncio.run(read_all())
+    assert json.loads(seen[0].content)["max_tokens"] == 1000
+    assert ledger.status()["spent_rub"] == pytest.approx(provider.upper_cost(messages, 1000))
+    assert provider.upper_cost(messages, 1000) > provider.upper_cost(messages)
+
+
 def test_reasoning_effort_is_sent_when_configured(ledger):
     seen = []
     handler = answer_with(usage_chunk(), "[DONE]", seen=seen)
