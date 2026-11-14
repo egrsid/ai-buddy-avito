@@ -55,7 +55,7 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal("test DB name required")
 	}
 	t.Cleanup(admin.Close)
-	_, e = admin.Exec(context.Background(), "TRUNCATE app.goals,app.conversations,app.sessions,app.idempotency_keys,app.friction_events,app.knowledge_gap_candidates,app.task_briefs,app.contact_previews CASCADE; UPDATE app.users SET policy_revision=1; UPDATE app.mentor_contacts SET revision=1; DELETE FROM app.business_events")
+	_, e = admin.Exec(context.Background(), "TRUNCATE app.goals,app.conversations,app.sessions,app.idempotency_keys,app.friction_events,app.knowledge_gap_candidates,app.task_briefs,app.contact_previews,app.workspace_links,app.workspace_link_previews,app.revision_proposals,app.version_exposure_episodes,app.impact_configs CASCADE; UPDATE app.users SET policy_revision=1; UPDATE app.mentor_contacts SET revision=1; DELETE FROM app.business_events")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -198,6 +198,14 @@ func (f *fixture) intelligence(w http.ResponseWriter, r *http.Request) {
 			f.t.Error("unsafe contact summary input")
 		}
 		writeJSON(w, 200, Object{"summary": "Кратко: стажёр застрял на шаге и спрашивает про доступ."})
+	case strings.HasSuffix(r.URL.Path, "/revision-draft"):
+		var d Object
+		_ = json.NewDecoder(r.Body).Decode(&d)
+		if stream == "bad_revision" {
+			writeJSON(w, 200, Object{"changes": []any{Object{"id": "c1", "field": "sections.report-format.text", "old_hash": strings.Repeat("a", 64), "replacement": "<script>alert(1)</script>"}}, "questions": []any{}, "outcome": "ready"})
+			return
+		}
+		writeJSON(w, 200, Object{"changes": []any{Object{"id": "c1", "field": "sections.report-format.text", "old_hash": d["base_hash"], "replacement": "Опишите шаги нумерованным списком."}}, "questions": []any{}, "outcome": "ready"})
 	case strings.HasSuffix(r.URL.Path, "/task-clarity-draft"):
 		var d Object
 		_ = json.NewDecoder(r.Body).Decode(&d)
