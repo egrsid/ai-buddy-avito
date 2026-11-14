@@ -24,10 +24,16 @@ from app.prompt import LlmInput
 from app.vectors import EmbeddingError
 
 logger = logging.getLogger(__name__)
-# Две попытки подключения по 2.5 с укладываются в лимит 6 с на первый кусок ответа.
-# Сбой подключения бывает только до отправки запроса, поэтому повтор ничего не стоит.
-CONNECT_TIMEOUT = 2.5
+# Потерянный пакет при подключении ОС повторяет через 1 с и ещё через 2 с (итого 3 с):
+# 3.5 с пережидают два таких повтора. Вторую попытку обрывает лимит 6 с на первый кусок
+# ответа в failover. Сбой подключения бывает только до отправки запроса — повтор бесплатен.
+CONNECT_TIMEOUT = 3.5
 CONNECT_ATTEMPTS = 2
+# Готовое соединение не закрываем 90 с и раз в 25 с освежаем бесплатным GET /models:
+# вопрос идёт по открытому соединению и не ждёт подключения на сети с потерями пакетов.
+KEEPALIVE_SECONDS = 90.0
+KEEP_WARM_SECONDS = 25.0
+PING_TIMEOUT = 10.0
 # Ingest шлёт корпус пачками; удалённому API хватает с запасом.
 EMBED_READ_TIMEOUT = 60.0
 # Паузы перед повторами эмбеддингов: всего до 3 попыток, задержка ≤2.5 с (лимит токена 20 с).
@@ -44,9 +50,40 @@ def make_client(settings: Settings, read_timeout: float, transport) -> httpx.Asy
         timeout=httpx.Timeout(read_timeout, connect=CONNECT_TIMEOUT),
         headers={"Authorization": f"Bearer {settings.llm_api_key}"},
         transport=transport,
+        limits=httpx.Limits(keepalive_expiry=KEEPALIVE_SECONDS),
         # Системный прокси Windows/VPN не используем: ходим к провайдеру напрямую.
         trust_env=False,
     )
+
+
+async def keep_warm(
+    client: httpx.AsyncClient, interval: float = KEEP_WARM_SECONDS, sleep=asyncio.sleep
+):
+    """Держит соединение с API открытым: список моделей бесплатен и журнал расходов не трогает."""
+    while True:
+        try:
+            await client.get("/models", timeout=PING_TIMEOUT)
+        except httpx.HTTPError as error:
+            # Только тип ошибки: следующий вопрос сам откроет соединение заново.
+            logger.info("Соединение с API не освежилось (%s)", type(error).__name__)
+        await sleep(interval)
+
+
+class KeepWarm:
+    """Фоновое освежение соединения клиента: запускает warm_up, останавливает aclose."""
+
+    client: httpx.AsyncClient
+    warm_task: asyncio.Task | None = None
+
+    def start_keep_warm(self) -> None:
+        if self.warm_task is None:
+            self.warm_task = asyncio.create_task(keep_warm(self.client))
+
+    async def stop_keep_warm(self) -> None:
+        if self.warm_task is not None:
+            self.warm_task.cancel()
+            await asyncio.gather(self.warm_task, return_exceptions=True)
+            self.warm_task = None
 
 
 def make_ledger(settings: Settings) -> BudgetLedger:
@@ -55,7 +92,7 @@ def make_ledger(settings: Settings) -> BudgetLedger:
     return BudgetLedger(settings.budget_ledger_path, settings.budget_stop_rub)
 
 
-class OpenAIProvider:
+class OpenAIProvider(KeepWarm):
     def __init__(
         self,
         settings: Settings,
@@ -181,13 +218,15 @@ class OpenAIProvider:
         )
 
     async def warm_up(self) -> None:
-        """Удалённая модель всегда загружена, а прогрев стоил бы денег — пропускаем."""
+        """Модель всегда загружена, а платный прогрев не нужен: только держим соединение."""
+        self.start_keep_warm()
 
     async def aclose(self) -> None:
+        await self.stop_keep_warm()
         await self.client.aclose()
 
 
-class OpenAIEmbedder:
+class OpenAIEmbedder(KeepWarm):
     def __init__(
         self,
         settings: Settings,
@@ -250,7 +289,9 @@ class OpenAIEmbedder:
         return await self.client.post("/embeddings", json=body)
 
     async def warm_up(self) -> None:
-        """Удалённой модели прогрев не нужен."""
+        """Удалённой модели прогрев не нужен: только держим соединение."""
+        self.start_keep_warm()
 
     async def aclose(self) -> None:
+        await self.stop_keep_warm()
         await self.client.aclose()
