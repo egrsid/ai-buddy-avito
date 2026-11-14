@@ -12,7 +12,15 @@ from app.api import make_embedder, make_provider
 from app.budget import BudgetLedger, init_ledger
 from app.generate import run_generate
 from app.mock_provider import ProviderUnavailable
-from app.openai_provider import CONNECT_ATTEMPTS, OpenAIEmbedder, OpenAIProvider
+from app.openai_provider import (
+    CONNECT_ATTEMPTS,
+    CONNECT_TIMEOUT,
+    KEEP_WARM_SECONDS,
+    KEEPALIVE_SECONDS,
+    OpenAIEmbedder,
+    OpenAIProvider,
+    keep_warm,
+)
 from app.prompt import LlmInput
 from app.vectors import EmbeddingError
 
@@ -248,12 +256,57 @@ def test_usage_log_has_numbers_not_key(ledger, caplog):
     assert "secret-key" not in caplog.text
 
 
-def test_warm_up_makes_no_paid_calls(ledger):
+def test_warm_up_only_keeps_the_connection_and_aclose_stops_it(ledger):
     seen = []
     provider = provider_with(answer_with(delta("Ок"), seen=seen), ledger)
-    asyncio.run(provider.warm_up())
-    assert seen == []
+
+    async def lifecycle():
+        await provider.warm_up()
+        for _ in range(20):
+            await asyncio.sleep(0)
+        task = provider.warm_task
+        await provider.aclose()
+        return task
+
+    task = asyncio.run(lifecycle())
+    assert task.done() and provider.warm_task is None
+    # Только бесплатный список моделей: ни запроса к модели, ни записи в журнале расходов.
+    assert seen and all((r.method, r.url.path) == ("GET", "/v1/models") for r in seen)
     assert ledger.status()["calls"] == 0
+
+
+def test_keep_warm_survives_network_errors_and_waits_between_pings(caplog):
+    calls, pauses = [], []
+
+    def handler(request):
+        calls.append(request)
+        if len(calls) == 1:
+            raise httpx.ConnectTimeout("secret details")
+        return httpx.Response(200, json={"data": []})
+
+    async def sleep(seconds):
+        pauses.append(seconds)
+        if len(pauses) == 3:
+            raise asyncio.CancelledError
+
+    async def run_pings():
+        async with httpx.AsyncClient(
+            base_url="https://api.example/v1", transport=httpx.MockTransport(handler)
+        ) as client:
+            with pytest.raises(asyncio.CancelledError):
+                await keep_warm(client, interval=7.0, sleep=sleep)
+
+    with caplog.at_level(logging.INFO):
+        asyncio.run(run_pings())
+    assert len(calls) == 3 and pauses == [7.0, 7.0, 7.0]
+    assert "ConnectTimeout" in caplog.text and "secret" not in caplog.text
+
+
+def test_connection_timings_fit_lossy_networks():
+    # ОС повторяет потерянный пакет подключения через 1 и 3 с; 6 с — лимит failover.
+    assert 3.0 < CONNECT_TIMEOUT < 6.0
+    # Пинг приходит раньше, чем клиент сам закроет простаивающее соединение.
+    assert KEEP_WARM_SECONDS < KEEPALIVE_SECONDS
 
 
 def test_aclose_closes_http_client(ledger):
@@ -389,10 +442,17 @@ def test_embedding_errors(handler, ledger):
 def test_embedder_warm_up_and_close(ledger):
     seen = []
     embedder = embedder_with(embeddings_reply(seen=seen), ledger)
-    asyncio.run(embedder.warm_up())
-    asyncio.run(embedder.aclose())
-    assert seen == []
-    assert embedder.client.is_closed
+
+    async def lifecycle():
+        await embedder.warm_up()
+        for _ in range(20):
+            await asyncio.sleep(0)
+        await embedder.aclose()
+
+    asyncio.run(lifecycle())
+    assert all(r.method == "GET" and r.url.path.endswith("/models") for r in seen)
+    assert embedder.client.is_closed and embedder.warm_task is None
+    assert ledger.status()["calls"] == 0
 
 
 def test_factories_pick_paid_api_by_provider(tmp_path):
