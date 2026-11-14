@@ -233,6 +233,10 @@ function GoalDetails({ id }: { id: string }) {
 function MentorTools() {
   const reports = useLiveData(() => listReports(), [], []);
   const assignments = useLiveData(() => listAssignments(), [], []);
+  // Короткий список раскрыт сразу, длинный свёрнут; решение принимается один раз, когда список
+  // загрузился, дальше панель открывает и закрывает только пользователь.
+  const [routesOpen, setRoutesOpen] = useState<boolean>();
+  const routesShown = routesOpen ?? (assignments.data ? assignments.data.length <= 3 : false);
   const [report, setReport] = useState('');
   const [brief, setBrief] = useState<TaskBriefT | null>(null);
   const [proposal, setProposal] = useState<z.infer<typeof C.RevisionProposal> | null>(null);
@@ -374,7 +378,13 @@ function MentorTools() {
         </p>
       )}
       <Card className="my-4">
-        <details open={(assignments.data?.length ?? 0) <= 3}>
+        <details
+          open={routesShown}
+          onToggle={(event) => {
+            const open = event.currentTarget.open;
+            if (open !== routesShown || routesOpen !== undefined) setRoutesOpen(open);
+          }}
+        >
           <summary className="cursor-pointer font-semibold">
             Маршруты назначений ({assignments.data?.length ?? 0})
           </summary>

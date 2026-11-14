@@ -11,7 +11,7 @@ async function account(p: Page, id: string) {
     .toBe(id);
 }
 test('real v4 workspace and safe AI revision to human-published successor', async ({ page }) => {
-  test.setTimeout(120000);
+  test.setTimeout(240000);
   await page.goto('/');
   await account(page, 'buddy-a');
   await page.getByRole('link', { name: 'Мои задания', exact: true }).click();
@@ -32,6 +32,7 @@ test('real v4 workspace and safe AI revision to human-published successor', asyn
   }
   await page.getByRole('link', { name: 'Улучшение заданий', exact: true }).click();
   const assignmentsPanel = page.locator('details').first();
+  await expect(assignmentsPanel.locator('summary')).not.toContainText('(0)');
   if (!(await assignmentsPanel.evaluate((node) => (node as HTMLDetailsElement).open)))
     await assignmentsPanel.locator('summary').click();
   const assign = page.locator('li').filter({ hasText: title }).filter({ hasText: 'intern-a' });
@@ -79,7 +80,10 @@ test('real v4 workspace and safe AI revision to human-published successor', asyn
     .getByLabel('Уточнение автора (для новой генерации)')
     .fill('Отчёт должен содержать нумерованный список выполненных проверок и их результаты.');
   await page.getByRole('button', { name: 'Предложить уточнение', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Предложение: Готово к проверке' })).toBeVisible();
+  // Offline шаблон отвечает сразу, живая модель — за секунды; Go ждёт генерацию до 90 с.
+  await expect(page.getByRole('heading', { name: 'Предложение: Готово к проверке' })).toBeVisible({
+    timeout: 90_000,
+  });
   await page.locator('main input[type=checkbox]').first().check();
   await page.getByRole('button', { name: 'Применить в черновик', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('сохранены в черновик');
