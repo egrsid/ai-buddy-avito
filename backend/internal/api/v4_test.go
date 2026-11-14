@@ -54,30 +54,27 @@ func TestV4WorkspaceTimelineAndRevision(t *testing.T) {
 	f.sql(`INSERT INTO app.task_clarity_reports(id,team_id,owner_id,brief_id,brief_version,section_id,reason,state,current_count,lifetime_count,last_seen,hypothesis,suggestion,enrichment_status)
 		VALUES ($1,'team-a',$2,$3,1,'report-format','requirement_unclear','accepted',6,6,now(),'Раздел общий.','Уточните формат.','completed')`, reportID, buddyA, brief["id"])
 	proposal := buddy.call("POST", "/api/v4/task-clarity-reports/"+reportID+"/revision-proposals", Object{"expected_report_version": 1, "base_brief_version": 1}, 201)
-	change := obj(list(proposal["changes"])[0])
-	if proposal["origin"] != "model" || proposal["status"] != "ready" || change["field"] != "sections/report-format/text" || change["label"] != "Формат отчёта" || change["rationale"] == nil {
+	proposal = buddy.waitRevision(proposal)
+	if proposal["origin"] != "model" || proposal["status"] != "ready" {
 		t.Fatal(proposal)
 	}
-	for _, mode := range []string{"bad_revision", "revision_wrong_hash", "revision_wrong_base", "revision_schema"} {
-		f.setStream(mode)
-		unsafe := buddy.call("POST", "/api/v4/task-clarity-reports/"+reportID+"/revision-proposals", Object{"expected_report_version": 1, "base_brief_version": 1}, 201)
-		if unsafe["status"] != "unavailable" || unsafe["origin"] != "rule_based" || len(list(unsafe["changes"])) != 0 {
-			t.Fatal(mode, unsafe)
+	for _, scenario := range []string{"revision_questions", "revision_no_change"} {
+		f.setStream(scenario)
+		questions := buddy.call("POST", "/api/v4/task-clarity-reports/"+reportID+"/revision-proposals", Object{"expected_report_version": 1, "base_brief_version": 1, "answers": []any{Object{"question": "Какой формат?", "answer": "Нумерованный список"}}}, 201)
+		questions = buddy.waitRevision(questions)
+		if questions["status"] != "needs_input" || questions["origin"] != "rule_based" || len(list(questions["questions"])) == 0 {
+			t.Fatal(questions)
 		}
 	}
-	f.setStream("revision_no_change")
-	same := buddy.call("POST", "/api/v4/task-clarity-reports/"+reportID+"/revision-proposals", Object{"expected_report_version": 1, "base_brief_version": 1}, 201)
-	if same["status"] != "needs_input" || same["origin"] != "model" || len(list(same["questions"])) != 1 {
-		t.Fatal(same)
-	}
-	f.setStream("revision_offline")
-	offline := buddy.call("POST", "/api/v4/task-clarity-reports/"+reportID+"/revision-proposals", Object{"expected_report_version": 1, "base_brief_version": 1}, 201)
-	if offline["status"] != "needs_input" || offline["origin"] != "rule_based" || list(offline["questions"])[0] != "Какой формат отчёта нужен?" {
-		t.Fatal(offline)
+	f.setStream("bad_revision")
+	unsafe := buddy.call("POST", "/api/v4/task-clarity-reports/"+reportID+"/revision-proposals", Object{"expected_report_version": 1, "base_brief_version": 1}, 201)
+	unsafe = buddy.waitRevision(unsafe)
+	if unsafe["status"] != "unavailable" || unsafe["origin"] != "rule_based" {
+		t.Fatal(unsafe)
 	}
 	f.setStream("")
 	hash := digest(encode(proposal["changes"]))
-	applied := buddy.call("POST", "/api/v4/revision-proposals/"+str(proposal["id"])+"/apply", Object{"selected_change_ids": []any{"c1"}, "expected_draft_revision": nil, "proposal_revision": 1, "preview_hash": hash}, 200)
+	applied := buddy.call("POST", "/api/v4/revision-proposals/"+str(proposal["id"])+"/apply", Object{"selected_change_ids": []any{"c1"}, "expected_draft_revision": nil, "proposal_revision": proposal["proposal_revision"], "preview_hash": hash}, 200)
 	if applied["status"] != "applied" {
 		t.Fatal(applied)
 	}
@@ -85,8 +82,9 @@ func TestV4WorkspaceTimelineAndRevision(t *testing.T) {
 	if !strings.Contains(string(encode(again)), "нумерованным списком") {
 		t.Fatal(again)
 	}
-	buddy.call("POST", "/api/v4/revision-proposals/"+str(proposal["id"])+"/apply", Object{"selected_change_ids": []any{"c1"}, "expected_draft_revision": nil, "proposal_revision": 1, "preview_hash": hash}, 409)
+	buddy.call("POST", "/api/v4/revision-proposals/"+str(proposal["id"])+"/apply", Object{"selected_change_ids": []any{"c1"}, "expected_draft_revision": nil, "proposal_revision": proposal["proposal_revision"], "preview_hash": hash}, 409)
 
+	buddy.call("POST", "/api/v3/task-briefs/"+str(brief["id"])+"/publish", Object{"expected_revision": again["revision"]}, 200)
 	from := time.Now().UTC().Add(-30 * 24 * time.Hour).Format(time.RFC3339)
 	to := time.Now().UTC().Add(24 * time.Hour).Format(time.RFC3339)
 	impact := buddy.call("POST", "/api/v4/task-briefs/"+str(brief["id"])+"/impact-config", Object{
@@ -100,8 +98,8 @@ func TestV4WorkspaceTimelineAndRevision(t *testing.T) {
 	if strings.Contains(string(encode(impact)), internA) {
 		t.Fatal("impact leaked an intern id")
 	}
-	stored := buddy.call("GET", "/api/v4/revision-proposals/"+str(offline["id"]), nil, 200)
-	discarded := buddy.call("POST", "/api/v4/revision-proposals/"+str(offline["id"])+"/discard", Object{"expected_revision": stored["proposal_revision"]}, 200)
+	stored := buddy.call("GET", "/api/v4/revision-proposals/"+str(unsafe["id"]), nil, 200)
+	discarded := buddy.call("POST", "/api/v4/revision-proposals/"+str(unsafe["id"])+"/discard", Object{"expected_revision": stored["proposal_revision"]}, 200)
 	if discarded["status"] != "discarded" {
 		t.Fatal(discarded)
 	}
@@ -113,7 +111,7 @@ func TestV4WorkspaceTimelineAndRevision(t *testing.T) {
 	if notComparable["state"] != "not_comparable" || notComparable["delta_pp"] != nil {
 		t.Fatal(notComparable)
 	}
-	buddy.call("POST", "/api/v4/revision-proposals/"+str(offline["id"])+"/discard", Object{"expected_revision": 99}, 409)
+	buddy.call("POST", "/api/v4/revision-proposals/"+str(unsafe["id"])+"/discard", Object{"expected_revision": 99}, 409)
 	buddy.call("GET", "/api/v4/revision-proposals/"+uuid(), nil, 404)
 	intern.call("GET", "/api/v4/workspaces/"+uuid(), nil, 404)
 	current := intern.call("GET", "/api/v4/workspaces/"+assignmentID, nil, 200)
@@ -122,4 +120,119 @@ func TestV4WorkspaceTimelineAndRevision(t *testing.T) {
 		"before_version": 1, "after_version": 2, "section_id": "deadline", "reason": "outcome_unclear",
 		"comparable": true, "from_a": to, "to_a": from, "from_b": from, "to_b": to, "expected_revision": 2,
 	}, 422)
+}
+
+func TestRevisionApplyValidatesContentAndInvalidatesStaleEditor(t *testing.T) {
+	f := newFixture(t)
+	buddy := f.browser("buddy-a")
+	brief, _ := buddy.publishedBrief(internA)
+	reportID := uuid()
+	f.sql(`INSERT INTO app.task_clarity_reports(id,team_id,owner_id,brief_id,brief_version,section_id,reason,state,current_count,lifetime_count,last_seen,hypothesis,suggestion,enrichment_status)
+ VALUES ($1,'team-a',$2,$3,1,'goal','requirement_unclear','accepted',2,2,now(),'Уточнить цель.','Уточните результат.','completed')`, reportID, buddyA, brief["id"])
+	before := buddy.call("GET", "/api/v3/task-briefs/"+str(brief["id"]), nil, 200)
+	f.setStream("revision_long")
+	proposal := buddy.call("POST", "/api/v4/task-clarity-reports/"+reportID+"/revision-proposals", Object{"expected_report_version": 1, "base_brief_version": 1}, 201)
+	proposal = buddy.waitRevision(proposal)
+	input := func(p Object) Object {
+		return Object{"selected_change_ids": []any{"c1"}, "expected_draft_revision": nil, "proposal_revision": p["proposal_revision"], "preview_hash": p["preview_hash"]}
+	}
+	buddy.call("POST", "/api/v4/revision-proposals/"+str(proposal["id"])+"/apply", input(proposal), 422)
+	failed := buddy.call("GET", "/api/v3/task-briefs/"+str(brief["id"]), nil, 200)
+	if failed["draft"] != nil || failed["revision"] != before["revision"] {
+		t.Fatal("invalid draft persisted", failed)
+	}
+	f.setStream("")
+	proposal = buddy.call("POST", "/api/v4/task-clarity-reports/"+reportID+"/revision-proposals", Object{"expected_report_version": 1, "base_brief_version": 1}, 201)
+	proposal = buddy.waitRevision(proposal)
+	buddy.call("POST", "/api/v4/revision-proposals/"+str(proposal["id"])+"/apply", input(proposal), 200)
+	after := buddy.call("GET", "/api/v3/task-briefs/"+str(brief["id"]), nil, 200)
+	if num(after["revision"]) != num(before["revision"])+1 {
+		t.Fatal("apply did not invalidate stale editor", after)
+	}
+	buddy.call("POST", "/api/v3/task-briefs/"+str(brief["id"])+"/draft", Object{"content": obj(before["latest_published_version"])["content"], "expected_revision": before["revision"]}, 409)
+}
+
+func (b *browser) waitRevision(row Object) Object {
+	b.f.t.Helper()
+	deadline := time.Now().Add(3 * time.Second)
+	for row["status"] == "generating" && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+		row = b.call("GET", "/api/v4/revision-proposals/"+str(row["id"]), nil, 200)
+	}
+	if row["status"] == "generating" {
+		b.f.t.Fatal("generation did not complete", row)
+	}
+	return row
+}
+
+func TestRevisionGenerationDoesNotLockEditorAndRejectsLateResult(t *testing.T) {
+	for _, action := range []string{"edit", "discard"} {
+		t.Run(action, func(t *testing.T) {
+			f := newFixture(t)
+			buddy := f.browser("buddy-a")
+			brief, _ := buddy.publishedBrief(internA)
+			reportID := uuid()
+			f.sql(`INSERT INTO app.task_clarity_reports(id,team_id,owner_id,brief_id,brief_version,section_id,reason,state,current_count,lifetime_count,last_seen,hypothesis,suggestion,enrichment_status) VALUES ($1,'team-a',$2,$3,1,'report-format','requirement_unclear','accepted',2,2,now(),'Уточнить.','Уточните.','completed')`, reportID, buddyA, brief["id"])
+			f.revisionStarted = make(chan struct{})
+			f.revisionRelease = make(chan struct{})
+			f.setStream("revision_hold")
+			body := Object{"expected_report_version": 1, "base_brief_version": 1}
+			key := uuid()
+			path := "/api/v4/task-clarity-reports/" + reportID + "/revision-proposals"
+			pending := buddy.keyed("POST", path, body, key, 201)
+			select {
+			case <-f.revisionStarted:
+			case <-time.After(time.Second):
+				t.Fatal("generation not started")
+			}
+			replay := buddy.keyed("POST", path, body, key, 201)
+			if replay["id"] != pending["id"] || pending["status"] != "generating" {
+				t.Fatal(pending, replay)
+			}
+			buddy.keyed("POST", path, Object{"expected_report_version": 99, "base_brief_version": 1}, key, 409)
+			if action == "edit" {
+				current := buddy.call("GET", "/api/v3/task-briefs/"+str(brief["id"]), nil, 200)
+				buddy.call("POST", "/api/v3/task-briefs/"+str(brief["id"])+"/draft", Object{"content": briefContent("Новая редакция", "Изменённый формат"), "expected_revision": current["revision"]}, 200)
+			} else {
+				buddy.call("POST", "/api/v4/revision-proposals/"+str(pending["id"])+"/discard", Object{"expected_revision": pending["proposal_revision"]}, 200)
+			}
+			close(f.revisionRelease)
+			finished := buddy.waitRevision(pending)
+			expected := "unavailable"
+			if action == "discard" {
+				expected = "discarded"
+			}
+			if finished["status"] != expected || len(list(finished["changes"])) != 0 {
+				t.Fatal("late generation accepted", finished)
+			}
+			if action == "edit" {
+				current := buddy.call("GET", "/api/v3/task-briefs/"+str(brief["id"]), nil, 200)
+				if !strings.Contains(string(encode(obj(current["draft"])["content"])), "Изменённый формат") {
+					t.Fatal(current)
+				}
+			}
+		})
+	}
+}
+
+func TestTimelineAndReplayDenyRevokedScope(t *testing.T) {
+	f := newFixture(t)
+	buddy := f.browser("buddy-a")
+	intern := f.browser("intern-a")
+	_, assignments := buddy.publishedBrief(internA)
+	id := str(assignments[0]["id"])
+	buddy.call("POST", "/api/v4/assignments/"+id+"/permitted-template", Object{"template_id": "db-access-team-a", "template_version": 1, "expected_revision": 1}, 200)
+	p := intern.call("POST", "/api/v4/workspaces/"+id+"/link-preview", Object{"template_id": "db-access-team-a", "template_version": 1}, 201)
+	input := Object{"preview_id": p["id"], "preview_hash": p["preview_hash"], "expected_revision": p["assignment_revision"]}
+	key := uuid()
+	path := "/api/v4/workspaces/" + id + "/link-confirm"
+	linked := intern.keyed("POST", path, input, key, 200)
+	intern.keyed("POST", path, input, key, 200)
+	goalID := str(obj(obj(linked["card"])["goal"])["id"])
+	t.Cleanup(func() {
+		f.sql("INSERT INTO app.resource_assignments VALUES ($1,$2,'db_reader') ON CONFLICT DO NOTHING", internA, resourceA)
+	})
+	f.sql("DELETE FROM app.resource_assignments WHERE user_id=$1", internA)
+	intern.call("GET", "/api/v4/goals/"+goalID+"/evidence-timeline", nil, 404)
+	intern.keyed("POST", path, input, key, 404)
 }

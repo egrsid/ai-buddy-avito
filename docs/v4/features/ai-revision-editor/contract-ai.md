@@ -3,21 +3,7 @@
 14 ноября 2026. Статус: **AI-часть реализована offline и проверена live-evals; предложение к G1**.
 Схема: [`contracts/v4/ai.schema.json`](../../../../contracts/v4/ai.schema.json), тесты
 `tests/test_contracts_v4_ai.py`. BE/FE consumer review и TL lock ещё не выполнены.
-Go-часть (RevisionProposal, apply, TTL, CAS) — V4-EDIT-BE-01, ветка `feature/backend-v4`; вызов AI
-приведён к этому контракту (`backend/internal/api/v4_revision.go`, схема `v4/ai/*` в Go).
-
-## Как Go вызывает операцию
-
-- Поля: только поле из отчёта — `goal`, `expected_result`, `sections/{id}/text` или все
-  `acceptance_criteria/{id}/text` (до 6). `base_hash` — `content_hash` опубликованной версии,
-  `affected_count` — `lifetime_count` отчёта (2…100), гипотеза v3 — если есть; `refs` пока пустой.
-- Go перепроверяет ответ целиком: эхо `base_*`, путь из запроса, `old_hash` = SHA-256 текста поля,
-  уникальные id/пути, замена непустая, не равна исходной, без `<`/`>`, в лимите поля
-  (цель/результат 2000, раздел 4000, критерий 1000). Любое нарушение → `unavailable` + ручной текст.
-- Публичный `RevisionProposal`: `field` = путь, плюс `label`/`rationale`; вопросы — строками;
-  `no_change` → `needs_input` с пояснением; `answered_by=offline` → `origin=rule_based`.
-- Таймаут вызова 60 с (две попытки модели по 25 с); общий клиент ждал заголовки только 5 с.
-- Живая проверка 14.11 через Go API на live-стенде: ответ модели за 7.5 с.
+Go-часть (RevisionProposal, apply, TTL, CAS) — V4-EDIT-BE-01, здесь не реализована.
 
 ## Операция
 

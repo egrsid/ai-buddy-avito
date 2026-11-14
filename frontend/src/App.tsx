@@ -1,3 +1,4 @@
+import { LiveV4Page } from './v4/LivePages';
 import { V4PreviewPage } from './v4/PreviewPage';
 import { useState } from 'react';
 import { LifeBuoy, ShieldCheck } from 'lucide-react';
@@ -100,7 +101,9 @@ function AppInner() {
   let page: React.ReactNode;
   let sidebar: React.ReactNode = null;
 
-  if (route === '/v4-preview') {
+  if (route === '/workspaces' || route === '/mentor/improvements') {
+    page = mode === 'live' ? <LiveV4Page /> : <LiveOnlyNote />;
+  } else if (route === '/v4-preview') {
     page = <V4PreviewPage />;
   } else if (mode === 'live') {
     if (taskId) {

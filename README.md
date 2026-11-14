@@ -1,10 +1,19 @@
-**FE/TL v4:** [checkpoint](docs/v4/fe-tl-checkpoint.md),
-[consumer handoff](docs/v4/frontend-handoff.md). Новый порог покрытия ≥82% отдельно.
-`/#/v4-preview` — помеченный UI-прототип; Backend/AI v4 integration пока не выполнена.
+# Локальная интеграция v4 · 14 ноября 2026
 
-План следующего релиза: **[v4 — документация для команды](docs/v4/README.md)**.
-Пять направлений объединены в один цикл улучшения онбординга. Статус PLANNED;
-текущий работающий релиз и команды запуска ниже относятся к v3.
+**Стенд: http://localhost:15178** · **[Инструкция для защиты и полной ручной проверки](DEFENSE_V4.md)**.
+[Интеграционный отчёт, проверки и ограничения](docs/v4/integration-review-2026-11-14.md).
+В feature/tl-v4 локально объединены BE/AI v4, исправлена совместимость контрактов и
+подключены настоящие workspace/timeline/revision/impact API к интерфейсу. Покрытие
+≥82% отдельно для всех компонентов. LLM offline; Live API означает Go/PostgreSQL.
+Полная release-приёмка v4 остаётся открытой: events contract, прожитая comparison
+история/test-clock, cold CI/race и actual-live не подменяются прототипом.
+
+```sh
+DEMO_FRONTEND_PORT=15178 DEMO_BACKEND_PORT=18085 python3 -m scripts.demo up --offline --project ai-buddy-demo-v4-final
+```
+
+Данные других стендов сохранены. История v3/v2 ниже; для текущего показа используйте
+адрес и инструкцию v4 выше. [План v4 и SDD](docs/v4/README.md).
 
 # Локальная версия v3 · 14 ноября 2026
 

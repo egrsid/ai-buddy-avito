@@ -1,11 +1,13 @@
 package api
 
+import "time"
+
 func (q *request) event(id, kind, source, entity, entityID, correlation string, payload Object) error {
 	value := Object{"id": id, "type": kind, "schema_version": 1, "occurred_at": stamp(q.s.Now()), "source": source, "entity": Object{"type": entity, "id": entityID}, "correlation_id": correlation, "payload": payload, "synthetic": true}
 	if q.s.Validate("events/BusinessEvent", value) != nil {
 		return fail(502, "UPSTREAM_ERROR")
 	}
-	return q.exec("INSERT INTO app.business_events VALUES ($1,$2,1,$3,$4,$5,$6,$7,$8::jsonb,true) ON CONFLICT (source,id) DO NOTHING", id, kind, value["occurred_at"], source, entity, entityID, correlation, string(encode(payload)))
+	return q.exec("INSERT INTO app.business_events(id,event_type,schema_version,occurred_at,source,entity_type,entity_id,correlation_id,payload,synthetic) VALUES ($1,$2,1,$3,$4,$5,$6,$7,$8::jsonb,true) ON CONFLICT (source,id) DO NOTHING", id, kind, value["occurred_at"], source, entity, entityID, correlation, string(encode(payload)))
 }
 
 // taskEvent records a v3 workflow fact. Payload is a closed set of IDs/enums without people.
@@ -15,5 +17,18 @@ func (q *request) taskEvent(kind, source, entity, entityID string, payload Objec
 	if q.s.Validate("v3/events/TaskEvent", value) != nil {
 		return fail(502, "UPSTREAM_ERROR")
 	}
-	return q.exec("INSERT INTO app.business_events VALUES ($1,$2,1,$3,$4,$5,$6,$7,$8::jsonb,true)", id, kind, value["occurred_at"], source, entity, entityID, q.requestID, string(encode(payload)))
+	return q.exec("INSERT INTO app.business_events(id,event_type,schema_version,occurred_at,source,entity_type,entity_id,correlation_id,payload,synthetic) VALUES ($1,$2,1,$3,$4,$5,$6,$7,$8::jsonb,true)", id, kind, value["occurred_at"], source, entity, entityID, q.requestID, string(encode(payload)))
+}
+
+// v4WorkflowEvent is a closed, text-free audit envelope emitted only by Go transitions.
+func (q *request) v4WorkflowEvent(kind, entity, id string, payload Object) error {
+	var received time.Time
+	if e := q.tx.QueryRow(q.Context, "SELECT clock_timestamp()").Scan(&received); e != nil {
+		return e
+	}
+	event := Object{"id": uuid(), "type": kind, "schema_version": 1, "occurred_at": stamp(q.s.Now()), "received_at": stamp(received), "source": "go_v4", "entity": Object{"type": entity, "id": id}, "correlation_id": q.requestID, "payload": payload, "synthetic": true}
+	if q.s.Validate("v4/events/WorkflowEvent", event) != nil {
+		return fail(502, "UPSTREAM_ERROR")
+	}
+	return q.exec("INSERT INTO app.business_events(id,event_type,schema_version,occurred_at,source,entity_type,entity_id,correlation_id,payload,synthetic,received_at) VALUES ($1,$2,1,$3,'go_v4',$4,$5,$6,$7::jsonb,true,$8)", event["id"], kind, event["occurred_at"], entity, id, q.requestID, string(encode(payload)), received)
 }

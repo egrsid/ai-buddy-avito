@@ -1,6 +1,14 @@
 # Доказательства состояния — tasks v4
 
-Runtime TODO: V4-PROOF-BE-01, V4-PROOF-FE-01. Единственные owners/reviewers/directories/dependencies —
+## Текущий результат локальной интеграции
+
+**V4-PROOF-BE-01 / FE-01 — PARTIAL integrated**. Собственная read-only timeline и ссылки на шаги работают через Go; чтение не вызывает запись. Открыты полный cursor/history contract и events gate.
+
+[Проверки и ограничения](../../integration-review-2026-11-14.md). Порог покрытия ≥82% отдельно.
+Полное соответствие spec/design и gates не объявляется; checklist ниже — критерии
+полной приёмки, а не утверждение отсутствия уже работающего runtime.
+
+Owners/reviewers/directories/dependencies —
 [delivery](../../delivery.md).
 
 - [ ] Предъявить schemas/examples и semantic negative cases в contract gate.

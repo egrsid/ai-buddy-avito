@@ -1,7 +1,10 @@
 package api
 
-import "testing"
-import "time"
+import (
+	"strings"
+	"testing"
+	"time"
+)
 
 func TestV4StatusLabels(t *testing.T) {
 	if schemaStatus("waiting_external") != "unverified" || technicalStatus("nope") != "unknown" {
@@ -52,5 +55,37 @@ func TestImpactArithmetic(t *testing.T) {
 	}
 	if exposureEligible(start.Add(-time.Second), nil, asOf, start, start.Add(30*24*time.Hour)) {
 		t.Fatal("before enrollment")
+	}
+}
+
+func TestRevisionReservedFields(t *testing.T) {
+	content := Object{"goal": "Исходная цель", "expected_result": "Отчёт", "acceptance_criteria": []any{Object{"id": "result", "text": "Исходный критерий"}}}
+	for field, old := range map[string]string{"goal": "Исходная цель", "expected_result": "Отчёт", "acceptance_criteria.result.text": "Исходный критерий"} {
+		change := Object{"id": "c1", "field": field, "old_hash": digest([]byte(old)), "replacement": "Уточнённый текст"}
+		if !safeRevision(Object{"changes": []any{change}}, str(change["old_hash"])) {
+			t.Fatal("safe field rejected")
+		}
+		if e := applyChanges(content, map[string]Object{field: change}); e != nil {
+			t.Fatal(e)
+		}
+		if e := applyChanges(content, map[string]Object{field: change}); e == nil {
+			t.Fatal("stale field overwritten")
+		}
+	}
+	if sectionBody(content, "goal") != "Уточнённый текст" || sectionBody(content, "expected_result") != "Уточнённый текст" || sectionBody(content, "acceptance_criteria") != "Уточнённый текст" {
+		t.Fatal(content)
+	}
+	if sectionBody(Object{}, "acceptance_criteria") != "" {
+		t.Fatal("empty criteria")
+	}
+}
+
+func TestRevisionLengthUsesCharactersAcrossTheBoundary(t *testing.T) {
+	hash := digest([]byte("base"))
+	candidate := func(n int) Object {
+		return Object{"changes": []any{Object{"field": "sections.report.text", "old_hash": hash, "replacement": strings.Repeat("я", n)}}}
+	}
+	if !safeRevision(candidate(4000), hash) || safeRevision(candidate(4001), hash) {
+		t.Fatal("Unicode character limit differs from JSON schema")
 	}
 }

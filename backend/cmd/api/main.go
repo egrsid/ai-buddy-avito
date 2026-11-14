@@ -26,7 +26,7 @@ func main() {
 	if contracts == "" {
 		contracts = "contracts/v2"
 	}
-	server, e := api.New(pool, api.Config{Env: os.Getenv("APP_ENV"), Origin: os.Getenv("APP_ORIGIN"), Token: os.Getenv("INTERNAL_API_TOKEN"), AIURL: os.Getenv("AI_BASE_URL"), MockURL: os.Getenv("MOCK_BASE_URL"), Contracts: contracts, ContractsV3: os.Getenv("CONTRACTS_V3_DIR")})
+	server, e := api.New(pool, api.Config{Env: os.Getenv("APP_ENV"), Origin: os.Getenv("APP_ORIGIN"), Token: os.Getenv("INTERNAL_API_TOKEN"), AIURL: os.Getenv("AI_BASE_URL"), MockURL: os.Getenv("MOCK_BASE_URL"), Contracts: contracts, ContractsV3: os.Getenv("CONTRACTS_V3_DIR"), DemoClockFile: os.Getenv("V4_DEMO_CLOCK_FILE")})
 	if e != nil {
 		log.Fatal(e)
 	}

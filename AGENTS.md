@@ -6,16 +6,19 @@ Work on project files locally. You may create local Git commits. Do not list Cod
 
 Do not push to any remote, including feature branches and forks. Do not open or merge pull requests, invite collaborators, or change repository permissions. The repository owner handles publishing and access management.
 
-## Current assignment · FE + TL v4 · 2026-11-14
+## Current assignment · local v4 integration · 2026-11-14
 
-The owner authorizes FE/TL work only. Read any branch; change only branches owned by
-Frontend or TL: feature/frontend-v4 and feature/tl-v4. No push/PR/remote merge.
+The owner's latest assignment authorizes reviewing and fixing BE/AI integration as well
+as FE/TL, followed by Docker startup and a jury-defense test guide. Work locally on
+feature/tl-v4; read other branches, preserve their source history. No push/PR/remote merge.
 Independent component line coverage must be >=82%, without changing denominators.
-Read docs/v4 and its five SDD triples. Current status: docs/v4/fe-tl-checkpoint.md.
-BE/AI v4 contracts/runtime are not available: do not implement their owned code or
-pretend presentation fixtures satisfy G1/G4. Keep v3 functional and preserve existing data.
-Only explicitly marked FE prototypes until accepted DTOs and server endpoints arrive.
-Paid/live acceptance stays OPEN under the owner's existing offline decision.
+Read docs/v4 and its five SDD triples. Latest status:
+docs/v4/integration-review-2026-11-14.md; root manual: DEFENSE_V4.md.
+BE/AI v4 runtime is now merged locally and wired to FE; /v4-preview remains a separately
+marked prototype. Keep v3 functional and preserve existing data. Do not treat this
+integration as full G1/G4 acceptance: the events schema/contract lock, test-clock cohort
+harness, cold CI/race and actual-live gates remain open. Paid/live acceptance stays
+OPEN under the owner's existing offline decision.
 
 ## Product direction
 

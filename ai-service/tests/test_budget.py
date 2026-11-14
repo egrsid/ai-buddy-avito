@@ -147,3 +147,41 @@ def test_ensure_creates_once_and_never_resets(tmp_path, caplog):
     # Рестарт: журнал уже есть — расходы сохраняются.
     assert ensure_ledger(path) is False
     assert BudgetLedger(path, 800).status()["spent_rub"] == 3.0
+
+
+def test_existing_ledger_upgrade_preserves_spending_and_unknown_usage(tmp_path):
+    import sqlite3
+
+    path = str(tmp_path / "legacy.sqlite")
+    with sqlite3.connect(path) as db:
+        db.execute(
+            "CREATE TABLE reservations(id TEXT PRIMARY KEY,kind TEXT,reserved_rub REAL,"
+            "actual_rub REAL,created_at REAL,settled_at REAL)"
+        )
+        db.execute("INSERT INTO reservations VALUES ('old','chat',3,NULL,1,NULL)")
+    assert ensure_ledger(path) is False
+    ledger = BudgetLedger(path, 10)
+    assert ledger.status()["spent_rub"] == 3
+    correlation = "11111111-1111-4111-8111-111111111111"
+    reservation = ledger.reserve("chat", 2, model="primary", correlation_id=correlation)
+    assert ledger.settle(reservation, 0.1, usage={"prompt_tokens": 10, "completion_tokens": 5})
+    rows = ledger.observations()
+    assert rows[0]["prompt_tokens"] is None and rows[0]["actual_rub"] is None
+    assert rows[1]["model"] == "primary" and rows[1]["correlation_id"] == correlation
+    assert rows[1]["prompt_tokens"] == 10 and rows[1]["completion_tokens"] == 5
+    assert ledger.observations(rows[0]["rowid"]) == rows[1:]
+    assert not ledger.settle(reservation, -1)
+    with pytest.raises(BudgetUnavailable):
+        ledger.reserve("chat", -1)
+    with pytest.raises(ValueError):
+        ledger.observations(-1)
+    assert ensure_ledger(path) is False
+    assert ledger.status()["spent_rub"] == 3.1
+
+
+def test_invalid_correlation_is_not_recorded(tmp_path):
+    path = str(tmp_path / "metadata.sqlite")
+    init_ledger(path)
+    ledger = BudgetLedger(path, 10)
+    ledger.reserve("chat", 1, correlation_id="private text is not an identifier")
+    assert ledger.observations()[0]["correlation_id"] is None
