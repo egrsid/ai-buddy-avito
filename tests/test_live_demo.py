@@ -109,3 +109,19 @@ def test_up_and_down_call_compose(tmp_path, monkeypatch):
     assert calls[0][-4:] == ["up", "--build", "-d", "--wait"]
     assert calls[1][-1] == "down" and "--volumes" not in calls[1]
     assert calls[2][-2:] == ["ps", "-a"]
+
+
+def test_cached_build_falls_back_to_network_build_without_cached_images(tmp_path, monkeypatch):
+    path = write_env(tmp_path, GOOD)
+    calls = []
+    monkeypatch.setattr("scripts.live_demo.offline_images_present", lambda: False)
+    monkeypatch.setattr("scripts.live_demo.subprocess.run", lambda c, **k: calls.append(c))
+    assert (
+        main(["status", "--env-file", str(path), "--project", "ai-buddy-live-v4", "--cached-build"])
+        == 0
+    )
+    assert not any(part.endswith("compose.offline.yaml") for part in calls[0])
+    monkeypatch.setattr("scripts.live_demo.offline_images_present", lambda: True)
+    calls.clear()
+    main(["status", "--env-file", str(path), "--project", "ai-buddy-live-v4", "--cached-build"])
+    assert any(part.endswith("compose.offline.yaml") for part in calls[0])

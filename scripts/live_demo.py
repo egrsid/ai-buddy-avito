@@ -18,6 +18,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from scripts.demo import offline_images_present
+
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE_FILES = ("compose.yaml", "compose.mvp.yaml", "compose.demo.yaml", "compose.live.yaml")
 # Без них live-цепочка не стартует или журнал расходов не знает цену вызова.
@@ -136,7 +138,10 @@ def main(argv=None) -> int:
     if args.action == "check":
         print("Настройки live в .env в порядке.")
         return 0
-    command, env = configuration(args.project, env_file, args.cached_build)
+    cached = args.cached_build and offline_images_present()
+    if args.cached_build and not cached:
+        print("Кэша зависимостей нет на этой машине: обычная сборка из сети.")
+    command, env = configuration(args.project, env_file, cached)
     if args.action == "up":
         command += ["up", "--build", "-d", "--wait"]
     elif args.action == "restart":
