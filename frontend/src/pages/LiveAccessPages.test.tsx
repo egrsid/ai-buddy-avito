@@ -90,8 +90,26 @@ describe('LiveApprovalsPage', () => {
   it('решённая заявка: без формы решения', async () => {
     mocks.listAccessRequests.mockResolvedValue([approved]);
     render(<LiveApprovalsPage />);
-    expect(await screen.findByText(/Решение сохранено/)).toBeInTheDocument();
+    expect(await screen.findByText(/Одобрено/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Одобрить' })).not.toBeInTheDocument();
+  });
+
+  it('после решения видно, что произошло', async () => {
+    mocks.listAccessRequests.mockResolvedValue([
+      { ...approved, id: 'r-ok', grant_state: 'present' },
+      { ...approved, id: 'r-wait', grant_state: 'absent' },
+      { ...approved, id: 'r-no', status: 'rejected', grant_state: 'absent' },
+    ]);
+    render(<LiveApprovalsPage />);
+    expect(await screen.findByText(/Доступ выдан \(IAM подтвердил\), шаг стажёра засчитан/)).toBeInTheDocument();
+    expect(screen.getByText(/IAM ещё не подтвердил доступ/)).toBeInTheDocument();
+    expect(screen.getByText(/Отклонено\. Стажёр увидит решение/)).toBeInTheDocument();
+  });
+
+  it('стажёр видит, что доступ выдан и шаг засчитан', async () => {
+    mocks.listAccessRequests.mockResolvedValue([{ ...approved, grant_state: 'present' }]);
+    render(<LiveRequestsPage />);
+    expect(await screen.findByText(/шаг «Проверить доступ» засчитан автоматически/)).toBeInTheDocument();
   });
 
   it('empty: нет заявок', async () => {
