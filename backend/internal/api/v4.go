@@ -152,7 +152,7 @@ func (q *request) workspaceView(id string) (Object, int, string, error) {
 	}
 	card := Object{
 		"kind": "assignment", "id": a["id"], "title": title, "link_status": status,
-		"technical_status": technical, "next_action": action, "goal": goal,
+		"technical_status": technical, "next_action": action, "goal": goal, "can_link": a["permitted_template_id"] != nil,
 	}
 	if blocker != "" {
 		card["blocker_code"] = blocker

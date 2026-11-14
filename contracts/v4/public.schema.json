@@ -90,6 +90,9 @@
         },
         "goal": {
           "$ref": "#/$defs/WorkspaceGoal"
+        },
+        "can_link": {
+          "type": "boolean"
         }
       }
     },

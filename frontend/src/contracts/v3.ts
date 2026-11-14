@@ -99,6 +99,7 @@ export const TaskAssignment = z.object({
   author: PersonRef,
   reported_sections: z.array(z.object({ section_id: StableId, reason: FrictionReason }).strict()).max(100),
   verification: z.literal('not_verified'),
+  db_route_enabled: z.boolean().optional(),
   revision: PositiveInt,
   created_at: Timestamp,
   updated_at: Timestamp,

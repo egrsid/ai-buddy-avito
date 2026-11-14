@@ -28,7 +28,7 @@ interface NavItem {
 function navFor(user: User): NavItem[] {
   if (user.roles.includes('intern')) {
     return [
-      { to: '/workspaces', label: 'Рабочие результаты', icon: <Target size={20} /> },
+      { to: '/workspaces', label: 'Задания и цели', icon: <Target size={20} /> },
       { to: '/onboarding', label: 'Мои цели', icon: <Target size={20} /> },
       { to: '/tasks', label: 'ТЗ от наставника', icon: <FileText size={20} /> },
       { to: '/requests', label: 'Мои заявки', icon: <ClipboardList size={20} /> },
@@ -174,49 +174,52 @@ export function AppShell({
         </p>
       </div>
 
-      <div className="mt-4 px-2">
-        <span className="mb-1 block text-xs text-text-secondary">Источник данных</span>
-        <div className="flex flex-wrap gap-1" role="group" aria-label="Источник данных">
-          {(['fixtures', 'live'] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => onModeChange?.(m)}
-              aria-pressed={mode === m}
-              className={`rounded-lg px-2 py-1 text-xs font-medium ${
-                mode === m ? 'bg-primary text-white' : 'bg-surface-muted text-text-secondary hover:bg-border'
-              }`}
-            >
-              {m === 'fixtures' ? 'Fixtures' : 'Live API'}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <a className="mt-3 block px-2 text-xs text-primary underline" href="#/v4-preview">
-        V4 · прототип без записи данных
-      </a>
-      {mode === 'fixtures' && (
-        <div className="mt-4 px-2">
-          <span className="mb-1 block text-xs text-text-secondary">Состояние экрана (демо)</span>
-          <div className="flex flex-wrap gap-1" role="group" aria-label="Демо-состояние данных">
-            {(Object.keys(viewLabels) as ViewState[]).map((v) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => onViewChange(v)}
-                aria-pressed={view === v}
-                className={`rounded-lg px-2 py-1 text-xs font-medium ${
-                  view === v
-                    ? 'bg-primary text-white'
-                    : 'bg-surface-muted text-text-secondary hover:bg-border'
-                }`}
-              >
-                {viewLabels[v]}
-              </button>
-            ))}
+      {import.meta.env.MODE === 'test' && (
+        <>
+          <div className="mt-4 px-2">
+            <span className="mb-1 block text-xs text-text-secondary">Источник данных</span>
+            <div className="flex flex-wrap gap-1" role="group" aria-label="Источник данных">
+              {(['fixtures', 'live'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => onModeChange?.(m)}
+                  aria-pressed={mode === m}
+                  className={`rounded-lg px-2 py-1 text-xs font-medium ${
+                    mode === m
+                      ? 'bg-primary text-white'
+                      : 'bg-surface-muted text-text-secondary hover:bg-border'
+                  }`}
+                >
+                  {m === 'fixtures' ? 'Fixtures' : 'Live API'}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+
+          {mode === 'fixtures' && (
+            <div className="mt-4 px-2">
+              <span className="mb-1 block text-xs text-text-secondary">Состояние экрана (демо)</span>
+              <div className="flex flex-wrap gap-1" role="group" aria-label="Демо-состояние данных">
+                {(Object.keys(viewLabels) as ViewState[]).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => onViewChange(v)}
+                    aria-pressed={view === v}
+                    className={`rounded-lg px-2 py-1 text-xs font-medium ${
+                      view === v
+                        ? 'bg-primary text-white'
+                        : 'bg-surface-muted text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    {viewLabels[v]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </>
   );

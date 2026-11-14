@@ -2,6 +2,7 @@
 
 **Live: http://localhost:15180** · **Синтетические когорты: http://localhost:15181**.
 **[Полная актуальная инструкция проверки](TESTING_FINAL_V4.md)**.
+[Сценарий выступления для жюри](JURY_DEMO_V4.md) · [Перенос финальной версии в main](MAIN_RELEASE.md).
 Настоящая GigaChat и embeddings вызываются через Go/Python; corporate IAM/DB остаются mock.
 Ключ — только в ignored `.env.live-v4`, журнал расходов постоянный. Запуск: `make v4-live-up`.
 Ниже сохранена история offline-интеграции; актуальные команды и ограничения — в инструкции выше.

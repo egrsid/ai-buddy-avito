@@ -3,6 +3,11 @@
 
 # Проверяемое AI-демо — tasks v4
 
+Актуальные [сценарий защиты](../../../../JURY_DEMO_V4.md) и
+[UX-приёмка](../../ux-release-2026-11-14.md): сайт без переключателя fixtures и ссылки
+на прототип, live runtime и synthetic история разделены явно. Ниже — прежний checkpoint;
+actual LLM evidence описан в final-acceptance, cold/race/remote CI остаются открыты.
+
 ## Текущий результат локальной интеграции
 
 **V4-DEMO-TL-01 / E2E-FE-01 — PARTIAL; V4-LIVE-AI-01 — OPEN**. Изолированный offline Docker и 8 browser tests с реальным restart PASS. Offline AI evals 26/26, safety 12/12. Новый paid/live healthy/fault smoke не выполнялся; events/test-clock/cold CI/race остаются открыты.

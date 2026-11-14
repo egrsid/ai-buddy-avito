@@ -140,3 +140,10 @@ describe('DataMode', () => {
     expect(demoLoginMock).not.toHaveBeenCalled();
   });
 });
+
+it('production ignores a saved fixture mode and fixture build preset', () => {
+  vi.stubEnv('MODE', 'production');
+  vi.stubEnv('VITE_DATA_MODE', 'fixtures');
+  sessionStorage.setItem('buddy-data-mode', 'fixtures');
+  expect(defaultMode()).toBe('live');
+});
