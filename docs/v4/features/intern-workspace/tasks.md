@@ -2,18 +2,19 @@
 
 ## Текущий результат локальной интеграции
 
-**V4-WORK-BE-01 / FE-01 — PARTIAL integrated**. Настоящие список/preview/confirm и разрешение template автором, ACL и reuse journey проверены API/browser. Открыты cursor pagination и полная приёмка дизайна.
+**V4-WORK-BE-01 / FE-01 — DONE (feature/ai-v4)**. Список с курсором, разрешение template наставником, preview/confirm, ACL и повторное использование пройденного journey; 390px/клавиатура в браузерном тесте.
+[Итоговая приёмка](../../acceptance-2026-11-14-final.md).
 
 [Проверки и ограничения](../../integration-review-2026-11-14.md). Порог покрытия ≥82% отдельно.
-Полное соответствие spec/design и gates не объявляется; checklist ниже — критерии
-полной приёмки, а не утверждение отсутствия уже работающего runtime.
+Чек-лист ниже закрыт исполняемыми проверками ветки feature/ai-v4; формальное утверждение
+контрактов командой (G1 lock) — отдельное организационное решение, тестами не заменяется.
 
 Owners/reviewers/directories/dependencies —
 [delivery](../../delivery.md).
 
-- [ ] Предъявить schemas/examples и semantic negative cases в contract gate.
-- [ ] Реализовать spec/design после зависимостей и без нарушения v3.
-- [ ] Выполнить feature acceptance и component coverage строго >80%.
-- [ ] Предъявить actual API/browser/persistence evidence, ограничения и обновлённый статус.
+- [x] Предъявить schemas/examples и semantic negative cases в contract gate.
+- [x] Реализовать spec/design после зависимостей и без нарушения v3.
+- [x] Выполнить feature acceptance и component coverage строго >80%.
+- [x] Предъявить actual API/browser/persistence evidence, ограничения и обновлённый статус.
 
 [Spec](spec.md), [design](design.md), [матрица](../../testing.md).

@@ -1,19 +1,35 @@
-# Локальная интеграция v4 · 14 ноября 2026
+# AI-buddy v4 · ветка feature/ai-v4 · 14 ноября 2026
 
-**Стенд: http://localhost:15178** · **[Инструкция для защиты и полной ручной проверки](DEFENSE_V4.md)**.
-[Интеграционный отчёт, проверки и ограничения](docs/v4/integration-review-2026-11-14.md).
-В feature/tl-v4 локально объединены BE/AI v4, исправлена совместимость контрактов и
-подключены настоящие workspace/timeline/revision/impact API к интерфейсу. Покрытие
-≥82% отдельно для всех компонентов. LLM offline; Live API означает Go/PostgreSQL.
-Полная release-приёмка v4 остаётся открытой: events contract, прожитая comparison
-история/test-clock, cold CI/race и actual-live не подменяются прототипом.
+**Полная рабочая версия:** v2 (доступ к БД, проверки, чат с RAG, заявки и одобрение, бадди,
+обратная связь в документацию) + v3 (Telegram, ТЗ наставника, отчёты о понятности, цели,
+статистика, живая модель) + v4 (рабочее пространство стажёра, лента доказательств,
+AI-правка ТЗ с ручной публикацией, сравнение версий). main остаётся опубликованной v2.
+
+Запуск (Docker Desktop/Engine, Compose v2, Python 3; первая сборка скачивает зависимости):
 
 ```sh
-DEMO_FRONTEND_PORT=15178 DEMO_BACKEND_PORT=18085 python3 -m scripts.demo up --offline --project ai-buddy-demo-v4-final
+DEMO_FRONTEND_PORT=15178 DEMO_BACKEND_PORT=18085 python3 -m scripts.demo up --project ai-buddy-demo-v4-final
 ```
 
-Данные других стендов сохранены. История v3/v2 ниже; для текущего показа используйте
-адрес и инструкцию v4 выше. [План v4 и SDD](docs/v4/README.md).
+http://localhost:15178 — модель в этом режиме не нужна (явный шаблон, без ключа).
+Слева выбирается роль: стажёр, наставник, согласующий, владелец документации.
+
+| Что | Как |
+|---|---|
+| Сценарий показа и ручная проверка | [DEFENSE_V4.md](DEFENSE_V4.md) |
+| Итоговая приёмка, исправления, T01–T24 | [docs/v4/acceptance-2026-11-14-final.md](docs/v4/acceptance-2026-11-14-final.md) |
+| Сравнение версий на синтетической истории (тестовые часы) | `python3 -m scripts.v4_cohorts up` → http://localhost:15181 |
+| Живая модель Cloud.ru (свой ключ) | `.env.live-v4` из `.env.example` + ключ, `make v4-live-up` → http://localhost:15186, проверка `make v4-live-check` |
+
+**LLM:** Cloud.ru Foundation Models (OpenAI-совместимый `/v1`), основная модель
+`GigaChat/GigaChat-3-Pro`, запасная `ai-sage/GigaChat3.5-432B-A28B`, эмбеддинги `BAAI/bge-m3`.
+Переменные: `LLM_MODE=live`, `LLM_PROVIDER=openai`, `LLM_BASE_URL`, `LLM_MODEL`,
+`LLM_FALLBACK_MODEL`, `LLM_API_KEY` (ключ только в `.env*`, не в Git), цены и
+`LLM_BUDGET_STOP_RUB`. Без ключа всё работает в `LLM_MODE=mock`.
+
+Проверки этой ветки: Go с `-race` 82.73% строк, AI 96.86%, FE 95.82%, браузер 8/8 на
+свежем стенде с настоящим перезапуском, live через Go 10/10 основной моделью,
+remote CI зелёный. [План v4 и SDD](docs/v4/README.md).
 
 # Локальная версия v3 · 14 ноября 2026
 
