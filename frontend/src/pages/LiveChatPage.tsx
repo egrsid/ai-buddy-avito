@@ -84,6 +84,9 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
       setSettling(false);
     }
   }, [settling, messages.data, messages.state]);
+  // Сохранённое сообщение уже пришло: поток прячем в той же отрисовке. Эффект выше очистит его
+  // только после неё, и без этого ответ на один кадр виден дважды.
+  const settled = settling && messages.data !== settleFrom.current;
   const sendingRef = useRef(false);
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState('');
@@ -253,7 +256,7 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
                 </div>
               </div>
             )}
-            {streamText && (
+            {streamText && !settled && (
               <div className="flex max-w-[85%] gap-3">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-light" aria-hidden>
                   <Bot size={18} className="text-primary" />
@@ -264,7 +267,7 @@ function LiveChatConversation({ conversationId, embedded, onActionChanged }: {
                 </div>
               </div>
             )}
-            {streamSources.length > 0 && (
+            {streamSources.length > 0 && !settled && (
               <ul className="max-w-[85%] space-y-1 text-xs text-text-secondary" aria-label="Источники ответа">
                 {streamSources.filter(s => !streamText.includes(`](${s.url})`)).map((s) => (
                   <li key={s.document_id}><DocumentLink source={s} onDocument={openDocument} /></li>

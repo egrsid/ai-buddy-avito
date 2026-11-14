@@ -124,6 +124,42 @@ describe('LiveChatPage', () => {
     expect(mocks.listMessages.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
+  it('после завершения ответ ни в одной отрисовке не показан дважды (поток + сохранённое)', async () => {
+    mocks.listMessages.mockResolvedValue([userMessage]);
+    await renderChat();
+    fireEvent.change(screen.getByLabelText('Сообщение AI-помощнику'), { target: { value: 'Вопрос' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Отправить' }));
+    await waitFor(() => expect(mocks.streamRunEvents).toHaveBeenCalled());
+    const handlers = mocks.streamRunEvents.mock.calls[0][1] as RunStreamHandlers;
+    act(() => {
+      handlers.onEvent({ type: 'message.delta', data: { run_id: RUN, text: 'Нужен sslmode=require.' } }, 1);
+    });
+    const feed = screen.getByLabelText('Переписка');
+    const answers = (node: Node) =>
+      node.nodeType === Node.ELEMENT_NODE && node.textContent?.includes('Нужен sslmode=require.') ? 1 : 0;
+    // Проигрываем изменения DOM по порядку: число копий ответа не должно доходить до двух.
+    let copies = Array.from(feed.children).reduce((n, child) => n + answers(child), 0);
+    let maxCopies = copies;
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        if (record.target !== feed) continue;
+        record.removedNodes.forEach((node) => { copies -= answers(node); });
+        record.addedNodes.forEach((node) => { copies += answers(node); });
+        maxCopies = Math.max(maxCopies, copies);
+      }
+    });
+    observer.observe(feed, { childList: true });
+    mocks.listMessages.mockResolvedValue([userMessage, assistantMessage]);
+    await act(async () => {
+      handlers.onEvent({ type: 'run.completed', data: { run_id: RUN, message_id: MSG_A } }, 2);
+    });
+    await waitFor(() => expect(screen.queryByText('генерация…')).not.toBeInTheDocument());
+    await act(async () => { await Promise.resolve(); });
+    observer.disconnect();
+    expect(screen.getAllByText('Нужен sslmode=require.')).toHaveLength(1);
+    expect(maxCopies).toBe(1);
+  });
+
   it('помечает ответ ИИ и fallback без служебного текста в ответе', async () => {
     const fallback = {
       ...assistantMessage,
@@ -195,7 +231,10 @@ describe('LiveChatPage', () => {
       handlers.onEvent({ type: 'message.origin', data: { run_id: RUN, message_id: MSG_A, origin: { mode: 'live', answered_by: 'offline', completion: 'complete' } } }, 2);
       handlers.onEvent({ type: 'run.completed', data: { run_id: RUN, message_id: MSG_A } }, 3);
     });
-    expect(await screen.findByText('Fallback · без ИИ')).toBeInTheDocument();
+    // Метка остаётся на сохранённом сообщении, когда потоковый пузырь уже убран.
+    await screen.findByText('Нужен sslmode=require.');
+    await waitFor(() => expect(screen.queryByText('генерация…')).not.toBeInTheDocument());
+    expect(screen.getAllByText('Fallback · без ИИ')).toHaveLength(1);
   });
 
   it('action.proposed → ActionCard, confirm → executing → опрос до succeeded', async () => {
