@@ -1,3 +1,4 @@
+import { V4PreviewPage } from './v4/PreviewPage';
 import { useState } from 'react';
 import { LifeBuoy, ShieldCheck } from 'lucide-react';
 import { AppShell, DemoModeNote } from './components/AppShell';
@@ -99,7 +100,9 @@ function AppInner() {
   let page: React.ReactNode;
   let sidebar: React.ReactNode = null;
 
-  if (mode === 'live') {
+  if (route === '/v4-preview') {
+    page = <V4PreviewPage />;
+  } else if (mode === 'live') {
     if (taskId) {
       page = <InternTaskDetailPage key={taskId} id={taskId} />;
     } else if (route === '/tasks') {

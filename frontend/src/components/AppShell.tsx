@@ -182,6 +182,7 @@ export function AppShell({
         </div>
       </div>
 
+      <a className="mt-3 block px-2 text-xs text-primary underline" href="#/v4-preview">V4 · прототип без записи данных</a>
       {mode === 'fixtures' && (
         <div className="mt-4 px-2">
           <span className="mb-1 block text-xs text-text-secondary">Состояние экрана (демо)</span>
