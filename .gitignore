@@ -19,3 +19,30 @@ test-results/
 tmp/
 /backend/api
 .vscode/
+
+# Local working notes and preparation backups
+/.local/
+/AGENTS.md
+/CLAUDE.md
+/PLAN.md
+/CODEX_PROJECT_REPLAN.md
+/PROMPT_TEMPLATE.md
+/DEFENSE*.md
+/JURY_DEMO*.md
+/MAIN_RELEASE.md
+/TESTING*.md
+/docs/team/
+/docs/v3/
+/docs/v4/
+/docs/features/
+/docs/architecture/
+/docs/design/
+/docs/operations/
+/docs/product/
+/docs/testing/
+/docs/AI_ENGINEERING_STRATEGY.md
+
+# Published coverage evidence
+!/docs/coverage/
+!/docs/coverage/**
+/ai-service/evals/report*.md
