@@ -1,0 +1,22 @@
+{
+  "backend": {
+    "covered": 2975,
+    "total": 3594,
+    "percent": 82.7769
+  },
+  "ai": {
+    "covered": 3343,
+    "total": 3450,
+    "percent": 96.8986
+  },
+  "mock": {
+    "covered": 201,
+    "total": 205,
+    "percent": 98.0488
+  },
+  "frontend": {
+    "covered": 1802,
+    "total": 1880,
+    "percent": 95.85
+  }
+}

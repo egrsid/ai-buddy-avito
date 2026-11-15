@@ -39,10 +39,5 @@ backend/api
 /docs/product/
 /docs/testing/
 /docs/AI_ENGINEERING_STRATEGY.md
-
-# Published coverage evidence
-!/docs/coverage/
-!/docs/coverage/**
 /ai-service/evals/report*.md
-
 /.git/
