@@ -18,7 +18,10 @@ def verify(root: Path = ROOT) -> dict:
         path = (root / name).resolve()
         if not path.is_relative_to(root.resolve()) or not path.is_file():
             raise ValueError(f"Missing measured source: {name}")
-        if hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+        # Git for Windows checks out text files with CRLF (core.autocrlf=true);
+        # the manifest holds hashes of the repository content, which uses LF.
+        content = path.read_bytes().replace(b"\r\n", b"\n")
+        if hashlib.sha256(content).hexdigest() != expected:
             raise ValueError(f"Measured source changed: {name}")
     covered, total = line_coverage((directory / "backend.coverprofile").read_text(encoding="utf-8"))
     metrics = {"backend": {"covered": covered, "total": total}}

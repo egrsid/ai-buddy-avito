@@ -38,6 +38,15 @@ def test_saved_coverage_matches_application_and_all_component_thresholds():
     assert all(value["percent"] >= 82 for value in result.values())
 
 
+def test_coverage_evidence_accepts_windows_crlf_checkout(tmp_path):
+    directory = tmp_path / "docs/coverage"
+    shutil.copytree(ROOT / "docs/coverage", directory)
+    (tmp_path / "source.py").write_bytes(b"a = 1\r\nb = 2\r\n")
+    manifest = {"files": {"source.py": hashlib.sha256(b"a = 1\nb = 2\n").hexdigest()}}
+    (directory / "source-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    assert verify(tmp_path)["backend"]["percent"] >= 82
+
+
 @pytest.mark.parametrize("corruption", ["source", "threshold", "summary"])
 def test_coverage_evidence_rejects_tampering(tmp_path, corruption):
     directory = tmp_path / "docs/coverage"
