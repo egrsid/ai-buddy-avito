@@ -25,7 +25,7 @@
     "ai-service/app/ollama_provider.py": "9945cfbb85c1d8a002cd9831dc37354b8a2373c378617197c43f8e77e920706d",
     "ai-service/app/openai_provider.py": "63a99decfb4b8b183f90fc2453577dc5764634374488b21eb9bb941353d3632c",
     "ai-service/app/operations.py": "1af6a683846d6ca3303820d8add022bdabab9240a5a63e598a6de5989c6df3f5",
-    "ai-service/app/prompt.py": "fc8d4970e736248f0692b5f46932d671c65400852a3fac1478d91fa934c898ce",
+    "ai-service/app/prompt.py": "3c4fbdf4955c7e2dc7ef0cd81c7d739b7e932962678072b285c0151aec43d508",
     "ai-service/app/redaction.py": "2dfd38f2a8728af713da5b925b2cd7232047400dcd474b9d2585e7ab349d0608",
     "ai-service/app/request_checks.py": "4bee843d72bdc71977cb0fe42805d6eff9d14ac06853ebc1b64caca57591d713",
     "ai-service/app/retrieval.py": "9119499244745ced9d8e97c992ee64715a59cf54a372ad94de91331b5ca75023",
