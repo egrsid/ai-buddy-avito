@@ -8,6 +8,7 @@ export default defineConfig({
     proxy: {'/api': {target: process.env.API_PROXY_TARGET ?? 'http://localhost:8080'}},
   },
   test: {
+    include: ['src/**/*.test.{ts,tsx}'],
     environment: 'jsdom',
     setupFiles: ['src/test/setup.ts'],
     coverage: {
@@ -15,7 +16,7 @@ export default defineConfig({
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/main.tsx', 'src/**/*.test.*', 'src/**/*.d.ts'],
       reporter: ['text', 'json-summary', 'lcov'],
-      thresholds: {lines: 80.01},
+      thresholds: {lines: 82},
     },
   },
 });
