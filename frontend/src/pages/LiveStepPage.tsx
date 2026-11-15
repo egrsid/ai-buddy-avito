@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, BookOpen, FlaskConical, MessageSquareWarning, RefreshCw } from 'lucide-react';
+import { ArrowLeft, BookOpen, FlaskConical, RefreshCw } from 'lucide-react';
 import type { z } from 'zod';
 import type { Action, Step } from '../fixtures/all-states';
 import { KnowledgeDocument } from '../contracts/public';
@@ -22,11 +22,12 @@ import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '
 import { ActionCard } from '../components/ActionCard';
 import { SourceDrawer } from '../components/SourceDrawer';
 import { LiveChatPage } from './LiveChatPage';
+import { MentorContactCard } from '../components/MentorContactCard';
 import { BlockerStatusBadge, CheckStatusBadge, StateBadge } from '../components/StatusBadge';
 
 // RP-FE-02: live-вариант страницы шага.
-// Данные — GET step/actions; проверка — POST checks; эскалация — POST actions
-// (snapshot собирается из разрешённых данных шага, Go пересобирает/валидирует).
+// Данные — GET step/actions; проверка — POST checks; заявка — POST actions.
+// v3: помощь наставника — личное сообщение в Telegram (MentorContactCard), без внутренних обращений.
 // Confirm/cancel — только кнопкой ActionCard конкретного action.id.
 
 type KnowledgeDocumentT = z.infer<typeof KnowledgeDocument>;
@@ -105,42 +106,6 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
       setAction(created);
     } catch (e) {
       setNotice(userMessage(e, 'Не удалось подготовить заявку.'));
-    }
-  };
-
-  const escalate = async () => {
-    setNotice(null);
-    const blocker = s.blockers.find((b) => b.status === 'open');
-    if (!blocker || !s.available_actions.includes('escalate_to_buddy')) {
-      setNotice('Эскалация возможна только из контекста активного блокера.');
-      return;
-    }
-    const question = 'Нужна помощь наставника с этим шагом.';
-    try {
-      // Драфт привязан к диалогу цель/шаг; snapshot Go пересобирает и валидирует.
-      const conversation = await createConversation(goalId, s.id);
-      const created = await createAction({
-        conversation_id: conversation.id,
-        goal_id: goalId,
-        step_id: s.id,
-        type: 'escalate_to_buddy',
-        parameters: {
-          question,
-          diagnostic_snapshot: {
-            goal: { id: goalId, title: 'Цель' },
-            step: { id: s.id, title: s.title },
-            blocker: { id: blocker.id, type: blocker.type, error_code: blocker.error_code },
-            checks: [],
-            attempted_actions: [],
-            instruction_refs: [],
-            hypotheses: [],
-            question,
-          },
-        },
-      });
-      setAction(created);
-    } catch (e) {
-      setNotice(userMessage(e, 'Не удалось подготовить передачу наставнику.'));
     }
   };
 
@@ -238,11 +203,6 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
                   <RefreshCw size={16} className="mr-1 inline" aria-hidden /> Повторить проверку
                 </Button>
               )}
-              {blocker.recovery_actions.includes('escalate_to_buddy') && s.available_actions.includes('escalate_to_buddy') && (
-                <Button variant="secondary" onClick={escalate} disabled={checkPending}>
-                  <MessageSquareWarning size={16} className="mr-1 inline" aria-hidden /> Спросить наставника
-                </Button>
-              )}
             </div>}
           </Card>
         ))}
@@ -274,6 +234,11 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
         )}
 
         {action && <ActionCard action={action} onConfirm={confirm} onCancel={cancel} />}
+
+        <MentorContactCard
+          context={{ goalId, stepId: s.id }}
+          title={s.blockers.some((b) => b.status === 'open') ? 'Не получается? Напишите наставнику в Telegram' : 'Написать наставнику в Telegram'}
+        />
 
         {s.evidence.length > 0 && (
           <Card>

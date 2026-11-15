@@ -17,6 +17,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../lib/endpoints', () => mocks);
+vi.mock('../components/MentorContactCard', () => ({
+  MentorContactCard: ({ context, title }: { context: { goalId: string; stepId: string }; title: string }) =>
+    <div aria-label="Telegram наставника" data-goal={context.goalId} data-step={context.stepId}>{title}</div>,
+}));
 vi.mock('./LiveChatPage', () => ({
   LiveChatPage: ({ goalId, stepId }: { goalId: string; stepId: string }) =>
     <div aria-label="Контекст AI" data-goal={goalId} data-step={stepId} />,
@@ -144,7 +148,6 @@ describe('LiveStepPage', () => {
     fireEvent.click(retry);
     expect(retry).toBeDisabled();
     expect(screen.getByLabelText('Режим SSL')).toBeDisabled();
-    expect(screen.getByRole('button', { name: /Спросить наставника/ })).toBeDisabled();
     fireEvent.click(retry);
     expect(mocks.createCheck).toHaveBeenCalledTimes(1);
     await act(async () => { finishCheck({}); });
@@ -156,31 +159,21 @@ describe('LiveStepPage', () => {
     expect(mocks.createCheck).toHaveBeenLastCalledWith(blockedGoal.id, blockedStep.id, expect.objectContaining({ expected_version: blockedStep.version + 1 }));
   });
 
-  it('эскалация: conversation → action → confirm → опрос до succeeded', async () => {
+  it('v3: помощь наставника — Telegram с контекстом шага, без внутреннего обращения', async () => {
     render(<LiveStepPage goalId={blockedGoal.id} stepId={blockedStep.id} />);
-    fireEvent.click(await screen.findByRole('button', { name: /Спросить наставника/ }));
-    expect(mocks.createConversation).toHaveBeenCalledWith(blockedGoal.id, blockedStep.id);
-    // карточка действия появляется после createAction
-    fireEvent.click(await screen.findByRole('button', { name: 'Подтвердить' }));
-    expect(mocks.createAction).toHaveBeenCalledWith(
-      expect.objectContaining({
-        conversation_id: CONV,
-        goal_id: blockedGoal.id,
-        step_id: blockedStep.id,
-        type: 'escalate_to_buddy',
-      }),
-    );
-    expect(mocks.confirmAction).toHaveBeenCalledWith(escalationPendingAction.id);
-    // статус executing → опрос getAction до succeeded
-    expect(await screen.findByText(/Вопрос передан наставнику/, undefined, { timeout: 3000 })).toBeInTheDocument();
+    const card = await screen.findByLabelText('Telegram наставника');
+    expect(card).toHaveAttribute('data-goal', blockedGoal.id);
+    expect(card).toHaveAttribute('data-step', blockedStep.id);
+    expect(card).toHaveTextContent('Не получается? Напишите наставнику в Telegram');
+    // Даже если старый allowlist содержит escalate_to_buddy, кнопки внутреннего обращения нет.
+    expect(screen.queryByRole('button', { name: /Спросить наставника/ })).not.toBeInTheDocument();
+    expect(mocks.createAction).not.toHaveBeenCalled();
   });
 
-  it('эскалация: cancel', async () => {
-    render(<LiveStepPage goalId={blockedGoal.id} stepId={blockedStep.id} />);
-    fireEvent.click(await screen.findByRole('button', { name: /Спросить наставника/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Отмена' }));
-    expect(mocks.cancelAction).toHaveBeenCalledWith(escalationPendingAction.id);
-    expect(await screen.findByText('Действие отменено и не выполнялось.')).toBeInTheDocument();
+  it('без открытого блокера — обычный заголовок Telegram-карточки', async () => {
+    mocks.getStep.mockResolvedValue(readyStep);
+    render(<LiveStepPage goalId={readyGoal.id} stepId={readyStep.id} />);
+    expect(await screen.findByLabelText('Telegram наставника')).toHaveTextContent('Написать наставнику в Telegram');
   });
 
   it('устранённый блокер не предлагает повторную проверку или обращение наставнику', async () => {
@@ -214,19 +207,39 @@ describe('LiveStepPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Проверка не запустилась.');
   });
 
-  it('эскалация упала на createAction: notice без карточки', async () => {
-    mocks.createAction.mockRejectedValueOnce(new Error('conflict'));
-    render(<LiveStepPage goalId={blockedGoal.id} stepId={blockedStep.id} />);
-    fireEvent.click(await screen.findByRole('button', { name: /Спросить наставника/ }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось подготовить передачу наставнику.');
-  });
-
-  it('отмена действия упала: notice об ошибке', async () => {
-    mocks.cancelAction.mockRejectedValueOnce(new Error('gone'));
-    render(<LiveStepPage goalId={blockedGoal.id} stepId={blockedStep.id} />);
-    fireEvent.click(await screen.findByRole('button', { name: /Спросить наставника/ }));
+  it('заявка: отмена и ошибка отмены', async () => {
+    const accessStep = {
+      ...blockedStep,
+      id: 'check_access',
+      available_actions: ['create_access_request', 'retry_check'],
+      verification_method: 'iam_permission_present' as const,
+      blockers: [{ ...blockedStep.blockers[0], error_code: 'ACCESS_MISSING', recovery_actions: ['create_access_request', 'retry_check'] }],
+    };
+    mocks.getStep.mockResolvedValue(accessStep);
+    mocks.createAction.mockResolvedValue(actions[0]);
+    mocks.cancelAction.mockRejectedValueOnce(new Error('gone')).mockResolvedValueOnce({ ...actions[0], status: 'cancelled' });
+    render(<LiveStepPage goalId={blockedGoal.id} stepId={accessStep.id} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Запросить доступ' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Отмена' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Отмена не прошла.');
+    fireEvent.click(screen.getByRole('button', { name: 'Отмена' }));
+    expect(await screen.findByText('Действие отменено и не выполнялось.')).toBeInTheDocument();
+  });
+
+  it('заявка не подготовилась: notice без карточки', async () => {
+    const accessStep = {
+      ...blockedStep,
+      id: 'check_access',
+      available_actions: ['create_access_request'],
+      verification_method: 'iam_permission_present' as const,
+      blockers: [{ ...blockedStep.blockers[0], error_code: 'ACCESS_MISSING', recovery_actions: ['create_access_request'] }],
+    };
+    mocks.getStep.mockResolvedValue(accessStep);
+    mocks.createAction.mockRejectedValueOnce(new Error('conflict'));
+    render(<LiveStepPage goalId={blockedGoal.id} stepId={accessStep.id} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Запросить доступ' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось подготовить заявку.');
+    expect(screen.queryByRole('button', { name: 'Подтвердить' })).not.toBeInTheDocument();
   });
 
   it('drawer закрывается кнопкой', async () => {

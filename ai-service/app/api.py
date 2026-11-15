@@ -11,7 +11,8 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from app import operations
 from app.config import Settings
-from app.contracts import AI_SCHEMA_ID, AI_V3_SCHEMA_ID, error_fields
+from app.contact_summary import contact_summary
+from app.contracts import AI_SCHEMA_ID, AI_V3_SCHEMA_ID, AI_V4_SCHEMA_ID, error_fields
 from app.drafts import access_request_draft
 from app.errors import ApiError, error_response
 from app.generate import run_generate
@@ -26,11 +27,13 @@ from app.request_checks import (
     read_scope_header,
 )
 from app.retrieval import KnowledgeBase, source_for
+from app.revision_draft import request_problems, revision_draft
 from app.task_clarity import task_clarity_draft
 from app.vectors import embed_query
 
 PREFIX = "/internal/v2"
 PREFIX_V3 = "/internal/v3"
+PREFIX_V4 = "/internal/v4"
 HEALTH = {"status": "ok", "service": "ai-service"}
 TIMEOUT_MESSAGE = "Модель не ответила вовремя"
 # Ответ не прошёл свою схему. Отдельного кода в контракте нет: для Go это сбой AI,
@@ -194,6 +197,7 @@ def create_app(
         response_definition: str,
         handler: Callable[[dict], Awaitable[dict | None]],
         schema_id: str = AI_SCHEMA_ID,
+        semantic: Callable[[dict], list[dict]] | None = None,
     ):
         """Общий путь непотоковой операции.
 
@@ -202,6 +206,17 @@ def create_app(
         """
         accepted = time.monotonic()
         request_id, body = await read_internal_request(request, settings, definition, schema_id)
+        # Правила, которые JSON Schema не выражает (уникальность, hash и т.п.) — тоже 422.
+        if semantic is not None:
+            fields = semantic(body)
+            if fields:
+                raise ApiError(
+                    422,
+                    "VALIDATION_ERROR",
+                    "Запрос не прошёл смысловую проверку",
+                    request_id,
+                    fields,
+                )
         raise_for_scenario(mock_scenario(request, settings, request_id), request_id)
 
         def work():
@@ -280,6 +295,33 @@ def create_app(
             "TaskClarityDraftResponse",
             draft_task_clarity,
             AI_V3_SCHEMA_ID,
+        )
+
+    async def summarize_contact(body: dict) -> dict:
+        return await contact_summary(body, provider, settings)
+
+    @app.post(f"{PREFIX_V3}/contact-summary")
+    async def contact_summary_route(request: Request):
+        return await structured(
+            request,
+            "ContactSummaryRequest",
+            "ContactSummaryResponse",
+            summarize_contact,
+            AI_V3_SCHEMA_ID,
+        )
+
+    async def draft_revision(body: dict) -> dict:
+        return await revision_draft(body, provider, settings)
+
+    @app.post(f"{PREFIX_V4}/revision-draft")
+    async def revision_draft_route(request: Request):
+        return await structured(
+            request,
+            "RevisionDraftRequest",
+            "RevisionDraftResponse",
+            draft_revision,
+            AI_V4_SCHEMA_ID,
+            request_problems,
         )
 
     @app.post(f"{PREFIX}/knowledge/search")

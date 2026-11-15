@@ -7,7 +7,7 @@ import type { User } from '../fixtures/all-states';
 import { users as fixtureUsers } from '../fixtures/all-states';
 
 // RP-FE-02: источник данных приложения.
-// fixtures — офлайн-демо на FE fixtures (поведение RP-FE-01);
+// fixtures доступны только unit-тестам компонентов; сайт всегда вызывает Go API.
 // live — реальный Go API (cookie-сессия + CSRF через endpoints).
 // Смена аккаунта в live выполняет demo-login (только local/test окружение Go).
 
@@ -26,11 +26,19 @@ interface DataModeValue {
 
 const DataModeContext = createContext<DataModeValue | null>(null);
 
+// Развёрнутый сайт игнорирует прежний fixtures preset/sessionStorage.
+// Unit-тесты могут изолированно выбирать источник данных.
+export function defaultMode(): DataMode {
+  if (import.meta.env.MODE !== 'test') return 'live';
+  const preset = import.meta.env.VITE_DATA_MODE;
+  if (preset === 'live') return 'live';
+  const stored = sessionStorage.getItem('buddy-data-mode');
+  if (stored === 'live' || stored === 'fixtures') return stored;
+  return preset === 'fixtures' ? 'fixtures' : 'live';
+}
+
 export function DataModeProvider({ children }: { children: ReactNode }) {
-  const [mode, setMode] = useState<DataMode>(() =>
-    sessionStorage.getItem('buddy-data-mode') === 'live' || import.meta.env.VITE_DATA_MODE === 'live'
-      ? 'live' : 'fixtures',
-  );
+  const [mode, setMode] = useState<DataMode>(() => defaultMode());
   const [accountId, setAccountId] = useState('intern-a');
   const [session, setSession] = useState<Session | null>(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
@@ -83,6 +91,7 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
 
   const changeMode = useCallback(
     (next: DataMode) => {
+      if (import.meta.env.MODE !== 'test' && next !== 'live') return;
       ++generation.current;
       sessionStorage.setItem('buddy-data-mode', next);
       setSessionError(null);

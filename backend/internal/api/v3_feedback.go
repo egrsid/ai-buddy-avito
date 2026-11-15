@@ -105,6 +105,11 @@ func (q *request) report(id string) (Object, error) {
 	if e != nil {
 		return nil, e
 	}
+	var current int
+	if e = q.tx.QueryRow(q.Context, "SELECT count(DISTINCT intern_id) FROM app.task_frictions WHERE team_id=$1 AND owner_id=$2 AND brief_id=$3 AND brief_version=$4 AND section_id=$5 AND reason=$6 AND last_seen>$7", r["team_id"], r["owner_id"], r["brief_id"], r["brief_version"], r["section_id"], r["reason"], q.s.Now().Add(-clarityWindow)).Scan(&current); e != nil {
+		return nil, e
+	}
+	r["current_count"] = current
 	content := obj(r["content"])
 	title, _ := sectionTitle(content, str(r["section_id"]))
 	if title == "" {
@@ -182,7 +187,13 @@ func reviewReport(q *request) (response, error) {
 func (s *Server) enrichReport(id string, input Object) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.Config.EnrichTimeout)
 	defer cancel()
-	q := &request{Context: ctx, s: s, requestID: uuid(), client: &http.Client{Transport: s.Client.Transport, CheckRedirect: s.Client.CheckRedirect, Timeout: s.Config.EnrichTimeout}}
+	transport := s.Client.Transport
+	if original, ok := transport.(*http.Transport); ok {
+		copy := original.Clone()
+		copy.ResponseHeaderTimeout = s.Config.EnrichTimeout
+		transport = copy
+	}
+	q := &request{Context: ctx, s: s, requestID: uuid(), client: &http.Client{Transport: transport, CheckRedirect: s.Client.CheckRedirect, Timeout: s.Config.EnrichTimeout}}
 	draft, e := q.call(s.Config.AIURL, "POST", "/internal/v3/task-clarity-draft", "v3/ai/TaskClarityDraftResponse", input, nil)
 	if e != nil {
 		_, _ = s.Pool.Exec(context.Background(), "UPDATE app.task_clarity_reports SET enrichment_status='failed' WHERE id=$1 AND enrichment_status='pending'", id)

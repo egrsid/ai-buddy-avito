@@ -16,12 +16,16 @@ ROOT = Path(__file__).resolve().parents[1]
 def configuration(project: str, cached_overlay: str | None = None):
     if not re.fullmatch(r"ai-buddy-demo-[a-z0-9-]+", project):
         raise ValueError("Use a separate ai-buddy-demo-* project, never the legacy project")
+    frontend_port = int(os.environ.get("DEMO_FRONTEND_PORT", "15173"))
+    backend_port = int(os.environ.get("DEMO_BACKEND_PORT", "18080"))
+    if not all(1024 <= port <= 65535 for port in (frontend_port, backend_port)):
+        raise ValueError("Demo ports must be between 1024 and 65535")
     env = {
         **os.environ,
         "APP_ENV": "local",
-        "APP_ORIGIN": "http://localhost:15173",
-        "BACKEND_PORT": "18080",
-        "FRONTEND_PORT": "15173",
+        "APP_ORIGIN": f"http://localhost:{frontend_port}",
+        "BACKEND_PORT": str(backend_port),
+        "FRONTEND_PORT": str(frontend_port),
         "LLM_MODE": "mock",
         "LLM_API_KEY": "",
         "MOCK_FAULTS_ENABLED": "false",
@@ -33,6 +37,29 @@ def configuration(project: str, cached_overlay: str | None = None):
     if cached_overlay:
         command += ["-f", str(Path(cached_overlay).resolve(strict=True))]
     return command, env
+
+
+# Dependency images that compose.offline.yaml builds from; they exist only after one online build.
+OFFLINE_IMAGES = (
+    "ai-buddy-tl-20261111-contract-image-tests:latest",
+    "ai-buddy-tl-20261111-frontend:latest",
+    "ai-buddy-demo-go-build:local",
+    "ai-buddy-be-v2-api:local",
+)
+
+
+def offline_images_present() -> bool:
+    """True when every cached dependency image for compose.offline.yaml is available."""
+    for image in OFFLINE_IMAGES:
+        found = subprocess.run(
+            ["docker", "image", "inspect", image],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if found.returncode != 0:
+            return False
+    return True
 
 
 def main():
@@ -48,12 +75,7 @@ def main():
     args = parser.parse_args()
     command, env = configuration(args.project, args.cached_overlay)
     if args.offline:
-        for image in (
-            "ai-buddy-tl-20261111-contract-image-tests:latest",
-            "ai-buddy-tl-20261111-frontend:latest",
-            "ai-buddy-demo-go-build:local",
-            "ai-buddy-be-v2-api:local",
-        ):
+        for image in OFFLINE_IMAGES:
             subprocess.run(
                 ["docker", "image", "inspect", image], stdout=subprocess.DEVNULL, check=True
             )

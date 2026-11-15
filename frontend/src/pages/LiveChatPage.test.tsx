@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RunStreamHandlers } from '../lib/sse';
 import { actions as fixtureActions, knowledgeDoc } from '../fixtures/all-states';
-import { LiveChatPage } from './LiveChatPage';
+import { LiveChatPage, shortTime } from './LiveChatPage';
 
 const mocks = vi.hoisted(() => ({
   listConversations: vi.fn(),
@@ -28,6 +28,9 @@ vi.mock('../lib/endpoints', () => ({
   getAction: mocks.getAction,
   getKnowledge: mocks.getKnowledge,
 }));
+
+const v3 = vi.hoisted(() => ({ listMessageOrigins: vi.fn() }));
+vi.mock('../lib/v3', () => v3);
 
 vi.mock('../lib/sse', async (importOriginal) => {
   const orig = await importOriginal<typeof import('../lib/sse')>();
@@ -61,6 +64,7 @@ describe('LiveChatPage', () => {
     mocks.listConversations.mockResolvedValue([]);
     mocks.createConversation.mockResolvedValue(conversation);
     mocks.listMessages.mockResolvedValue([]);
+    v3.listMessageOrigins.mockResolvedValue([]);
     mocks.createRun.mockResolvedValue(run);
     mocks.cancelRun.mockResolvedValue({ ...run, status: 'cancelled' });
     mocks.confirmAction.mockResolvedValue({ ...pendingAction, status: 'executing' });
@@ -102,14 +106,14 @@ describe('LiveChatPage', () => {
 
     await waitFor(() => expect(mocks.streamRunEvents).toHaveBeenCalled());
     // До первого слова видно, что ИИ уже работает.
-    expect(screen.getByText('ИИ готовит ответ…')).toBeInTheDocument();
+    expect(await screen.findByText('ИИ готовит ответ…')).toBeInTheDocument();
     const handlers = mocks.streamRunEvents.mock.calls[0][1] as RunStreamHandlers;
     act(() => {
       handlers.onEvent({ type: 'run.started', data: { run_id: RUN } }, 1);
       handlers.onEvent({ type: 'message.delta', data: { run_id: RUN, text: 'Проверяю…' } }, 2);
     });
     expect(screen.getByText('Проверяю…')).toBeInTheDocument();
-    expect(screen.getByText('Сгенерировано ИИ')).toBeInTheDocument();
+    expect(screen.getByText('Источник ответа не подтверждён')).toBeInTheDocument();
     expect(screen.queryByText('ИИ готовит ответ…')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Остановить генерацию' })).toBeInTheDocument();
 
@@ -118,6 +122,42 @@ describe('LiveChatPage', () => {
     });
     // после терминала — refetch сообщений (истина — GET)
     expect(mocks.listMessages.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('после завершения ответ ни в одной отрисовке не показан дважды (поток + сохранённое)', async () => {
+    mocks.listMessages.mockResolvedValue([userMessage]);
+    await renderChat();
+    fireEvent.change(screen.getByLabelText('Сообщение AI-помощнику'), { target: { value: 'Вопрос' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Отправить' }));
+    await waitFor(() => expect(mocks.streamRunEvents).toHaveBeenCalled());
+    const handlers = mocks.streamRunEvents.mock.calls[0][1] as RunStreamHandlers;
+    act(() => {
+      handlers.onEvent({ type: 'message.delta', data: { run_id: RUN, text: 'Нужен sslmode=require.' } }, 1);
+    });
+    const feed = screen.getByLabelText('Переписка');
+    const answers = (node: Node) =>
+      node.nodeType === Node.ELEMENT_NODE && node.textContent?.includes('Нужен sslmode=require.') ? 1 : 0;
+    // Проигрываем изменения DOM по порядку: число копий ответа не должно доходить до двух.
+    let copies = Array.from(feed.children).reduce((n, child) => n + answers(child), 0);
+    let maxCopies = copies;
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        if (record.target !== feed) continue;
+        record.removedNodes.forEach((node) => { copies -= answers(node); });
+        record.addedNodes.forEach((node) => { copies += answers(node); });
+        maxCopies = Math.max(maxCopies, copies);
+      }
+    });
+    observer.observe(feed, { childList: true });
+    mocks.listMessages.mockResolvedValue([userMessage, assistantMessage]);
+    await act(async () => {
+      handlers.onEvent({ type: 'run.completed', data: { run_id: RUN, message_id: MSG_A } }, 2);
+    });
+    await waitFor(() => expect(screen.queryByText('генерация…')).not.toBeInTheDocument());
+    await act(async () => { await Promise.resolve(); });
+    observer.disconnect();
+    expect(screen.getAllByText('Нужен sslmode=require.')).toHaveLength(1);
+    expect(maxCopies).toBe(1);
   });
 
   it('помечает ответ ИИ и fallback без служебного текста в ответе', async () => {
@@ -131,10 +171,70 @@ describe('LiveChatPage', () => {
     mocks.listMessages.mockResolvedValue([userMessage, assistantMessage, fallback]);
     await renderChat();
     expect(await screen.findByText('Нужен sslmode=require.')).toBeInTheDocument();
-    expect(screen.getByText('Сгенерировано ИИ')).toBeInTheDocument();
-    expect(screen.getByText('Fallback · без ИИ')).toBeInTheDocument();
+    expect(screen.getAllByText('Источник ответа не подтверждён')).toHaveLength(2);
+    expect(screen.queryByText('Сгенерировано ИИ')).not.toBeInTheDocument();
     expect(screen.getByText('Шаблонная подсказка.')).toBeInTheDocument();
     expect(screen.queryByText(/Произошла ошибка обращения к LLM/)).not.toBeInTheDocument();
+  });
+
+  it('blocks duplicate run creation while POST is pending', async () => {
+    let finish!: (value: typeof run) => void;
+    mocks.createRun.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    await renderChat();
+    fireEvent.change(screen.getByLabelText('Сообщение AI-помощнику'), {target: {value: 'Вопрос'}});
+    const button = screen.getByRole('button', {name: 'Отправить'});
+    fireEvent.click(button);
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(mocks.createRun).toHaveBeenCalledTimes(1);
+    await act(async () => { finish(run); });
+  });
+
+  it('подсказка сразу уходит в чат; пока идёт ответ, подсказки выключены; лента не пропадает', async () => {
+    mocks.listMessages.mockResolvedValue([userMessage]);
+    await renderChat();
+    expect(await screen.findByText('Что мешает подключению?')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Что мне делать дальше?' }));
+    expect(mocks.createRun).toHaveBeenCalledWith(CONV, { content: 'Что мне делать дальше?' });
+    await waitFor(() => expect(mocks.streamRunEvents).toHaveBeenCalled());
+    expect(screen.getByRole('button', { name: 'Почему шаг заблокирован?' })).toBeDisabled();
+    // Перечитывание после отправки не прячет переписку (экран не прыгает).
+    expect(screen.getByText('Что мешает подключению?')).toBeInTheDocument();
+    expect(screen.getByLabelText('Переписка')).toBeInTheDocument();
+  });
+
+  it('на странице шага — свои подсказки', async () => {
+    render(<LiveChatPage goalId="0000001e-0000-4000-8000-00000000001e" stepId="check_access" embedded />);
+    expect(await screen.findByRole('button', { name: 'Что сделать на этом шаге?' })).toBeInTheDocument();
+  });
+
+  it('v3: метка берётся от сервера, а не из слов ответа', async () => {
+    // Текст похож на обычный ответ ИИ, но сервер знает, что ответила резервная модель.
+    v3.listMessageOrigins.mockResolvedValue([{ run_id: RUN, message_id: MSG_A, origin: { mode: 'live', answered_by: 'secondary', completion: 'complete' } }]);
+    mocks.listMessages.mockResolvedValue([userMessage, assistantMessage]);
+    await renderChat();
+    expect(await screen.findByText('Сгенерировано ИИ · резервная модель')).toBeInTheDocument();
+    expect(v3.listMessageOrigins).toHaveBeenCalledWith(CONV);
+  });
+
+  it('v3: событие message.origin обновляет метку сообщения; сбой истории не ломает чат', async () => {
+    v3.listMessageOrigins.mockRejectedValue(new Error('down'));
+    mocks.listMessages.mockResolvedValue([userMessage]);
+    await renderChat();
+    fireEvent.change(screen.getByLabelText('Сообщение AI-помощнику'), { target: { value: 'Вопрос' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Отправить' }));
+    await waitFor(() => expect(mocks.streamRunEvents).toHaveBeenCalled());
+    const handlers = mocks.streamRunEvents.mock.calls[0][1] as RunStreamHandlers;
+    mocks.listMessages.mockResolvedValue([userMessage, assistantMessage]);
+    act(() => {
+      handlers.onEvent({ type: 'message.delta', data: { run_id: RUN, text: 'Ответ' } }, 1);
+      handlers.onEvent({ type: 'message.origin', data: { run_id: RUN, message_id: MSG_A, origin: { mode: 'live', answered_by: 'offline', completion: 'complete' } } }, 2);
+      handlers.onEvent({ type: 'run.completed', data: { run_id: RUN, message_id: MSG_A } }, 3);
+    });
+    // Метка остаётся на сохранённом сообщении, когда потоковый пузырь уже убран.
+    await screen.findByText('Нужен sslmode=require.');
+    await waitFor(() => expect(screen.queryByText('генерация…')).not.toBeInTheDocument());
+    expect(screen.getAllByText('Fallback · без ИИ')).toHaveLength(1);
   });
 
   it('action.proposed → ActionCard, confirm → executing → опрос до succeeded', async () => {
@@ -215,5 +315,14 @@ describe('LiveChatPage', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Синтетическая инструкция подключения' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Возможно, доступ изменился');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('shortTime', () => {
+  it('сегодня — только время, иначе дата и время; мусор как есть', () => {
+    const now = new Date('2026-11-13T20:00:00Z');
+    expect(shortTime('2026-11-13T19:05:00Z', now)).toMatch(/^\d{2}:\d{2}$/);
+    expect(shortTime('2026-11-10T19:05:00Z', now)).toMatch(/^\d{2}\.\d{2} \d{2}:\d{2}$/);
+    expect(shortTime('не дата', now)).toBe('не дата');
   });
 });

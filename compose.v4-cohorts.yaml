@@ -1,0 +1,13 @@
+# Explicit synthetic history, separate project/volume; never apply to the live user's DB.
+services:
+  seed:
+    environment:
+      SEED_DATASET: v4-demo
+  backend:
+    environment:
+      V4_DEMO_CLOCK_FILE: /var/lib/v4-demo/clock.json
+    volumes:
+      - ${V4_COHORT_CLOCK_DIR:?set a separate clock directory}:/var/lib/v4-demo:ro
+  frontend:
+    environment:
+      VITE_V4_COHORT_DEMO: 'true'

@@ -31,6 +31,7 @@ type Object = map[string]any
 type Config struct {
 	Env, Origin, Token, AIURL, MockURL, Contracts string
 	ContractsV3                                   string
+	DemoClockFile                                 string
 	RunTimeout, SubscribeTimeout, EnrichTimeout   time.Duration
 }
 type Server struct {
@@ -42,6 +43,7 @@ type Server struct {
 	mu          sync.Mutex
 	runs        map[string]context.CancelFunc
 	reconcileMu sync.Mutex
+	background  sync.WaitGroup
 }
 type request struct {
 	context.Context
@@ -75,7 +77,7 @@ func created3(def string, v any) response { return response{201, v, "v3/public/"
 
 // requestSchema keeps v2 request names short and lets v3 routes name "v3/public/...".
 func requestSchema(definition string) string {
-	if strings.HasPrefix(definition, "v3/") {
+	if strings.HasPrefix(definition, "v3/") || strings.HasPrefix(definition, "v4/") {
 		return definition
 	}
 	return "public/" + definition
@@ -188,6 +190,8 @@ func New(pool *pgxpool.Pool, c Config) (*Server, error) {
 	for _, name := range []string{"public", "events", "ai"} {
 		files = append(files, schemaFile{c.ContractsV3, "v3/", name})
 	}
+	v4dir := filepath.Join(filepath.Dir(filepath.Clean(c.Contracts)), "v4")
+	files = append(files, schemaFile{v4dir, "v4/", "public"}, schemaFile{v4dir, "v4/", "ai"}, schemaFile{v4dir, "v4/", "events"})
 	refs := map[string]string{}
 	for _, f := range files {
 		data, e := os.ReadFile(filepath.Join(f.dir, f.name+".schema.json"))
@@ -216,7 +220,15 @@ func New(pool *pgxpool.Pool, c Config) (*Server, error) {
 		}
 		schemas[key] = schema
 	}
-	return &Server{Pool: pool, Config: c, schemas: schemas, Client: &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{DialContext: (&net.Dialer{Timeout: 3 * time.Second}).DialContext, TLSHandshakeTimeout: 3 * time.Second, ResponseHeaderTimeout: 5 * time.Second}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, Now: time.Now, runs: map[string]context.CancelFunc{}}, nil
+	server := &Server{Pool: pool, Config: c, schemas: schemas, Client: &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{DialContext: (&net.Dialer{Timeout: 3 * time.Second}).DialContext, TLSHandshakeTimeout: 3 * time.Second, ResponseHeaderTimeout: 5 * time.Second}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, Now: time.Now, runs: map[string]context.CancelFunc{}}
+	if c.DemoClockFile != "" {
+		clock, e := localDemoClock(c.Env, c.DemoClockFile)
+		if e != nil {
+			return nil, e
+		}
+		server.Now = clock
+	}
+	return server, nil
 }
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
@@ -249,8 +261,10 @@ func (s *Server) writeError(w http.ResponseWriter, id string, e error) {
 	var known problem
 	if errors.As(e, &known) {
 		p = known
-	} else {
-		log.Printf("backend operation failed request_id=%s type=%T", id, e)
+	} else if active, _ := activeRoutes.Load(id); !errors.Is(e, context.Canceled) && !clientGone(active) {
+		// A browser that aborted its own request is not a backend failure; after such an abort
+		// pgx may also report the interrupted connection as busy.
+		log.Printf("backend operation failed request_id=%s route=%v type=%T %s", id, routeName(active), e, errorClass(e))
 	}
 	writeJSON(w, p.status, Object{"error": Object{"code": p.code, "message": p.code, "request_id": id}})
 }
@@ -258,6 +272,8 @@ func (s *Server) route(mux *http.ServeMux, pattern, definition string, role stri
 	mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
 		rid := uuid()
 		w.Header().Set("X-Request-ID", rid)
+		activeRoutes.Store(rid, activeRoute{pattern, r.Context()})
+		defer activeRoutes.Delete(rid)
 		tx, e := s.Pool.Begin(r.Context())
 		if e != nil {
 			s.writeError(w, rid, e)
@@ -355,7 +371,7 @@ func (s *Server) route(mux *http.ServeMux, pattern, definition string, role stri
 			return
 		}
 		for _, work := range q.after {
-			go work()
+			s.Background(work)
 		}
 		if login {
 			cookie := result.body.(Object)["_cookie"].(string)
@@ -444,7 +460,7 @@ func normalizeTimes(v any) {
 	case map[string]any:
 		for k, value := range x {
 			switch k {
-			case "created_at", "updated_at", "observed_at", "invalidated_at", "expires_at", "resolved_at", "published_at", "last_seen", "last_seen_at", "first_seen":
+			case "created_at", "updated_at", "observed_at", "received_at", "invalidated_at", "expires_at", "resolved_at", "published_at", "last_seen", "last_seen_at", "first_seen", "started_at", "ended_at", "as_of", "unlinked_at", "from_a", "to_a", "from_b", "to_b":
 				if parsed, e := time.Parse(time.RFC3339Nano, str(value)); e == nil {
 					x[k] = stamp(parsed)
 				}

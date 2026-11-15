@@ -18,6 +18,7 @@ func (s *Server) taskRoutes(m *http.ServeMux) {
 	s.route(m, "POST /api/v3/task-briefs/{id}/archive", "v3/public/RevisionRequest", "buddy", false, archiveBrief)
 	s.route(m, "POST /api/v3/task-assignments", "v3/public/TaskAssignmentCreateRequest", "buddy", true, createAssignment)
 	s.route(m, "GET /api/v3/task-assignments", "", "", false, listAssignments)
+	s.route(m, "GET /api/v3/task-assignments/{id}/latest-version", "", "", false, previewAssignmentVersion)
 	s.route(m, "GET /api/v3/task-assignments/{id}", "", "", false, getAssignment)
 	s.route(m, "POST /api/v3/task-assignments/{id}/adopt-version", "v3/public/TaskAssignmentAdoptRequest", "", false, adoptVersion)
 	s.route(m, "POST /api/v3/task-assignments/{id}/frictions", "v3/public/FrictionCreateRequest", "intern", true, reportFriction)
@@ -279,6 +280,15 @@ func archiveBrief(q *request) (response, error) {
 	if e = q.touchBrief(b); e != nil {
 		return response{}, e
 	}
+	assignments, e := q.many("SELECT jsonb_build_object('id',id) FROM app.task_assignments WHERE brief_id=$1", b["id"])
+	if e != nil {
+		return response{}, e
+	}
+	for _, assignment := range assignments {
+		if e = q.closeExposure(str(obj(assignment)["id"]), "archived"); e != nil {
+			return response{}, e
+		}
+	}
 	if e = q.taskEvent("brief_archived", "go_task_workflow", "task_brief", str(b["id"]), Object{"brief_id": b["id"]}); e != nil {
 		return response{}, e
 	}
@@ -319,13 +329,25 @@ func createAssignment(q *request) (response, error) {
 		return response{}, e
 	}
 	if tag.RowsAffected() == 0 {
-		// Already assigned: moving to another version is the separate adopt flow.
-		return response{}, fail(409, "VERSION_CONFLICT")
+		// Return the pinned assignment; adopting a successor remains explicit.
+		a, err := q.one("SELECT jsonb_build_object('id',id) FROM app.task_assignments WHERE brief_id=$1 AND intern_id=$2", b["id"], intern["id"])
+		if err != nil {
+			return response{}, err
+		}
+		assignment, err := q.assignment(str(a["id"]))
+		if err != nil {
+			return response{}, err
+		}
+		dto, err := q.assignmentDTO(assignment)
+		return created3("TaskAssignment", dto), err
 	}
 	if e = q.touchBrief(b); e != nil {
 		return response{}, e
 	}
 	if e = q.taskEvent("task_assigned", "go_task_workflow", "task_assignment", id, Object{"brief_id": b["id"], "brief_version": q.body["brief_version"], "assignment_id": id}); e != nil {
+		return response{}, e
+	}
+	if e = q.openExposure(id, str(intern["id"]), str(b["id"]), num(q.body["brief_version"]), "assigned"); e != nil {
 		return response{}, e
 	}
 	a, e := q.assignment(id)
@@ -355,6 +377,10 @@ func (q *request) assignment(id string) (Object, error) {
 }
 
 func (q *request) assignmentDTO(a Object) (Object, error) {
+	content, err := q.visibleBriefContent(a["content"])
+	if err != nil {
+		return nil, err
+	}
 	var latest int
 	if e := q.tx.QueryRow(q.Context, "SELECT max(version) FROM app.task_brief_versions WHERE brief_id=$1 AND state='published'", a["brief_id"]).Scan(&latest); e != nil {
 		return nil, e
@@ -376,7 +402,7 @@ func (q *request) assignmentDTO(a Object) (Object, error) {
 	if a["archived"] == true {
 		state = "archived"
 	}
-	return Object{"id": a["id"], "brief_id": a["brief_id"], "brief_version": a["brief_version"], "brief_state": state, "latest_published_version": latest, "content": a["content"], "intern": intern, "author": author, "reported_sections": reported, "verification": "not_verified", "revision": a["revision"], "created_at": a["created_at"], "updated_at": a["updated_at"]}, nil
+	return Object{"id": a["id"], "brief_id": a["brief_id"], "brief_version": a["brief_version"], "brief_state": state, "latest_published_version": latest, "content": content, "intern": intern, "author": author, "reported_sections": reported, "verification": "not_verified", "db_route_enabled": a["permitted_template_id"] != nil, "revision": a["revision"], "created_at": a["created_at"], "updated_at": a["updated_at"]}, nil
 }
 
 func listAssignments(q *request) (response, error) {
@@ -431,10 +457,50 @@ func adoptVersion(q *request) (response, error) {
 	if e = q.taskEvent("task_assignment_adopted", "go_task_workflow", "task_assignment", str(a["id"]), Object{"assignment_id": a["id"], "brief_id": a["brief_id"], "brief_version": target}); e != nil {
 		return response{}, e
 	}
+	if e = q.closeExposure(str(a["id"]), "adopted"); e != nil {
+		return response{}, e
+	}
+	if e = q.openExposure(str(a["id"]), str(a["intern_id"]), str(a["brief_id"]), target, "adopted"); e != nil {
+		return response{}, e
+	}
 	a, e = q.assignment(str(a["id"]))
 	if e != nil {
 		return response{}, e
 	}
 	dto, e := q.assignmentDTO(a)
 	return out3("TaskAssignment", dto), e
+}
+
+// Preview is scoped through the assignment, including when the viewer is its intern.
+func previewAssignmentVersion(q *request) (response, error) {
+	a, e := q.assignment(q.r.PathValue("id"))
+	if e != nil {
+		return response{}, e
+	}
+	v, e := q.one("SELECT jsonb_strip_nulls(to_jsonb(v)-'published_by') FROM app.task_brief_versions v WHERE brief_id=$1 AND state='published' ORDER BY version DESC LIMIT 1", a["brief_id"])
+	if e != nil {
+		return response{}, e
+	}
+	content, e := q.visibleBriefContent(v["content"])
+	if e != nil {
+		return response{}, e
+	}
+	v["content"] = content
+	return out3("TaskBriefVersion", v), nil
+}
+
+func (q *request) visibleBriefContent(raw any) (Object, error) {
+	c := clone(raw)
+	refs := []any{}
+	for _, ref := range list(c["refs"]) {
+		yes, e := q.canRead(str(obj(ref)["document_id"]), q.user)
+		if e != nil {
+			return nil, e
+		}
+		if yes {
+			refs = append(refs, ref)
+		}
+	}
+	c["refs"] = refs
+	return c, nil
 }

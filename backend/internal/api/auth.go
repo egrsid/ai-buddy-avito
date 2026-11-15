@@ -152,4 +152,5 @@ func (s *Server) routes(m *http.ServeMux) {
 	s.taskRoutes(m)
 	s.goalRoutes(m)
 	s.statisticsRoutes(m)
+	s.v4Routes(m)
 }

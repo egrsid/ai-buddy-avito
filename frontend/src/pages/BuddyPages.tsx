@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { escalations } from '../fixtures/all-states';
 import type { Escalation } from '../fixtures/all-states';
@@ -12,7 +11,7 @@ export function BuddyEscalationsPage({ view }: { view: ViewState }) {
   const result = useMockData<Escalation[]>(escalations, [], view);
   return (
     <>
-      <PageHeader title="Обращения стажёров" subtitle="Только назначенные вам стажёры и разрешённые снимки" />
+      <PageHeader title="Обращения стажёров" subtitle="Архив до перехода на Telegram · только чтение" />
       {result.state === 'loading' && <Card><LoadingState /></Card>}
       {result.state === 'error' && <ErrorState onRetry={() => window.location.reload()} />}
       {result.state === 'empty' && (
@@ -47,8 +46,6 @@ export function BuddyEscalationsPage({ view }: { view: ViewState }) {
 export function BuddyEscalationDetailPage({ id, view }: { id: string; view: ViewState }) {
   const escalation = escalations.find((e) => e.id === id) ?? escalations[0];
   const result = useMockData<Escalation>(escalation, escalation, view);
-  const [answer, setAnswer] = useState('');
-  const [sent, setSent] = useState(false);
 
   if (result.state === 'loading') return <Card><LoadingState /></Card>;
   if (result.state === 'error') return <ErrorState onRetry={() => window.location.reload()} />;
@@ -125,34 +122,10 @@ export function BuddyEscalationDetailPage({ id, view }: { id: string; view: View
             <p className="text-sm">{e.answer}</p>
             <p className="mt-2 text-xs text-text-secondary">Закрыто {e.resolved_at}</p>
           </Card>
-        ) : sent ? (
-          <Card>
-            <h3 className="mb-2 font-medium">Ваш ответ</h3>
-            <p className="text-sm">{answer}</p>
-            <p className="mt-2 text-xs text-text-secondary">
-              Обращение закрыто. Ответ не публикуется в базу знаний автоматически.
-            </p>
-          </Card>
         ) : (
           <Card>
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium">Ответ стажёру</span>
-              <textarea
-                value={answer}
-                onChange={(ev) => setAnswer(ev.target.value)}
-                rows={4}
-                maxLength={4000}
-                className="w-full rounded-xl border border-border px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-primary"
-                placeholder="Например: включи sslmode=require и повтори проверку"
-              />
-            </label>
-            <div className="mt-3">
-              <Button disabled={!answer.trim()} onClick={() => setSent(true)}>
-                Ответить и закрыть
-              </Button>
-            </div>
-            <p className="mt-2 text-xs text-text-secondary">
-              Ответ не делает шаг проверенным — стажёр повторяет проверку сам.
+            <p className="text-sm text-text-secondary">
+              v3: обращение осталось без ответа до перехода на Telegram. Ответить здесь больше нельзя — напишите стажёру напрямую.
             </p>
           </Card>
         )}

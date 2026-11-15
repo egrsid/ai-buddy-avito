@@ -71,7 +71,7 @@ func createGoal(q *request) (response, error) {
 	if e = q.exec("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", str(q.user["id"])+str(t["journey_id"])); e != nil {
 		return response{}, e
 	}
-	old, e := q.many("SELECT jsonb_build_object('id',id) FROM app.goals WHERE intern_id=$1 AND journey_id=$2 AND status<>'verified'", q.user["id"], t["journey_id"])
+	old, e := q.many("SELECT jsonb_build_object('id',id) FROM app.goals WHERE intern_id=$1 AND journey_id=$2 ORDER BY (status<>'verified') DESC,created_at DESC LIMIT 1", q.user["id"], t["journey_id"])
 	if e != nil {
 		return response{}, e
 	}
@@ -388,7 +388,7 @@ func (q *request) performCheck(g, t Object, sid string, options Object, allowInv
 	evidence := []any{}
 	if status != "unavailable" {
 		eid := uuid()
-		if e = q.exec("INSERT INTO app.evidence VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NULL,true)", eid, id, event, source, q.user["id"], g["resource_id"], g["id"], sid, g["journey_version"], result, observed); e != nil {
+		if e = q.exec("INSERT INTO app.evidence(id,check_id,event_id,source,subject_id,resource_id,goal_id,step_id,journey_version,result,observed_at,invalidated_at,synthetic) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NULL,true)", eid, id, event, source, q.user["id"], g["resource_id"], g["id"], sid, g["journey_version"], result, observed); e != nil {
 			return nil, e
 		}
 		evidence = append(evidence, eid)

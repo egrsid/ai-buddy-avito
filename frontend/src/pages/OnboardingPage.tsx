@@ -101,44 +101,51 @@ export function GoalView({ goal }: { goal: Goal }) {
         </Card>
       )}
 
-      <ol className="space-y-3" aria-label="Шаги цели">
-        {goal.steps.map((step, i) => (
-          <li key={step.id}>
-            <a
-              href={href(`/onboarding/${goal.id}/steps/${step.id}`)}
-              className="block rounded-2xl focus-visible:outline-2 focus-visible:outline-primary"
-            >
-              <Card className="transition-shadow hover:shadow-[0_6px_20px_#17172212]">
-                <div className="flex items-center gap-4">
-                  <span
-                    aria-hidden
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-muted text-sm font-semibold text-text-secondary"
-                  >
-                    {step.status === 'verified' ? '✓' : i + 1}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium">{step.title}</p>
-                      <StateBadge state={step.status} />
-                    </div>
-                    <p className="mt-0.5 truncate text-sm text-text-secondary">{step.description}</p>
-                    {step.blockers.map((b) => (
-                      <p key={b.id} className="mt-1 flex items-center gap-2 text-xs text-error">
-                        <BlockerStatusBadge status={b.status} /> {b.error_code}
-                      </p>
-                    ))}
-                  </div>
-                  {step.status === 'unverified' && step.dependencies.length > 0 ? (
-                    <Lock size={18} className="shrink-0 text-text-secondary" aria-label="Зависит от предыдущего шага" />
-                  ) : (
-                    <ChevronRight size={18} className="shrink-0 text-text-secondary" aria-hidden />
-                  )}
-                </div>
-              </Card>
-            </a>
-          </li>
-        ))}
-      </ol>
+      <StepList goal={goal} />
     </div>
+  );
+}
+
+// Упорядоченные подзадачи одной цели: состояние, блокер, переход в деталь шага.
+export function StepList({ goal, id }: { goal: Goal; id?: string }) {
+  return (
+  <ol id={id} className="space-y-3" aria-label="Шаги цели">
+    {goal.steps.map((step, i) => (
+      <li key={step.id}>
+        <a
+          href={href(`/onboarding/${goal.id}/steps/${step.id}`)}
+          className="block rounded-2xl focus-visible:outline-2 focus-visible:outline-primary"
+        >
+          <Card className="transition-shadow hover:shadow-[0_6px_20px_#17172212]">
+            <div className="flex items-center gap-4">
+              <span
+                aria-hidden
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-muted text-sm font-semibold text-text-secondary"
+              >
+                {step.status === 'verified' ? '✓' : i + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium">{step.title}</p>
+                  <StateBadge state={step.status} />
+                </div>
+                <p className="mt-0.5 truncate text-sm text-text-secondary">{step.description}</p>
+                {step.blockers.map((b) => (
+                  <p key={b.id} className="mt-1 flex items-center gap-2 text-xs text-error">
+                    <BlockerStatusBadge status={b.status} /> {b.error_code}
+                  </p>
+                ))}
+              </div>
+              {step.status === 'unverified' && step.dependencies.length > 0 ? (
+                <Lock size={18} className="shrink-0 text-text-secondary" aria-label="Зависит от предыдущего шага" />
+              ) : (
+                <ChevronRight size={18} className="shrink-0 text-text-secondary" aria-hidden />
+              )}
+            </div>
+          </Card>
+        </a>
+      </li>
+    ))}
+  </ol>
   );
 }

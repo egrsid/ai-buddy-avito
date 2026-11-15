@@ -72,6 +72,10 @@ func TestMentorContactPreviewAndExport(t *testing.T) {
 			t.Fatalf("leak %q in %s", leak, text)
 		}
 	}
+	// The AI digest sits right under the greeting and survives the export rebuild unchanged.
+	if lines := strings.Split(text, "\n"); len(lines) < 2 || lines[1] != "Кратко: стажёр застрял на шаге и спрашивает про доступ. (сводка ИИ)" {
+		t.Fatal(text)
+	}
 	export := Object{"preview_id": preview["id"], "content_hash": preview["content_hash"], "contact_revision": preview["contact_revision"]}
 	copied := intern.call("POST", "/api/v3/mentor-contact-export", export, 200)
 	if copied["text"] != text || copied["telegram_url"] != "https://t.me/ai_buddy_demo_mentor_a" {
@@ -84,6 +88,14 @@ func TestMentorContactPreviewAndExport(t *testing.T) {
 	if after := intern.call("GET", "/goals/"+str(g["id"]), nil, 200); num(after["version"]) != num(g["version"]) {
 		t.Fatal("contact changed goal state")
 	}
+	// Without the AI service the message simply has no digest, and export still matches.
+	f.setStream("ai_unavailable")
+	plain := intern.call("POST", "/api/v3/mentor-contact-preview", Object{"goal_id": g["id"], "step_id": "check_access"}, 201)
+	if strings.Contains(str(plain["text"]), "Кратко:") {
+		t.Fatal("digest without AI")
+	}
+	intern.call("POST", "/api/v3/mentor-contact-export", Object{"preview_id": plain["id"], "content_hash": plain["content_hash"], "contact_revision": 1}, 200)
+	f.setStream("")
 	f.browser("intern-b").call("POST", "/api/v3/mentor-contact-export", export, 404)
 	f.browser("intern-b").call("POST", "/api/v3/mentor-contact-preview", Object{"goal_id": g["id"], "step_id": "check_access"}, 404)
 	intern.call("POST", "/api/v3/mentor-contact-preview", Object{"goal_id": g["id"], "step_id": "unknown"}, 404)
@@ -179,7 +191,7 @@ func TestTaskBriefLifecycle(t *testing.T) {
 		t.Fatal("published version was mutable")
 	}
 	interns := list(buddy.call("GET", "/api/v3/mentor/interns", nil, 200)["items"])
-	if len(interns) != 2 || strings.Contains(string(encode(interns)), internC) {
+	if len(interns) != 8 || strings.Contains(string(encode(interns)), internC) {
 		t.Fatal(interns)
 	}
 	buddy.call("POST", "/api/v3/task-assignments", Object{"brief_id": id, "brief_version": 1, "intern_id": internC}, 404)
@@ -187,7 +199,10 @@ func TestTaskBriefLifecycle(t *testing.T) {
 	buddy.call("POST", "/api/v3/task-assignments", Object{"brief_id": id, "brief_version": 2, "intern_id": internA}, 409)
 	f.browser("buddy-b").call("POST", "/api/v3/task-assignments", Object{"brief_id": id, "brief_version": 1, "intern_id": internA}, 404)
 	a := buddy.call("POST", "/api/v3/task-assignments", Object{"brief_id": id, "brief_version": 1, "intern_id": internA}, 201)
-	buddy.call("POST", "/api/v3/task-assignments", Object{"brief_id": id, "brief_version": 1, "intern_id": internA}, 409)
+	repeated := buddy.call("POST", "/api/v3/task-assignments", Object{"brief_id": id, "brief_version": 1, "intern_id": internA}, 201)
+	if repeated["id"] != a["id"] {
+		t.Fatal("repeat created another assignment")
+	}
 	if a["verification"] != "not_verified" || obj(a["intern"])["id"] != internA || obj(a["author"])["id"] != buddyA {
 		t.Fatal(a)
 	}
@@ -475,4 +490,44 @@ func TestResponseOriginPersisted(t *testing.T) {
 		}
 	}
 	f.browser("intern-b").call("GET", "/api/v3/conversations/"+str(c["id"])+"/message-origins", nil, 404)
+}
+
+func TestAssignmentSuccessorPreviewAndWindowDecay(t *testing.T) {
+	f := newFixture(t)
+	buddy := f.browser("buddy-a")
+	brief, assignments := buddy.publishedBrief(internA, internB)
+	for i, account := range []string{"intern-a", "intern-b"} {
+		f.browser(account).call("POST", "/api/v3/task-assignments/"+str(assignments[i]["id"])+"/frictions", Object{"section_id": "deadline", "reason": "outcome_unclear"}, 201)
+	}
+	path := "/api/v3/task-assignments/" + str(assignments[0]["id"]) + "/latest-version"
+	preview := f.browser("intern-a").call("GET", path, nil, 200)
+	if num(preview["version"]) != 1 || preview["brief_id"] != brief["id"] {
+		t.Fatal(preview)
+	}
+	f.browser("intern-b").call("GET", path, nil, 404)
+	f.browser("buddy-b").call("GET", path, nil, 404)
+	f.sql("UPDATE app.task_frictions SET first_seen=now()-interval '32 days',last_seen=now()-interval '31 days'")
+	reports := buddy.call("GET", "/api/v3/task-clarity-reports", nil, 200)
+	report := obj(list(reports["items"])[0])
+	if num(report["current_count"]) != 0 || num(report["lifetime_count"]) != 2 || report["state"] != "proposed" {
+		t.Fatal(report)
+	}
+}
+
+func TestCompletedGoalCannotBeStartedAgain(t *testing.T) {
+	f := newFixture(t)
+	b := f.browser("intern-a")
+	g := b.goal()
+	f.setGrant(internA, true)
+	g = b.call("GET", "/goals/"+str(g["id"]), nil, 200)
+	b.check(g, "check_access", "", 201)
+	g = b.call("GET", "/goals/"+str(g["id"]), nil, 200)
+	b.check(g, "check_connection", "require", 201)
+	again := b.call("POST", "/goals", Object{"journey_id": "db-access-team-a", "journey_version": 1}, 200)
+	if again["id"] != g["id"] || again["status"] != "verified" {
+		t.Fatal(again)
+	}
+	if f.count("SELECT count(*) FROM app.goals") != 1 {
+		t.Fatal("repeated completed goal")
+	}
 }

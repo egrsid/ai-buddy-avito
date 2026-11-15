@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
-import { DataModeProvider, useDataMode } from './dataMode';
+import { DataModeProvider, defaultMode, useDataMode } from './dataMode';
 import { ApiError } from './api';
 
 const { demoLoginMock, logoutMock, meMock } = vi.hoisted(() => ({
@@ -53,6 +53,15 @@ describe('DataMode', () => {
     expect(result.current.accountId).toBe('buddy-a');
     expect(result.current.user.account_id).toBe('buddy-a');
     expect(demoLoginMock).not.toHaveBeenCalled();
+  });
+
+  it('без пресета — live по умолчанию; выбор fixtures в вкладке сохраняется', () => {
+    vi.stubEnv('VITE_DATA_MODE', '');
+    expect(defaultMode()).toBe('live');
+    sessionStorage.setItem('buddy-data-mode', 'fixtures');
+    expect(defaultMode()).toBe('fixtures');
+    vi.stubEnv('VITE_DATA_MODE', 'live');
+    expect(defaultMode()).toBe('live');
   });
 
   it('переход в live выполняет demo-login, пользователь из сессии', async () => {
@@ -130,4 +139,11 @@ describe('DataMode', () => {
     expect(second.result.current.sessionReady).toBe(false);
     expect(demoLoginMock).not.toHaveBeenCalled();
   });
+});
+
+it('production ignores a saved fixture mode and fixture build preset', () => {
+  vi.stubEnv('MODE', 'production');
+  vi.stubEnv('VITE_DATA_MODE', 'fixtures');
+  sessionStorage.setItem('buddy-data-mode', 'fixtures');
+  expect(defaultMode()).toBe('live');
 });

@@ -392,8 +392,59 @@ func decideAccess(q *request) (response, error) {
 	if e = q.event(q.r.Header.Get("Idempotency-Key"), kind, "mock_access_adapter", "access_request", str(a["id"]), str(a["action_id"]), payload); e != nil {
 		return response{}, e
 	}
+	if q.body["decision"] == "approved" {
+		if e = q.recheckAfterApproval(a); e != nil {
+			return response{}, e
+		}
+	}
 	v, e := q.one("SELECT "+accessJSON+" FROM app.access_requests a WHERE id=$1", a["id"])
 	return out("AccessRequest", v), e
+}
+
+// recheckAfterApproval: после одобрения Go сам повторяет IAM-проверку шага стажёра —
+// так же, как кнопка «Повторить проверку». Шаг становится verified только по свежему
+// ответу IAM (grant present), само одобрение доказательством не считается.
+func (q *request) recheckAfterApproval(a Object) error {
+	if str(a["step_id"]) != "check_access" {
+		return nil
+	}
+	var grant string
+	if e := q.tx.QueryRow(q.Context, "SELECT grant_state FROM app.access_requests WHERE id=$1", a["id"]).Scan(&grant); e != nil {
+		return e
+	}
+	if grant != "present" {
+		return nil
+	}
+	g, e := q.one("SELECT to_jsonb(g) FROM app.goals g WHERE id=$1 FOR UPDATE", a["goal_id"])
+	if e != nil {
+		return e
+	}
+	var state string
+	if e = q.tx.QueryRow(q.Context, "SELECT state FROM app.step_progress WHERE goal_id=$1 AND step_id='check_access'", g["id"]).Scan(&state); e != nil {
+		return e
+	}
+	if state == "verified" {
+		return nil
+	}
+	t, e := q.template(g["journey_id"], g["journey_version"])
+	if e != nil {
+		return e
+	}
+	// Проверка идёт от имени стажёра: IAM спрашиваем про его доступ, friction — его команды.
+	intern, e := q.one(userSQL, a["intern_id"])
+	if e != nil {
+		return e
+	}
+	approver := q.user
+	q.user = intern
+	_, e = q.performCheck(g, t, "check_access", Object{})
+	q.user = approver
+	// 409 — предыдущий шаг не проверен; performCheck отказал до записи, одобрение остаётся.
+	var p problem
+	if errors.As(e, &p) && p.status == 409 {
+		return nil
+	}
+	return e
 }
 
 // Recover active streams after process restart. Unknown corporate writes reconcile by stable action ID.
@@ -408,6 +459,9 @@ func (s *Server) Recover(ctx context.Context) error {
 	// Enrichment that was running when the process stopped will not finish: keep the
 	// deterministic text and say so instead of leaving the report pending forever.
 	if _, e = s.Pool.Exec(ctx, "UPDATE app.task_clarity_reports SET enrichment_status='failed' WHERE enrichment_status='pending'"); e != nil {
+		return e
+	}
+	if _, e = s.Pool.Exec(ctx, "UPDATE app.revision_proposals SET status='unavailable',questions='[\"Генерация прервана перезапуском. Запросите новое предложение.\"]',proposal_revision=proposal_revision+1 WHERE status='generating'"); e != nil {
 		return e
 	}
 	return s.reconcilePending(ctx)

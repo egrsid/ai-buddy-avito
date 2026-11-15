@@ -2,6 +2,9 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
+  // Все сценарии ходят под одними демо-аккаунтами, а вход закрывает прежнюю сессию
+  // пользователя: параллельные прогоны выбивали бы друг друга.
+  workers: 1,
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:5173',
     channel: process.env.PLAYWRIGHT_CHROMIUM_CHANNEL,
