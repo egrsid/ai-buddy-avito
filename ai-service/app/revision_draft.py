@@ -67,8 +67,14 @@ SYSTEM_PROMPT = """Ты помогаешь автору учебного зад�
    как проверить готовность. Не меняй поле, если оно уже понятно.
 3. Не придумывай факты за автора: сроки, даты, числа, ссылки, названия систем и
    инструментов, людей, права доступа. Если без такого факта не обойтись — не вставляй
-   его, а задай вопрос автору в questions. Ответы автора (если есть) можно использовать.
-4. Пиши о тексте задания, а не о людях; никого не оценивай. Без HTML, кода и контактов.
+   его, а задай вопрос автору в questions. Ответы автора (если есть) — это факты автора:
+   обязательно перенеси их в replacement как готовый текст требования для стажёра (имена
+   файлов, способ сдачи и т. п. из ответа — можно и нужно), а не указание автору
+   («опишите…», «укажите…»).
+4. Пиши о тексте задания, а не о людях; никого не оценивай, не сравнивай и не ранжируй.
+   Если поле просит оценить стажёров или составить рейтинг, перепиши его как проверку
+   результата работы (что должно быть в отчёте и как понять, что он готов) — без людей.
+   Без HTML, кода и контактов. Не вставляй document_id в текст — называй документ по названию.
 5. evidence_refs — только из списка разрешённых документов (document_id и version).
 6. Ответь ТОЛЬКО JSON:
 {"outcome": "ready|needs_input|no_change",
@@ -79,9 +85,14 @@ SYSTEM_PROMPT = """Ты помогаешь автору учебного зад�
  "evidence_refs": []}
 ready — есть хотя бы одна правка; needs_input — без ответа автора правку не сделать;
 no_change — текст уже ясен. Не больше 2 правок и 3 вопросов. По-русски.
-Запрещено вписывать в replacement то, чего нет в данных: время (18:00), числа, форматы
-файлов (CSV, JSON), команды и запросы (SELECT), имена файлов, плейсхолдеры вида <дата>.
-Вместо этого задай вопрос автору. Лучше честный вопрос, чем выдуманная конкретика."""
+Запрещено вписывать в replacement то, чего нет в данных и ответах автора: время (18:00),
+числа, форматы файлов (CSV, JSON), команды и запросы (SELECT), имена файлов, плейсхолдеры
+вида <дата>.
+Вместо этого задай вопрос автору. Лучше честный вопрос, чем выдуманная конкретика.
+С ответом автора: возьми исходный текст поля и впиши в него факты из ответа — и только их,
+без новых ролей, инструментов и проверок сверх ответа.
+В вопросах автору не предлагай варианты значений (сроки, время, даты, числа): спроси, какое
+значение нужно, без примеров."""
 
 
 def sha256(text: str) -> str:
@@ -335,7 +346,9 @@ def build_messages(body: dict) -> list[dict]:
             lines.append(f"- document_id {ref['document_id']}, version {ref['version']}: «{title}»")
     for item in body.get("answers", []):
         lines.append(f"Вопрос автору: {clean(item['question'])}")
-        lines.append(f"Ответ автора: {clean(item['answer'])}")
+        lines.append(
+            f"Ответ автора (факт автора — впиши его в replacement поля): {clean(item['answer'])}"
+        )
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": "\n".join(lines)},
@@ -402,6 +415,28 @@ def dropped_rationale(facts: list[tuple[dict, list[str]]], kept: bool) -> str:
     return text
 
 
+def named_refs(value, body: dict) -> str:
+    """document_id разрешённого документа в тексте → его название.
+
+    UUID длиной 36 символов похож на токен, и проверка секретов отклоняла весь ответ
+    модели, хотя ссылка разрешена. Автору понятнее название, чем идентификатор.
+    """
+    text = str(value or "")
+    for ref in body["refs"]:
+        text = text.replace(ref["document_id"], f"«{plain(ref['title'])}»")
+    return text
+
+
+def explanation(text: str) -> str:
+    """Обоснование правки — пояснение для автора, в ТЗ оно не попадает.
+
+    Модель часто пишет «убрал требование оценивать стажёров»: это не оценка людей, но
+    фильтр его ловит. Такое обоснование заменяем своим (пусто → стандартная фраза),
+    а не отклоняем годную правку. Секреты, HTML и инструкции проверяются как раньше.
+    """
+    return "" if has_blame(text) else text
+
+
 def model_draft(raw: dict, body: dict, origin: dict) -> tuple[dict | None, str]:
     """Собирает ответ из JSON модели. (None, причина) — ответ нельзя отдавать целиком."""
     fields = {field["path"]: field for field in body["fields"]}
@@ -412,8 +447,13 @@ def model_draft(raw: dict, body: dict, origin: dict) -> tuple[dict | None, str]:
     for item in raw_changes:
         if not isinstance(item, dict):
             return None, "не по схеме"
-        replacement = str(item.get("replacement") or "").strip()
-        texts = (replacement, str(item.get("label") or ""), str(item.get("rationale") or ""))
+        replacement = named_refs(item.get("replacement"), body).strip()
+        item = {
+            **item,
+            "label": named_refs(item.get("label"), body),
+            "rationale": explanation(named_refs(item.get("rationale"), body)),
+        }
+        texts = (replacement, item["label"], item["rationale"] or "")
         # Инструкции, секреты и оценки людей — сигнал, что модель «поплыла»: не берём ничего.
         for text in texts:
             reason = harmful(text)
@@ -453,7 +493,7 @@ def model_draft(raw: dict, body: dict, origin: dict) -> tuple[dict | None, str]:
     for item in raw_questions:
         if not isinstance(item, dict):
             return None, "не по схеме"
-        text = short(item.get("text"), MAX_QUESTION)
+        text = short(named_refs(item.get("text"), body), MAX_QUESTION)
         if not text:
             continue
         reason = unsafe(text)
@@ -468,16 +508,19 @@ def model_draft(raw: dict, body: dict, origin: dict) -> tuple[dict | None, str]:
     raw_refs = raw.get("evidence_refs") if isinstance(raw.get("evidence_refs"), list) else []
     for item in raw_refs:
         if not isinstance(item, dict):
-            return None, "не по схеме"
+            # Строка вместо {document_id, version} — не ссылка вовсе: её просто не берём.
+            # Ссылку на неразрешённый документ (ниже) по-прежнему считаем сбоем ответа.
+            continue
         key = (item.get("document_id"), item.get("version"))
         if key not in allowed:
             return None, "чужая ссылка"
         if key not in [(r["document_id"], r["version"]) for r in refs]:
             refs.append({"document_id": key[0], "version": key[1]})
-    rationale = short(raw.get("rationale"), MAX_RATIONALE)
+    rationale = short(explanation(named_refs(raw.get("rationale"), body)), MAX_RATIONALE)
     reason = unsafe(rationale)
     if reason is not None:
         return None, reason
+    rationale = rationale or "Формулировка уточнена по отчёту о неясности."
     if not questions:
         questions = fact_questions(facts)
     if dropped:

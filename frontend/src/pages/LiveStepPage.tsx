@@ -24,6 +24,7 @@ import { SourceDrawer } from '../components/SourceDrawer';
 import { LiveChatPage } from './LiveChatPage';
 import { MentorContactCard } from '../components/MentorContactCard';
 import { BlockerStatusBadge, CheckStatusBadge, StateBadge } from '../components/StatusBadge';
+import { localTime, methodLabel, sourceLabel, stepTitle } from '../lib/labels';
 
 // RP-FE-02: live-вариант страницы шага.
 // Данные — GET step/actions; проверка — POST checks; заявка — POST actions.
@@ -141,7 +142,7 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
           </div>
           {s.dependencies.length > 0 && (
             <p className="mb-3 text-sm text-text-secondary">
-              Зависит от: {s.dependencies.map((d) => d.step_id).join(', ')}
+              Сначала нужно: {s.dependencies.map((d) => `«${stepTitle(d.step_id)}»`).join(', ')}
             </p>
           )}
           <button
@@ -242,17 +243,17 @@ export function LiveStepPage({ goalId, stepId }: { goalId: string; stepId: strin
 
         {s.evidence.length > 0 && (
           <Card>
-            <h3 className="mb-3 font-medium">Evidence</h3>
+            <h3 className="mb-3 font-medium">Результаты проверок</h3>
             <ul className="space-y-2">
               {s.evidence.map((e) => (
                 <li key={e.id} className="flex flex-wrap items-center gap-2 text-sm">
                   <CheckStatusBadge status={e.result === 'passed' ? 'passed' : 'failed'} />
                   <span className="text-text-secondary">
-                    {e.method} · {e.observed_at} · {e.source} · синтетические данные
+                    {methodLabel(e.method)} · {localTime(e.observed_at)} · {sourceLabel(e.source)} · синтетические данные
                   </span>
                   {e.invalidated_at && (
                     <span className="rounded bg-amber-50 px-1.5 py-0.5 text-xs text-amber-700">
-                      устарело {e.invalidated_at}
+                      устарело {localTime(e.invalidated_at)}
                     </span>
                   )}
                 </li>

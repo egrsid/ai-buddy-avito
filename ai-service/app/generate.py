@@ -55,6 +55,22 @@ def search_query(request: dict) -> str:
     return query
 
 
+def relevant_hits(
+    knowledge: KnowledgeBase, scope: dict, request: dict, hits: list, query_vector=None
+) -> list:
+    """Какие из найденных документов показать стажёру как «Подходящие материалы».
+
+    Поиск для модели добавляет к вопросу название шага, поэтому документы шага находятся
+    всегда — даже на «погода в Москве». Модель они пусть видят (помогают объяснить шаг),
+    а показываем только те, что совпали с самим вопросом: иначе ссылки «для галочки».
+    Вектор (если включён) отсекает слабые совпадения порогом VECTOR_MIN_SCORE.
+    """
+    question = last_user_message(request)
+    found = knowledge.search(scope, question, GENERATE_TOP_K, query_vector)
+    matched = {hit.document.id for hit in found}
+    return [hit for hit in hits if hit.document.id in matched]
+
+
 def tool_proposal(request: dict, scenario: str) -> dict | None:
     """Не больше одного предложения за run; своё предложение сверяем со схемой."""
     if scenario == "invalid_tool":
@@ -104,11 +120,12 @@ async def run_generate(
         query_vector = await embed_query(embedder, query)
     # Фильтр прав внутри search — до ранжирования и до модели.
     hits = knowledge.search(scope, query, GENERATE_TOP_K, query_vector)
+    shown = relevant_hits(knowledge, scope, request, hits, query_vector)
     # Эмбеддинг вопроса тоже тратит общий бюджет: проверяем до запроса к модели.
     if too_late():
         yield timeout_event()
         return
-    llm_input = LlmInput(build_messages(request, hits), request, hits)
+    llm_input = LlmInput(build_messages(request, hits), request, hits, sources=shown)
     chunks = provider.stream(llm_input, scenario)
     if hasattr(chunks, "pipeline_deadline"):
         # Give the local notice time to reach Go before the hard pipeline deadline.
@@ -163,7 +180,7 @@ async def run_generate(
     yield event("response.origin", {"run_id": run_id, "origin": response_origin(settings, chunks)})
     # Перед выдачей ещё раз проверяем права на каждый источник.
     sources = []
-    for hit in hits:
+    for hit in shown:
         if knowledge.get(scope, hit.document.id) is not None:
             sources.append(source_for(hit.document, hit.chunk))
     yield event("message.sources", {"run_id": run_id, "sources": sources})

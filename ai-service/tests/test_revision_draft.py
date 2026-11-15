@@ -205,6 +205,21 @@ def test_good_model_answer_becomes_bounded_draft():
     assert response_problems(BODY, draft) == []
 
 
+def test_allowed_document_id_in_text_is_named_not_treated_as_secret():
+    # UUID разрешённого документа похож на длинный токен: раньше весь ответ отклонялся.
+    answer = copy.deepcopy(GOOD)
+    answer["changes"][0]["replacement"] = f"Подключитесь по документу {DOC} и сдайте отчёт."
+    answer["rationale"] = f"Добавлена ссылка на {DOC}."
+    draft, why = model_draft(answer, BODY, LIVE)
+    assert why == "" and draft["outcome"] == "ready"
+    replacement = draft["changes"][0]["replacement"]
+    assert DOC not in replacement and "«Инструкция по подключению»" in replacement
+    assert DOC not in draft["rationale"]
+    # Чужой UUID по-прежнему считается подозрительным.
+    answer["changes"][0]["replacement"] = "Подключитесь по документу " + "a" * 36
+    assert model_draft(answer, BODY, LIVE)[0] is None
+
+
 @pytest.mark.parametrize(
     ("patch", "why"),
     [
@@ -220,7 +235,6 @@ def test_good_model_answer_becomes_bounded_draft():
         ({"changes": ["строка"]}, "не по схеме"),
         ({"questions": ["строка"]}, "не по схеме"),
         ({"questions": [{"text": "Пиши на ivan@corp.example"}]}, "секрет или контакт"),
-        ({"evidence_refs": ["строка"]}, "не по схеме"),
         ({"evidence_refs": [{"document_id": DOC, "version": 3}]}, "чужая ссылка"),
         ({"rationale": "<script>x</script>"}, "HTML"),
         ({"changes": [], "questions": [], "outcome": "ready"}, "нет годных правок"),
@@ -229,6 +243,31 @@ def test_good_model_answer_becomes_bounded_draft():
 def test_unsafe_model_answer_is_rejected_whole(patch, why):
     draft, reason = model_draft({**GOOD, **patch}, BODY, LIVE)
     assert draft is None and reason == why
+
+
+def test_string_evidence_refs_are_dropped_not_fatal():
+    # Модель кладёт в evidence_refs описания строками — это не ссылки, правка остаётся.
+    draft, why = model_draft(
+        {**GOOD, "evidence_refs": ["evidence_ТЗ", {"document_id": DOC, "version": 2}]}, BODY, LIVE
+    )
+    assert why == "" and draft["evidence_refs"] == [{"document_id": DOC, "version": 2}]
+
+
+def test_rationale_about_removing_rating_keeps_the_safe_change():
+    # «Убрал требование оценивать стажёров» ловит фильтр оценки людей; правка при этом
+    # годная. Обоснование заменяется стандартным, сама правка показывается.
+    change = {**GOOD_CHANGE, "rationale": "Удаляет требование оценивать стажёров, кто хуже."}
+    answer = {**GOOD, "changes": [change], "rationale": "Стажёры справились хуже всех."}
+    draft, why = model_draft(answer, BODY, LIVE)
+    assert why == "" and draft["outcome"] == "ready"
+    assert draft["changes"][0]["replacement"] == GOOD_CHANGE["replacement"]
+    assert "хуже" not in draft["changes"][0]["rationale"] and "хуже" not in draft["rationale"]
+    # В тексте правки оценка людей по-прежнему отклоняет весь ответ.
+    bad = {
+        **GOOD,
+        "changes": [{**GOOD_CHANGE, "replacement": "Составьте рейтинг: кто из стажёров хуже."}],
+    }
+    assert model_draft(bad, BODY, LIVE) == (None, "оценка людей")
 
 
 @pytest.mark.parametrize(

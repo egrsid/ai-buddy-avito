@@ -112,8 +112,8 @@ def check_ready(revision: tuple | None, settings: Settings) -> None:
     if revision is None:
         raise IndexNotReady("индекс kb пуст: запустите python -m app.ingest")
     mode, model = revision[2], revision[3]
-    if settings.llm_mode == "live" and mode != "live":
-        raise IndexNotReady("LLM_MODE=live, а в kb индекс без векторов: нужен live-ingest")
+    # Индекс без векторов допустим и в live: ingest пишет его, когда эмбеддинги недоступны
+    # (бюджет, провайдер). Поиск тогда лексический, вопросы векторами не сравниваются.
     # Несовместимые векторы не смешиваем: вопрос и фрагменты — с одним профилем.
     profile = embedding_profile(settings)
     if mode == "live" and model != profile:

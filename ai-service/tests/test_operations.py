@@ -361,7 +361,7 @@ def test_goal_context_names_steps_and_actions_in_words():
     goal_context = generate_request()["goal_context"]
     goal_context["next_actions"] = ["retry_check", "escalate_to_buddy", "future_action"]
     summary = goal_summary(goal_context)
-    assert "«Повторить проверку»" in summary and "«Спросить наставника»" in summary
+    assert "«Повторить проверку»" in summary and "«Подготовить сообщение»" in summary
     # Неизвестное действие не теряется, а показывается как есть.
     assert "future_action" in summary
     for step in goal_context["steps"]:

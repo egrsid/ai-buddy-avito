@@ -8,6 +8,7 @@ import { getBrief, listAssignments, listReports, type TaskBriefT } from '../lib/
 import { getGoal } from '../lib/endpoints';
 import { revisionFieldLabel, revisionOriginal } from './revisionOriginal';
 import { Button, Card, LoadingState, ErrorState, PageHeader } from '../components/ui';
+import { localTime, sourceLabel } from '../lib/labels';
 const statusText: Record<string, string> = {
   generating: 'Генерация предложения',
   ready: 'Готово к проверке',
@@ -241,7 +242,7 @@ function GoalDetails({ id }: { id: string }) {
               <li key={e.id} className="border-l-2 border-primary pl-3 text-sm">
                 {e.label}
                 <p className="text-xs text-text-secondary">
-                  {e.source} · {e.observed_at} ·{' '}
+                  {sourceLabel(e.source)} · {localTime(e.observed_at)} ·{' '}
                   {e.validity === 'invalidated'
                     ? 'Отозвано'
                     : e.trusted

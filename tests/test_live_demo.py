@@ -1,8 +1,22 @@
 """Live-демо: неверный .env останавливает запуск до Docker, оболочка не перебивает .env."""
 
+import io
+import json
+import subprocess
+import urllib.error
+from types import SimpleNamespace
+
 import pytest
 
-from scripts.live_demo import config_problems, configuration, main, read_env_file
+from scripts.live_demo import (
+    budget_warning,
+    config_problems,
+    configuration,
+    key_problems,
+    main,
+    price_problems,
+    read_env_file,
+)
 
 GOOD = {
     "LLM_MODE": "live",
@@ -56,9 +70,93 @@ def test_missing_env_file(tmp_path):
     assert main(["check", "--env-file", str(tmp_path / "нет.env")]) == 2
 
 
-def test_check_passes_without_docker(tmp_path, monkeypatch):
+def test_check_passes_without_docker(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr("scripts.live_demo.subprocess.run", pytest.fail)
-    assert main(["check", "--env-file", str(write_env(tmp_path, GOOD))]) == 0
+    monkeypatch.setattr("scripts.live_demo.key_problems", lambda values: [])
+    path = write_env(tmp_path, GOOD).rename(tmp_path / ".env.live-v4")
+    assert main(["check", "--env-file", str(path)]) == 0
+    assert "в .env.live-v4 в порядке" in capsys.readouterr().out
+
+
+def test_check_reports_rejected_key_by_name(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(
+        "scripts.live_demo.key_problems", lambda values: ["провайдер отклонил LLM_API_KEY"]
+    )
+    assert main(["check", "--env-file", str(write_env(tmp_path, GOOD))]) == 2
+    output = capsys.readouterr().out
+    assert "LLM_API_KEY" in output and "secret-key-value" not in output
+
+
+class Catalog:
+    """Подмена urllib opener: отдаёт каталог /models или бросает ошибку."""
+
+    def __init__(self, ids=(), error=None):
+        self.ids, self.error, self.request = ids, error, None
+
+    def __call__(self, request, timeout):
+        self.request = request
+        if self.error:
+            raise self.error
+        return io.BytesIO(json.dumps({"data": [{"id": name} for name in self.ids]}).encode())
+
+
+def http_error(code):
+    return urllib.error.HTTPError("https://example.invalid/v1/models", code, "", {}, None)
+
+
+def test_key_check_uses_free_models_catalog():
+    catalog = Catalog(ids=("primary-model", "embed-model"))
+    assert key_problems(GOOD, catalog) == []
+    assert catalog.request.full_url == "https://example.invalid/v1/models"
+    assert catalog.request.get_header("Authorization") == "Bearer secret-key-value"
+    missing = key_problems({**GOOD, "LLM_FALLBACK_MODEL": "reserve"}, catalog)
+    assert missing == ["модели reserve (LLM_FALLBACK_MODEL) нет в каталоге провайдера"]
+    rejected = key_problems(GOOD, Catalog(error=http_error(401)))
+    assert rejected == ["провайдер отклонил LLM_API_KEY (HTTP 401)"]
+    assert "HTTP 500" in key_problems(GOOD, Catalog(error=http_error(500)))[0]
+    assert "провайдер недоступен" in key_problems(GOOD, Catalog(error=OSError()))[0]
+
+
+def test_price_below_catalog_is_reported_higher_is_allowed():
+    catalog = {
+        "primary-model": {"prompt_tokens_cost": 73.03, "generated_tokens_cost": 176.39},
+        "embed-model": {"prompt_tokens_cost": 0.61},
+        "reserve": {},  # нет цены в каталоге — не проверяем
+    }
+    good = {**GOOD, "LLM_PRICE_INPUT_RUB": "96.22", "LLM_PRICE_OUTPUT_RUB": "176.39"}
+    assert price_problems({**good, "LLM_FALLBACK_MODEL": "reserve"}, catalog) == []
+    cheap = price_problems({**good, "LLM_PRICE_OUTPUT_RUB": "100"}, catalog)
+    assert cheap == ["LLM_PRICE_OUTPUT_RUB=100 ниже цены каталога 176.39 (primary-model)"]
+    assert price_problems({**good, "EMBEDDING_PRICE_RUB": "0.1"}, catalog)
+
+
+def test_budget_warning_when_ledger_is_above_stop(monkeypatch):
+    spent = {"value": 88.44}
+    monkeypatch.setattr(
+        "scripts.live_demo.subprocess.run",
+        lambda *a, **k: SimpleNamespace(stdout=json.dumps({"spent_rub": spent["value"]})),
+    )
+    warning = budget_warning(["docker"], {}, {**GOOD, "LLM_BUDGET_STOP_RUB": "20"})
+    assert "88.44" in warning and "Поднимите LLM_BUDGET_STOP_RUB" in warning
+    spent["value"] = 3
+    assert "потрачено 3.00 ₽ из стоп-порога 800" in budget_warning(["docker"], {}, GOOD)
+
+
+def test_budget_warning_is_silent_when_ledger_is_unreadable(monkeypatch):
+    def fail(command, **kwargs):
+        raise subprocess.CalledProcessError(1, command)
+
+    monkeypatch.setattr("scripts.live_demo.subprocess.run", fail)
+    assert budget_warning(["docker"], {}, GOOD) is None
+
+
+def test_busy_port_stops_live_up(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr("scripts.live_demo.subprocess.run", pytest.fail)
+    monkeypatch.setattr(
+        "scripts.live_demo.port_problems", lambda *a: ["Порт 18087 (Go API) занят стендом x."]
+    )
+    assert main(["up", "--env-file", str(write_env(tmp_path, GOOD))]) == 2
+    assert "18087" in capsys.readouterr().err
 
 
 def test_shell_llm_settings_do_not_override_env_file(tmp_path, monkeypatch):
@@ -97,11 +195,14 @@ def test_bad_tariffs_are_rejected_before_paid_calls(price):
     assert config_problems({**GOOD, "LLM_BUDGET_STOP_RUB": "801"})
 
 
-def test_up_and_down_call_compose(tmp_path, monkeypatch):
+def test_up_and_down_call_compose(tmp_path, monkeypatch, capsys):
     calls = []
-    monkeypatch.setattr(
-        "scripts.live_demo.subprocess.run", lambda command, **kwargs: calls.append(command)
-    )
+    monkeypatch.setattr("scripts.live_demo.port_problems", lambda *a: [])
+    monkeypatch.setattr("scripts.live_demo.budget_warning", lambda *a: "Журнал расходов: ok")
+    for module in ("scripts.live_demo", "scripts.demo"):
+        monkeypatch.setattr(
+            f"{module}.subprocess.run", lambda command, **kwargs: calls.append(command)
+        )
     path = write_env(tmp_path, GOOD)
     assert main(["up", "--env-file", str(path)]) == 0
     assert main(["down", "--env-file", str(path)]) == 0
@@ -109,6 +210,8 @@ def test_up_and_down_call_compose(tmp_path, monkeypatch):
     assert calls[0][-4:] == ["up", "--build", "-d", "--wait"]
     assert calls[1][-1] == "down" and "--volumes" not in calls[1]
     assert calls[2][-2:] == ["ps", "-a"]
+    output = capsys.readouterr().out
+    assert "Готово: откройте http://localhost:15173" in output and "Журнал расходов" in output
 
 
 def test_cached_build_falls_back_to_network_build_without_cached_images(tmp_path, monkeypatch):

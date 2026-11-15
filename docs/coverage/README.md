@@ -1,18 +1,21 @@
 # Отчёт о покрытии прикладного кода
 
-Измерение: GitHub Actions `checks`, run **43641861038**, 14 ноября 2026.
-Сохранены исходные artifacts инструмента, а не вручную составленный процент.
-При подготовке документации прикладной код не менялся; SHA-256 каждого измеренного
-исходника в [source-manifest.json](source-manifest.json) проверяется автоматически
-(переводы строк CRLF из Windows-checkout приводятся к LF, как в репозитории).
+Измерение: Backend и corporate mock — GitHub Actions `checks`, run **43641861038**,
+14 ноября 2026 (их измеряемые исходники с тех пор не менялись). AI и frontend
+перемерены 15 ноября 2026 после правок по внешней проверке теми же component runners,
+что в CI (`scripts.check_components ai`, Vitest coverage в `node:26.13.0`).
+Сохранены исходные отчёты инструментов, а не вручную составленный процент.
+SHA-256 каждого измеренного исходника в [source-manifest.json](source-manifest.json)
+проверяется автоматически (переводы строк CRLF из Windows-checkout приводятся к LF,
+как в репозитории).
 История Git может менять commit IDs, поэтому соответствие устанавливается по содержимому файлов.
 
 | Компонент | Покрытые / учитываемые строки | Line coverage | Инструмент / исходный отчёт |
 |---|---|---|---|
 | Backend | 2975 / 3594 | **82,78%** | Go `test -race -coverpkg=./internal/...` + [line profile](backend.coverprofile) |
-| AI | 3343 / 3450 | **96,90%** | pytest-cov / [Cobertura XML](ai.xml) |
+| AI | 3363 / 3470 | **96,92%** | pytest-cov / [Cobertura XML](ai.xml) |
 | Corporate mock | 201 / 205 | **98,05%** | pytest-cov / [Cobertura XML](mock.xml) |
-| Frontend | 1802 / 1880 | **95,85%** | Vitest v8 / [JSON summary](frontend-summary.json), [LCOV](frontend-lcov.info) |
+| Frontend | 1811 / 1889 | **95,87%** | Vitest v8 / [JSON summary](frontend-summary.json), [LCOV](frontend-lcov.info) |
 
 Все четыре компонента превышают требование кейса **>80%**; независимый gate проекта —
 **≥82%**. [Машинная сводка](summary.json) сопоставляется с исходными профилями.
@@ -44,11 +47,10 @@ uv run --frozen python -m scripts.verify_coverage
 
 ## Остальные результаты того же CI
 
-Backend vet/build/tests с race — PASS; AI 547 PASS и 5 DB skipped в unit job;
-corporate mock 6 PASS; отдельные PostgreSQL/pgvector tests в Compose — 5 PASS;
-runtime schema tests — 11 PASS; browser suite с реальным restart — 8 PASS.
-Локальная независимая проверка того же runtime: frontend 630 PASS / 41 test files,
-AI 547 PASS; тесты подготовки документации добавлены отдельно в shared suite.
+Backend vet/build/tests с race — PASS; corporate mock 6 PASS; отдельные
+PostgreSQL/pgvector tests в Compose — 5 PASS; runtime schema tests — 11 PASS;
+browser suite с реальным restart — 8 PASS. Перемер 15 ноября: AI 551 PASS и 5 DB
+skipped, frontend 632 PASS / 42 test files.
 
 CI не использует платный LLM-ключ. Live eval выполняется отдельно с собственным
 ключом по инструкции тестирования. Фильтрация/fallback не означает, что любой

@@ -31,7 +31,7 @@ func main() {
 		log.Fatal(e)
 	}
 	if e = server.Recover(ctx); e != nil {
-		log.Fatal("database recovery failed")
+		log.Fatalf("database recovery failed: %v", e)
 	}
 	go server.Maintain(ctx)
 	httpServer := &http.Server{Addr: ":8080", Handler: server.Handler(), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second}

@@ -144,7 +144,6 @@ LIVE = {"llm_mode": "live", "llm_base_url": "http://ollama:11434", "llm_model": 
     "revision, settings",
     [
         (None, {}),
-        (("kb-1", "t", "mock", None), LIVE),  # live-сервис на индексе без векторов
         (("kb-1", "t", "live", "other-model"), LIVE),  # векторы другой модели
         (("kb-1", "t", "live", "other-model"), {}),  # и в mock не смешиваем
         # Старый индекс (только имя модели) и та же модель у другого провайдера — reindex.
@@ -165,6 +164,8 @@ def test_check_ready_rejects_unsuitable_index(revision, settings):
     "revision, settings",
     [
         (("kb-1", "t", "mock", None), {}),
+        # Live-ingest без эмбеддингов (бюджет, провайдер) — лексический поиск, стенд работает.
+        (("kb-1", "t", "mock", None), LIVE),
         (("kb-1", "t", "live", "ollama:bge-m3:1024:p1"), LIVE),
         # Смена модели чата не требует reindex: профиль векторов тот же.
         (("kb-1", "t", "live", "ollama:bge-m3:1024:p1"), {**LIVE, "llm_model": "another-chat"}),
@@ -272,7 +273,7 @@ def test_db_ready_when_index_suits_settings():
     "revision, settings, reason",
     [
         (None, {}, "пуст"),
-        (("kb-1", "2026-11-12T10:00:00", "mock", None), LIVE, "без векторов"),
+        (("kb-1", "2026-11-12T10:00:00", "live", "bge-m3"), LIVE, "нужен ingest"),
     ],
 )
 def test_db_not_ready_without_suitable_index(revision, settings, reason):

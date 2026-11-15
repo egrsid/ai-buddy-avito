@@ -12,9 +12,16 @@ import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from scripts.demo import configuration, offline_images_present
+from scripts.demo import compose, configuration, offline_images_present, port_problems
 from scripts.seed_v4_cohorts import cohort_id
-from scripts.v4_live_acceptance import Actor
+
+try:
+    from scripts.v4_live_acceptance import Actor
+except ModuleNotFoundError as missing:  # httpx приходит с зависимостями проекта
+    raise SystemExit(
+        f"Нет пакета {missing.name}: скрипту нужны зависимости проекта. Запустите так:\n"
+        "  uv sync --frozen\n  uv run --frozen python -m scripts.v4_cohorts up"
+    ) from missing
 
 ROOT = Path(__file__).resolve().parents[1]
 DATASET = "v4-cohorts-v1"
@@ -222,7 +229,16 @@ def main(argv=None) -> int:
     if args.action == "up":
         if not (directory / "clock.json").exists():
             write_clock(directory, datetime.now(UTC).replace(microsecond=0) - timedelta(days=16))
-        subprocess.run(command + ["up", "--build", "-d", "--wait"], env=env, cwd=ROOT, check=True)
+        busy = port_problems(
+            args.project,
+            {"сайт": int(env["FRONTEND_PORT"]), "Go API": int(env["BACKEND_PORT"])},
+            "Остановите стенд, который держит порты 15181/18088 "
+            "(uv run --frozen python -m scripts.v4_cohorts down --project <имя>).",
+        )
+        if busy:
+            print("Стенд когорт не запущен:", *busy, sep="\n - ")
+            return 2
+        compose(command + ["up", "--build", "-d", "--wait"], env, "поднять стенд когорт")
         result = populate(env["APP_ORIGIN"], directory)
         print("Synthetic cohort API:", result["status"], "→", env["APP_ORIGIN"])
     elif args.action == "populate":

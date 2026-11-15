@@ -130,7 +130,7 @@ test('A/B/C full browser loop, ACL and real service restart', async ({ page }, i
   await page.screenshot({ path: info.outputPath('knowledge-gap.png'), fullPage: true });
   const project = process.env.DEMO_PROJECT;
   expect(project, 'Set DEMO_PROJECT for real restart acceptance').toMatch(/^ai-buddy-demo-/);
-  execFileSync('python3', ['-m', 'scripts.demo', 'restart', '--project', project!], { cwd: path.resolve(process.cwd(), '..'), stdio: 'pipe' });
+  execFileSync(process.env.PYTHON ?? 'python3', ['-m', 'scripts.demo', 'restart', '--project', project!], { cwd: path.resolve(process.cwd(), '..'), stdio: 'pipe' });
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Кандидат: check_connection' })).toBeVisible();
   expect((await read(page, '/knowledge-gaps/' + candidate.id)).state).toBe('accepted');

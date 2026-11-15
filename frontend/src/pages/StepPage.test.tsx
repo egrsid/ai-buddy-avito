@@ -17,7 +17,7 @@ describe('StepPage', () => {
     renderBlocked();
     expect(await screen.findByRole('heading', { name: blockedStep.title })).toBeInTheDocument();
     expect(screen.getAllByText('DB_SSL_REQUIRED').length).toBeGreaterThan(0);
-    expect(screen.getByText('Evidence')).toBeInTheDocument();
+    expect(screen.getByText('Результаты проверок')).toBeInTheDocument();
     expect(screen.getByText('Проверки')).toBeInTheDocument();
   });
 

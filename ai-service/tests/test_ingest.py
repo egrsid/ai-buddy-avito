@@ -81,12 +81,28 @@ def test_repeated_ingest_without_changes_writes_nothing(capsys):
     assert "уже актуален" in capsys.readouterr().out
 
 
-def test_live_ingest_with_embeddings_down_writes_nothing(capsys):
+def test_live_ingest_with_embeddings_down_writes_lexical_index(capsys):
+    # Бюджет исчерпан или провайдер молчит: стенд должен стартовать с поиском по словам.
     database = Database()
-    fake = FakeEmbedder(error=EmbeddingError("Ollama недоступна"))
-    assert run_ingest(database, LIVE_ENV, fake) == ingest.EXIT_EMBEDDINGS
+    fake = FakeEmbedder(error=EmbeddingError("Платный вызов запрещён"))
+    assert run_ingest(database, LIVE_ENV, fake) == ingest.EXIT_OK
+    assert database.connection.transactions == 1
+    assert all(row[4] is None and row[5] is None for row in database.inserts("chunks"))
+    (metadata,) = database.inserts("index_metadata")
+    assert metadata[:3] == ("mock", None, None)
+    # Версия — от mock-индекса: следующий live-ingest её не примет за актуальную.
+    assert metadata[3] == ingest.dataset_version(DOCUMENTS, "mock", None)
+    assert metadata[3] != ingest.dataset_version(DOCUMENTS, "live", "ollama:bge-m3:1024:p1")
+    captured = capsys.readouterr()
+    assert "Эмбеддинги недоступны" in captured.err and "без векторов" in captured.err
+
+
+def test_live_ingest_with_embeddings_down_keeps_current_lexical_index(capsys):
+    database = Database(ingest.dataset_version(DOCUMENTS, "mock", None))
+    fake = FakeEmbedder(error=EmbeddingError("Платный вызов запрещён"))
+    assert run_ingest(database, LIVE_ENV, fake) == ingest.EXIT_OK
     assert database.connection.transactions == 0
-    assert "Эмбеддинги недоступны" in capsys.readouterr().err
+    assert "уже актуален" in capsys.readouterr().out
 
 
 def test_database_error_exit_code_hides_details(capsys):

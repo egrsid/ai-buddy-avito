@@ -40,7 +40,10 @@ uv run --frozen python -m scripts.check_components mock
 
 ## Полная проверка в Docker/браузере
 
-На отдельном свежем наборе, с портами по умолчанию из README:
+На отдельном свежем наборе, с портами по умолчанию из README. Сначала остановите стенд
+из README (`python3 -m scripts.demo down --project ai-buddy-demo-review`) или задайте другие
+порты (`DEMO_FRONTEND_PORT`/`DEMO_BACKEND_PORT` и тот же порт в `E2E_BASE_URL`): на занятых
+портах `demo up` откажется запускаться и назовёт стенд, который их держит.
 
 ```sh
 python3 -m scripts.demo up --project ai-buddy-demo-tests
@@ -52,13 +55,18 @@ cd ..
 python3 -m scripts.demo down --project ai-buddy-demo-tests
 ```
 
+`npx playwright install chromium` скачивает ~200 МБ и за прокси может зависнуть;
+тогда запускайте e2e в образе `mcr.microsoft.com/playwright:v1.65.0-noble` (браузеры уже
+внутри). Шаг restart вызывает `python3 -m scripts.demo restart`; на Windows, где `python3` —
+заглушка Microsoft Store, задайте интерпретатор: `PYTHON=python` (PowerShell: `$env:PYTHON="python"`).
+
 Browser suite включает реальные HTTP-запросы Go/AI/mock, confirm/approval/evidence,
 feedback, Telegram preview, AI revision, mobile/keyboard и restart сервисов.
 Business API не подменяются route fixtures. Для повторного полного прогона выберите
 новое имя project; остановка сохраняет volumes. Проверка когорт запускается отдельно:
 
 ```sh
-python3 -m scripts.v4_cohorts up
+uv run --frozen python -m scripts.v4_cohorts up
 E2E_COHORT_DATASET=1 E2E_BASE_URL=http://localhost:15181 npm run test:e2e --prefix frontend -- v4-cohort-operator
 ```
 

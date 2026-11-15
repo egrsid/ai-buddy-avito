@@ -5,9 +5,9 @@
     "percent": 82.7769
   },
   "ai": {
-    "covered": 3343,
-    "total": 3450,
-    "percent": 96.8986
+    "covered": 3363,
+    "total": 3470,
+    "percent": 96.9164
   },
   "mock": {
     "covered": 201,
@@ -15,8 +15,8 @@
     "percent": 98.0488
   },
   "frontend": {
-    "covered": 1802,
-    "total": 1880,
-    "percent": 95.85
+    "covered": 1811,
+    "total": 1889,
+    "percent": 95.8708
   }
 }

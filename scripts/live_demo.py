@@ -11,14 +11,17 @@
 """
 
 import argparse
+import json
 import math
 import os
 import re
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
-from scripts.demo import offline_images_present
+from scripts.demo import compose, offline_images_present, port_problems
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE_FILES = ("compose.yaml", "compose.mvp.yaml", "compose.demo.yaml", "compose.live.yaml")
@@ -83,6 +86,98 @@ def config_problems(values: dict) -> list[str]:
     return problems
 
 
+def key_problems(values: dict, opener=None) -> list[str]:
+    """Бесплатный GET /models: неверный ключ или имя модели видны до сборки и платных вызовов.
+
+    Прокси системы не используется (как и в сервисе); ключ и тело ответа не печатаются.
+    """
+    opener = opener or urllib.request.build_opener(urllib.request.ProxyHandler({})).open
+    request = urllib.request.Request(
+        values["LLM_BASE_URL"].rstrip("/") + "/models",
+        headers={"Authorization": "Bearer " + values["LLM_API_KEY"]},
+    )
+    try:
+        with opener(request, timeout=8) as response:
+            catalog = {
+                item["id"]: item.get("metadata") or {} for item in json.load(response)["data"]
+            }
+    except urllib.error.HTTPError as error:
+        if error.code in (401, 403):
+            return [f"провайдер отклонил LLM_API_KEY (HTTP {error.code})"]
+        return [f"список моделей не получен (HTTP {error.code})"]
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        return [f"провайдер недоступен: {type(error).__name__} (сеть, прокси, LLM_BASE_URL)"]
+    names = ("LLM_MODEL", "LLM_FALLBACK_MODEL", "EMBEDDING_MODEL")
+    problems = [
+        f"модели {values[name]} ({name}) нет в каталоге провайдера"
+        for name in names
+        if values.get(name) and values[name] not in catalog
+    ]
+    return problems or price_problems(values, catalog)
+
+
+# Какая цена в env-файле соответствует какому полю каталога Cloud.ru (₽ за 1 млн токенов).
+PRICES = (
+    ("LLM_MODEL", "LLM_PRICE_INPUT_RUB", "prompt_tokens_cost"),
+    ("LLM_MODEL", "LLM_PRICE_OUTPUT_RUB", "generated_tokens_cost"),
+    ("LLM_FALLBACK_MODEL", "LLM_FALLBACK_PRICE_INPUT_RUB", "prompt_tokens_cost"),
+    ("LLM_FALLBACK_MODEL", "LLM_FALLBACK_PRICE_OUTPUT_RUB", "generated_tokens_cost"),
+    ("EMBEDDING_MODEL", "EMBEDDING_PRICE_RUB", "prompt_tokens_cost"),
+)
+
+
+def price_problems(values: dict, catalog: dict) -> list[str]:
+    """Цена ниже каталожной занижает журнал расходов, и автостоп сработает позже, чем должен.
+
+    Цена выше каталожной безопасна (журнал считает с запасом) и не мешает запуску.
+    Каталог без цены (другой провайдер) не проверяется.
+    """
+    problems = []
+    for model_name, price_name, field in PRICES:
+        model = values.get(model_name)
+        if not model or not values.get(price_name):
+            continue
+        listed = catalog.get(model, {}).get(field)
+        if not isinstance(listed, (int, float)):
+            continue
+        if float(values[price_name]) < float(listed):
+            problems.append(
+                f"{price_name}={values[price_name]} ниже цены каталога {listed} ({model})"
+            )
+    return problems
+
+
+# Остаток бюджета читается из того же журнала, которым пользуется ai-service.
+BUDGET_STATUS = (
+    "import json,os; from app.budget import BudgetLedger; "
+    "print(json.dumps(BudgetLedger(os.environ['LLM_BUDGET_LEDGER_PATH'],0).status()))"
+)
+
+
+def budget_warning(command: list[str], env: dict, values: dict) -> str | None:
+    """Журнал общий для машины: при расходах выше стопа модель не вызывается вовсе."""
+    try:
+        result = subprocess.run(
+            command + ["exec", "-T", "ai-service", "python", "-c", BUDGET_STATUS],
+            env=env,
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        spent = float(json.loads(result.stdout)["spent_rub"])
+    except (OSError, subprocess.CalledProcessError, ValueError, KeyError, TypeError):
+        return None
+    stop = float(values.get("LLM_BUDGET_STOP_RUB") or 800)
+    if spent < stop:
+        return f"Журнал расходов: потрачено {spent:.2f} ₽ из стоп-порога {stop:g} ₽."
+    return (
+        f"Внимание: в журнале расходов уже {spent:.2f} ₽ при LLM_BUDGET_STOP_RUB={stop:g} — "
+        "платные вызовы запрещены, ответы будут резервными без ИИ, поиск — по словам. "
+        "Поднимите LLM_BUDGET_STOP_RUB (не больше 800) и повторите up."
+    )
+
+
 def configuration(project: str, env_file: Path, cached_build: bool = False):
     if not re.fullmatch(r"ai-buddy-live-[a-z0-9-]+", project):
         raise ValueError("Используй отдельный проект ai-buddy-live-*")
@@ -129,21 +224,39 @@ def main(argv=None) -> int:
     if not env_file.is_file():
         print(f"Нет файла {env_file}: скопируй .env.example в .env и впиши ключ.")
         return 2
-    problems = config_problems(read_env_file(env_file))
+    values = read_env_file(env_file)
+    problems = config_problems(values)
+    if not problems and args.action == "check":
+        problems = key_problems(values)
     if problems and args.action in ("up", "check", "evals"):
-        print("Live-демо не запущено, исправь .env:")
+        print(f"Live-демо не запущено, исправь {env_file.name}:")
         for problem in problems:
             print(" -", problem)
         return 2
     if args.action == "check":
-        print("Настройки live в .env в порядке.")
+        print(f"Настройки live в {env_file.name} в порядке, ключ и модели приняты провайдером.")
         return 0
     cached = args.cached_build and offline_images_present()
     if args.cached_build and not cached:
         print("Кэша зависимостей нет на этой машине: обычная сборка из сети.")
     command, env = configuration(args.project, env_file, cached)
     if args.action == "up":
-        command += ["up", "--build", "-d", "--wait"]
+        busy = port_problems(
+            args.project,
+            {"сайт": int(env["FRONTEND_PORT"]), "Go API": int(env["BACKEND_PORT"])},
+            f"Остановите тот стенд или впишите в {env_file.name} свободные FRONTEND_PORT и "
+            "BACKEND_PORT (сайт откроется на FRONTEND_PORT); для повторной проверки возьмите "
+            "своё имя --project ai-buddy-live-<имя>.",
+        )
+        if busy:
+            print("Live-демо не запущено:", *busy, sep="\n - ", file=sys.stderr)
+            return 2
+        compose(command + ["up", "--build", "-d", "--wait"], env, "поднять live-стенд")
+        print(f"\nГотово: откройте {env['APP_ORIGIN']} (источник ответа указан в интерфейсе).")
+        warning = budget_warning(command, env, values)
+        if warning:
+            print(warning)
+        return 0
     elif args.action == "restart":
         subprocess.run(command + ["stop", "backend"], env=env, cwd=ROOT, check=True)
         subprocess.run(
@@ -189,8 +302,6 @@ def main(argv=None) -> int:
             check=True,
         )
         return completed.returncode
-    if args.action == "up":
-        print(f"Live-демо: {env['APP_ORIGIN']} (источник ответа указан в интерфейсе).")
     return 0
 
 

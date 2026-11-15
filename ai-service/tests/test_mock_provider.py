@@ -99,7 +99,7 @@ def test_guidance_names_buttons_and_links_only_retrieved_documents():
     request["goal_context"]["next_actions"] = ["retry_check", "escalate_to_buddy"]
     llm_input = make_input(request)
     answer = mock_answer(llm_input)
-    assert "1. Нажми **«Повторить проверку»**" in answer
+    assert "1. Нажмите **«Повторить проверку»**" in answer
     assert "2. Если нужна помощь" in answer
     assert "retry_check" not in answer
     assert "escalate_to_buddy" not in answer
@@ -116,7 +116,7 @@ def test_verified_step_does_not_offer_historical_recovery():
     request["goal_context"]["next_actions"] = []
     answer = mock_answer(make_input(request))
     assert "Этот шаг уже проверен" in answer
-    assert "Нажми **«Спросить наставника»**" not in answer
+    assert "«Подготовить сообщение»" not in answer
 
 
 def test_normal_and_slow_stream_give_same_text():

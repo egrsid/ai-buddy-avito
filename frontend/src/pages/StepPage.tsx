@@ -13,6 +13,7 @@ import {
   CheckStatusBadge,
   StateBadge,
 } from '../components/StatusBadge';
+import { localTime, methodLabel, sourceLabel, stepTitle } from '../lib/labels';
 
 // Демо-детали шага: зависимости, инструкция (drawer), evidence, blocker, проверки,
 // action preview → confirm → executing → succeeded на локальном состоянии.
@@ -62,7 +63,7 @@ export function StepPage({ goalId, stepId, view }: { goalId: string; stepId: str
 
           {step.dependencies.length > 0 && (
             <p className="mb-3 text-sm text-text-secondary">
-              Зависит от: {step.dependencies.map((d) => d.step_id).join(', ')} (должен быть проверен)
+              Сначала нужно: {step.dependencies.map((d) => `«${stepTitle(d.step_id)}»`).join(', ')} (должен быть проверен)
             </p>
           )}
 
@@ -129,13 +130,13 @@ export function StepPage({ goalId, stepId, view }: { goalId: string; stepId: str
 
         {step.evidence.length > 0 && (
           <Card>
-            <h3 className="mb-3 font-medium">Evidence</h3>
+            <h3 className="mb-3 font-medium">Результаты проверок</h3>
             <ul className="space-y-2">
               {step.evidence.map((e) => (
                 <li key={e.id} className="flex flex-wrap items-center gap-2 text-sm">
                   <CheckStatusBadge status={e.result === 'passed' ? 'passed' : 'failed'} />
                   <span className="text-text-secondary">
-                    {e.method} · {e.observed_at} · {e.source} · синтетические данные
+                    {methodLabel(e.method)} · {localTime(e.observed_at)} · {sourceLabel(e.source)} · синтетические данные
                   </span>
                   {e.invalidated_at && (
                     <span className="rounded bg-amber-50 px-1.5 py-0.5 text-xs text-amber-700">

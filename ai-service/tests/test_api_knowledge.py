@@ -199,3 +199,25 @@ def test_readyz_waits_for_model_warm_up():
 def test_readyz_without_startup_is_not_ready():
     response = TestClient(create_app(make_settings())).get("/readyz")
     assert response.status_code == 503
+
+
+def test_off_topic_question_gets_no_sources_but_model_still_sees_step_documents():
+    # Название шага добавляется к поиску, поэтому документы шага найдутся всегда;
+    # показывать их к вопросу «погода и биткоин» — ссылки «для галочки».
+    client = TestClient(create_app(make_settings(), knowledge=KnowledgeBase(DOCUMENTS)))
+    request = generate_request()
+    request["access_scope"] = intern_a_scope()
+    events = {}
+    for question in ("погода в Москве и биткоин", "как подключиться к базе"):
+        request["messages"][-1]["content"] = question
+        response = client.post(
+            "/internal/v2/generate",
+            content=json.dumps(request, ensure_ascii=False),
+            headers=HEADERS,
+        )
+        parsed = [item for item in parse_sse(response.text) if "event" in item]
+        events[question] = next(i for i in parsed if i["event"] == "message.sources")
+        text = "".join(i["data"]["text"] for i in parsed if i["event"] == "message.delta")
+        assert ("Подходящие материалы" in text) == (question != "погода в Москве и биткоин")
+    assert events["погода в Москве и биткоин"]["data"]["sources"] == []
+    assert events["как подключиться к базе"]["data"]["sources"]

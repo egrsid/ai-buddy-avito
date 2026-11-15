@@ -3,13 +3,16 @@
 Читает data/knowledge/v2, режет на фрагменты и одной транзакцией заменяет документы,
 фрагменты и index_metadata. Режим — из LLM_MODE:
 - mock: фрагменты и права без векторов (поиск лексический), без сети и модели;
-- live: ещё и векторы bge-m3 через Ollama (LLM_BASE_URL, EMBEDDING_MODEL).
+- live: ещё и векторы (LLM_BASE_URL, EMBEDDING_MODEL). Если эмбеддинги недоступны
+  (бюджет исчерпан, провайдер не отвечает), пишется лексический индекс без векторов и
+  ingest завершается с 0: стенд стартует, поиск по словам. Следующий ingest после
+  починки (например, поднятого LLM_BUDGET_STOP_RUB) достроит векторы.
 Работает под ролью ai_service (PGHOST/PGUSER/PGPASSWORD/PGDATABASE), без DDL.
 Повторный запуск без изменений ничего не пишет. Документы, которых нет в корпусе,
 удаляются (в том числе legacy-записи seed): индекс — ровно текущий корпус.
 
-Коды выхода: 0 — готово или уже актуально; 1 — корпус или настройки;
-2 — эмбеддинги недоступны; 3 — ошибка базы.
+Коды выхода: 0 — готово, уже актуально или лексический индекс вместо векторного;
+1 — корпус или настройки; 3 — ошибка базы.
 """
 
 import asyncio
@@ -36,7 +39,6 @@ from app.vectors import EmbeddingError, embed_corpus, embedding_profile
 
 EXIT_OK = 0
 EXIT_INPUT = 1
-EXIT_EMBEDDINGS = 2
 EXIT_DATABASE = 3
 CONNECT_TIMEOUT = 5
 # Пространство имён для стабильных ID фрагментов: тот же фрагмент — тот же UUID.
@@ -168,8 +170,18 @@ def run(
                 try:
                     vectors = asyncio.run(compute_vectors(embedder_factory(settings), documents))
                 except EmbeddingError as error:
-                    print(f"Эмбеддинги недоступны: {error}", file=sys.stderr)
-                    return EXIT_EMBEDDINGS
+                    # Без векторов поиск остаётся лексическим, а стенд стартует. Версия
+                    # mock-индекса отличается от live: следующий ingest достроит векторы.
+                    print(
+                        f"Эмбеддинги недоступны: {error}. Записываю индекс без векторов "
+                        "(поиск по словам); повторите ingest, когда эмбеддинги заработают.",
+                        file=sys.stderr,
+                    )
+                    model = None
+                    version = dataset_version(documents, "mock", None)
+                    if current_version(connection) == version:
+                        print(f"Индекс kb без векторов уже актуален ({version})")
+                        return EXIT_OK
             chunks = write_index(connection, documents, vectors, model, version)
     except psycopg.Error as error:
         # Только тип ошибки: в тексте psycopg бывают адрес и имя пользователя БД.

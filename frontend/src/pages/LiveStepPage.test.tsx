@@ -57,7 +57,7 @@ describe('LiveStepPage', () => {
     render(<LiveStepPage goalId={blockedGoal.id} stepId={blockedStep.id} />);
     expect(await screen.findByRole('heading', { name: blockedStep.title })).toBeInTheDocument();
     expect(screen.getAllByText('DB_SSL_REQUIRED').length).toBeGreaterThan(0);
-    expect(screen.getByText('Evidence')).toBeInTheDocument();
+    expect(screen.getByText('Результаты проверок')).toBeInTheDocument();
   });
 
   it('инструкция грузится отдельным запросом и открывается в drawer', async () => {
