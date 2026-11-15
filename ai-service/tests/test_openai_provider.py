@@ -12,7 +12,15 @@ from app.api import make_embedder, make_provider
 from app.budget import BudgetLedger, init_ledger
 from app.generate import run_generate
 from app.mock_provider import ProviderUnavailable
-from app.openai_provider import OpenAIEmbedder, OpenAIProvider
+from app.openai_provider import (
+    CONNECT_ATTEMPTS,
+    CONNECT_TIMEOUT,
+    KEEP_WARM_SECONDS,
+    KEEPALIVE_SECONDS,
+    OpenAIEmbedder,
+    OpenAIProvider,
+    keep_warm,
+)
 from app.prompt import LlmInput
 from app.vectors import EmbeddingError
 
@@ -95,6 +103,24 @@ def test_request_has_model_cap_usage_and_key_header(ledger):
     assert body["stream_options"] == {"include_usage": True}
     # По умолчанию лишних параметров нет: незнакомое поле API может отвергнуть.
     assert "reasoning_effort" not in body
+
+
+def test_per_call_output_limit_is_sent_and_reserved(ledger):
+    # Лимит операции (правка ТЗ) уходит в API и в резерв журнала: обойти бюджет им нельзя.
+    seen = []
+    provider = provider_with(
+        answer_with(delta("Ок"), "[DONE]", seen=seen), ledger, llm_max_output_tokens=400
+    )
+    messages = [{"role": "user", "content": "привет"}]
+    llm_input = LlmInput(messages, generate_request(), [], max_output_tokens=1000)
+
+    async def read_all():
+        return [text async for text in provider.stream(llm_input, "normal")]
+
+    asyncio.run(read_all())
+    assert json.loads(seen[0].content)["max_tokens"] == 1000
+    assert ledger.status()["spent_rub"] == pytest.approx(provider.upper_cost(messages, 1000))
+    assert provider.upper_cost(messages, 1000) > provider.upper_cost(messages)
 
 
 def test_reasoning_effort_is_sent_when_configured(ledger):
@@ -230,12 +256,57 @@ def test_usage_log_has_numbers_not_key(ledger, caplog):
     assert "secret-key" not in caplog.text
 
 
-def test_warm_up_makes_no_paid_calls(ledger):
+def test_warm_up_only_keeps_the_connection_and_aclose_stops_it(ledger):
     seen = []
     provider = provider_with(answer_with(delta("Ок"), seen=seen), ledger)
-    asyncio.run(provider.warm_up())
-    assert seen == []
+
+    async def lifecycle():
+        await provider.warm_up()
+        for _ in range(20):
+            await asyncio.sleep(0)
+        task = provider.warm_task
+        await provider.aclose()
+        return task
+
+    task = asyncio.run(lifecycle())
+    assert task.done() and provider.warm_task is None
+    # Только бесплатный список моделей: ни запроса к модели, ни записи в журнале расходов.
+    assert seen and all((r.method, r.url.path) == ("GET", "/v1/models") for r in seen)
     assert ledger.status()["calls"] == 0
+
+
+def test_keep_warm_survives_network_errors_and_waits_between_pings(caplog):
+    calls, pauses = [], []
+
+    def handler(request):
+        calls.append(request)
+        if len(calls) == 1:
+            raise httpx.ConnectTimeout("secret details")
+        return httpx.Response(200, json={"data": []})
+
+    async def sleep(seconds):
+        pauses.append(seconds)
+        if len(pauses) == 3:
+            raise asyncio.CancelledError
+
+    async def run_pings():
+        async with httpx.AsyncClient(
+            base_url="https://api.example/v1", transport=httpx.MockTransport(handler)
+        ) as client:
+            with pytest.raises(asyncio.CancelledError):
+                await keep_warm(client, interval=7.0, sleep=sleep)
+
+    with caplog.at_level(logging.INFO):
+        asyncio.run(run_pings())
+    assert len(calls) == 3 and pauses == [7.0, 7.0, 7.0]
+    assert "ConnectTimeout" in caplog.text and "secret" not in caplog.text
+
+
+def test_connection_timings_fit_lossy_networks():
+    # ОС повторяет потерянный пакет подключения через 1 и 3 с; 6 с — лимит failover.
+    assert 3.0 < CONNECT_TIMEOUT < 6.0
+    # Пинг приходит раньше, чем клиент сам закроет простаивающее соединение.
+    assert KEEP_WARM_SECONDS < KEEPALIVE_SECONDS
 
 
 def test_aclose_closes_http_client(ledger):
@@ -371,10 +442,17 @@ def test_embedding_errors(handler, ledger):
 def test_embedder_warm_up_and_close(ledger):
     seen = []
     embedder = embedder_with(embeddings_reply(seen=seen), ledger)
-    asyncio.run(embedder.warm_up())
-    asyncio.run(embedder.aclose())
-    assert seen == []
-    assert embedder.client.is_closed
+
+    async def lifecycle():
+        await embedder.warm_up()
+        for _ in range(20):
+            await asyncio.sleep(0)
+        await embedder.aclose()
+
+    asyncio.run(lifecycle())
+    assert all(r.method == "GET" and r.url.path.endswith("/models") for r in seen)
+    assert embedder.client.is_closed and embedder.warm_task is None
+    assert ledger.status()["calls"] == 0
 
 
 def test_factories_pick_paid_api_by_provider(tmp_path):
@@ -398,3 +476,64 @@ def test_eof_without_done_is_not_success_and_keeps_unknown_usage_reserved(ledger
     with pytest.raises(ProviderUnavailable):
         read_stream(provider)
     assert ledger.status()["unsettled"] == 1
+
+
+@pytest.mark.parametrize("reason", ["stop", "length"])
+def test_eof_after_finish_reason_is_a_complete_answer_and_settles(ledger, reason):
+    chunks = [delta("Полный"), delta(" ответ", finish_reason=reason), usage_chunk()]
+    provider = provider_with(answer_with(*chunks), ledger)
+    assert "".join(read_stream(provider)) == "Полный ответ"
+    assert ledger.status()["unsettled"] == 0
+
+
+@pytest.mark.parametrize(
+    "usage",
+    [
+        {"prompt_tokens": 10},
+        {"prompt_tokens": -1, "completion_tokens": 2},
+        {"prompt_tokens": True, "completion_tokens": 2},
+        {"prompt_tokens": "10", "completion_tokens": 2},
+    ],
+)
+def test_invalid_usage_keeps_the_reservation_instead_of_refunding(ledger, usage):
+    provider = provider_with(answer_with(delta("Ответ"), usage_chunk(usage), "[DONE]"), ledger)
+    assert read_stream(provider) == ["Ответ"]
+    assert ledger.status()["unsettled"] == 1
+    row = ledger.observations()[0]
+    assert row["actual_rub"] is None and row["reserved_rub"] > 0
+    assert row["model"] == PAID["llm_model"]
+    assert row["correlation_id"] is not None
+
+
+def test_connect_failure_is_retried_once_then_reported(ledger):
+    calls = []
+
+    def flaky(request):
+        calls.append(request)
+        if len(calls) == 1:
+            raise httpx.ConnectTimeout("no route")
+        return httpx.Response(200, content=sse(delta("Ок"), usage_chunk(), "[DONE]"))
+
+    assert read_stream(provider_with(flaky, ledger)) == ["Ок"]
+    assert len(calls) == 2 and ledger.status()["unsettled"] == 0
+
+    def down(request):
+        calls.append(request)
+        raise httpx.ConnectError("refused")
+
+    calls.clear()
+    with pytest.raises(ProviderUnavailable, match="ConnectError"):
+        read_stream(provider_with(down, ledger))
+    assert len(calls) == CONNECT_ATTEMPTS
+
+
+def test_read_failure_after_connect_is_not_retried(ledger):
+    calls = []
+
+    def broken(request):
+        calls.append(request)
+        raise httpx.ReadTimeout("slow")
+
+    with pytest.raises(ProviderUnavailable, match="ReadTimeout"):
+        read_stream(provider_with(broken, ledger))
+    assert len(calls) == 1

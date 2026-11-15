@@ -26,7 +26,7 @@ func main() {
 	if contracts == "" {
 		contracts = "contracts/v2"
 	}
-	server, e := api.New(pool, api.Config{Env: os.Getenv("APP_ENV"), Origin: os.Getenv("APP_ORIGIN"), Token: os.Getenv("INTERNAL_API_TOKEN"), AIURL: os.Getenv("AI_BASE_URL"), MockURL: os.Getenv("MOCK_BASE_URL"), Contracts: contracts, ContractsV3: os.Getenv("CONTRACTS_V3_DIR")})
+	server, e := api.New(pool, api.Config{Env: os.Getenv("APP_ENV"), Origin: os.Getenv("APP_ORIGIN"), Token: os.Getenv("INTERNAL_API_TOKEN"), AIURL: os.Getenv("AI_BASE_URL"), MockURL: os.Getenv("MOCK_BASE_URL"), Contracts: contracts, ContractsV3: os.Getenv("CONTRACTS_V3_DIR"), DemoClockFile: os.Getenv("V4_DEMO_CLOCK_FILE")})
 	if e != nil {
 		log.Fatal(e)
 	}
@@ -35,13 +35,11 @@ func main() {
 	}
 	go server.Maintain(ctx)
 	httpServer := &http.Server{Addr: ":8080", Handler: server.Handler(), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second}
-	go func() {
-		<-ctx.Done()
-		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = httpServer.Shutdown(shutdown)
-	}()
-	if e = httpServer.ListenAndServe(); e != nil && e != http.ErrServerClosed {
+	// Requests and after-commit work finish before the deferred pool.Close runs.
+	drain := func() (context.Context, context.CancelFunc) {
+		return context.WithTimeout(context.Background(), 8*time.Second)
+	}
+	if e = server.Serve(ctx, httpServer, drain); e != nil {
 		log.Fatal(e)
 	}
 }

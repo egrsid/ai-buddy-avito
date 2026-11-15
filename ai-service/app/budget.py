@@ -19,6 +19,7 @@ CLI (из ai-service):
 """
 
 import logging
+import math
 import os
 import sqlite3
 import sys
@@ -38,7 +39,11 @@ CREATE TABLE reservations (
     reserved_rub REAL NOT NULL,
     actual_rub REAL,
     created_at REAL NOT NULL,
-    settled_at REAL
+    settled_at REAL,
+    model TEXT,
+    correlation_id TEXT,
+    prompt_tokens INTEGER,
+    completion_tokens INTEGER
 )
 """
 # Потрачено = фактическая цена, а где её нет — резерв.
@@ -81,8 +86,22 @@ class BudgetLedger:
         except sqlite3.Error as error:
             raise BudgetUnavailable("журнал расходов недоступен") from error
 
-    def reserve(self, kind: str, amount_rub: float) -> str:
+    def reserve(
+        self,
+        kind: str,
+        amount_rub: float,
+        *,
+        model: str | None = None,
+        correlation_id: str | None = None,
+    ) -> str:
         """Резервирует amount_rub или бросает BudgetUnavailable. Возвращает id резерва."""
+        if not math.isfinite(amount_rub) or amount_rub < 0:
+            raise BudgetUnavailable("недопустимый резерв")
+        if correlation_id is not None:
+            try:
+                correlation_id = str(uuid.UUID(correlation_id))
+            except (ValueError, TypeError, AttributeError):
+                correlation_id = None
         connection = self.connect()
         try:
             connection.execute("BEGIN IMMEDIATE")
@@ -93,8 +112,10 @@ class BudgetLedger:
                 raise BudgetUnavailable("достигнут порог расходов")
             reservation_id = str(uuid.uuid4())
             connection.execute(
-                "INSERT INTO reservations (id, kind, reserved_rub, created_at) VALUES (?, ?, ?, ?)",
-                (reservation_id, kind, amount_rub, time.time()),
+                "INSERT INTO reservations "
+                "(id, kind, reserved_rub, created_at, model, correlation_id) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (reservation_id, kind, amount_rub, time.time(), model, correlation_id),
             )
             connection.execute("COMMIT")
             return reservation_id
@@ -104,8 +125,10 @@ class BudgetLedger:
             # Без COMMIT закрытие соединения откатывает начатую транзакцию.
             connection.close()
 
-    def settle(self, reservation_id: str, actual_rub: float) -> bool:
+    def settle(self, reservation_id: str, actual_rub: float, *, usage: dict | None = None) -> bool:
         """Записывает фактическую цену. Повторный settle того же резерва ничего не меняет."""
+        if not math.isfinite(actual_rub) or actual_rub < 0:
+            return False
         try:
             connection = self.connect()
         except BudgetUnavailable:
@@ -113,9 +136,16 @@ class BudgetLedger:
             return False
         try:
             cursor = connection.execute(
-                "UPDATE reservations SET actual_rub = ?, settled_at = ? "
+                "UPDATE reservations SET actual_rub = ?, settled_at = ?, "
+                "prompt_tokens = ?, completion_tokens = ? "
                 "WHERE id = ? AND actual_rub IS NULL",
-                (actual_rub, time.time(), reservation_id),
+                (
+                    actual_rub,
+                    time.time(),
+                    (usage or {}).get("prompt_tokens"),
+                    (usage or {}).get("completion_tokens"),
+                    reservation_id,
+                ),
             )
             if cursor.rowcount == 0:
                 logger.warning("Бюджет: резерв уже закрыт или не найден, повтор пропущен")
@@ -141,6 +171,24 @@ class BudgetLedger:
             connection.close()
         return {"spent_rub": spent, "calls": calls, "unsettled": open_count}
 
+    def observations(self, after_rowid: int = 0) -> list[dict]:
+        """Safe operator telemetry: no prompt, response, key, account or cookie."""
+        if after_rowid < 0:
+            raise ValueError("after_rowid must be nonnegative")
+        connection = self.connect()
+        try:
+            rows = connection.execute(
+                "SELECT rowid,kind,model,correlation_id,prompt_tokens,completion_tokens,"
+                "reserved_rub,actual_rub FROM reservations WHERE rowid>? ORDER BY rowid LIMIT 1000",
+                (after_rowid,),
+            )
+            keys = [column[0] for column in rows.description]
+            return [dict(zip(keys, row, strict=True)) for row in rows]
+        except sqlite3.Error as error:
+            raise BudgetUnavailable("телеметрия журнала недоступна") from error
+        finally:
+            connection.close()
+
 
 def init_ledger(path: str) -> None:
     """Создаёт пустой журнал. Существующий не трогает: обнулить расходы так нельзя."""
@@ -157,15 +205,34 @@ def init_ledger(path: str) -> None:
 
 def ensure_ledger(path: str) -> bool:
     """Создаёт журнал, если его нет. True — создан новый (это видно в логе)."""
+    created = True
     try:
         init_ledger(path)
     except FileExistsError:
-        return False
-    logger.warning(
-        "Создан новый журнал расходов %s: если это не первый запуск, проверьте постоянный том",
-        path,
-    )
-    return True
+        created = False
+    # Add metadata to an existing ledger without changing reservations or spending.
+    try:
+        with sqlite3.connect(
+            ledger_uri(path), uri=True, isolation_level=None, timeout=LOCK_TIMEOUT
+        ) as db:
+            db.execute("BEGIN IMMEDIATE")
+            columns = {row[1] for row in db.execute("PRAGMA table_info(reservations)")}
+            if not columns:
+                raise BudgetUnavailable("журнал повреждён")
+            for name, kind in (
+                ("model", "TEXT"),
+                ("correlation_id", "TEXT"),
+                ("prompt_tokens", "INTEGER"),
+                ("completion_tokens", "INTEGER"),
+            ):
+                if name not in columns:
+                    db.execute(f"ALTER TABLE reservations ADD COLUMN {name} {kind}")
+            db.execute("COMMIT")
+    except sqlite3.Error as error:
+        raise BudgetUnavailable("журнал недоступен") from error
+    if created:
+        logger.warning("Создан новый журнал расходов %s: проверьте постоянный том", path)
+    return created
 
 
 def main(argv: list[str] | None = None, env: dict | None = None) -> int:

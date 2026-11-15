@@ -23,17 +23,19 @@ const internB = "10000000-0000-4000-8000-000000000004"
 const buddyA = "10000000-0000-4000-8000-000000000001"
 
 type fixture struct {
-	t       *testing.T
-	s       *Server
-	admin   *pgxpool.Pool
-	url     string
-	mu      sync.Mutex
-	grants  map[string]bool
-	records map[string]Object
-	mode    string
-	stream  string
-	mock    *httptest.Server
-	ai      *httptest.Server
+	revisionStarted chan struct{}
+	revisionRelease chan struct{}
+	t               *testing.T
+	s               *Server
+	admin           *pgxpool.Pool
+	url             string
+	mu              sync.Mutex
+	grants          map[string]bool
+	records         map[string]Object
+	mode            string
+	stream          string
+	mock            *httptest.Server
+	ai              *httptest.Server
 }
 type browser struct {
 	f      *fixture
@@ -199,13 +201,41 @@ func (f *fixture) intelligence(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, 200, Object{"summary": "Кратко: стажёр застрял на шаге и спрашивает про доступ."})
 	case strings.HasSuffix(r.URL.Path, "/revision-draft"):
+		if stream == "revision_hold" {
+			close(f.revisionStarted)
+			select {
+			case <-f.revisionRelease:
+			case <-r.Context().Done():
+				return
+			}
+		}
 		var d Object
 		_ = json.NewDecoder(r.Body).Decode(&d)
 		if stream == "bad_revision" {
 			writeJSON(w, 200, Object{"changes": []any{Object{"id": "c1", "field": "sections.report-format.text", "old_hash": strings.Repeat("a", 64), "replacement": "<script>alert(1)</script>"}}, "questions": []any{}, "outcome": "ready"})
 			return
 		}
-		writeJSON(w, 200, Object{"changes": []any{Object{"id": "c1", "field": "sections.report-format.text", "old_hash": d["base_hash"], "replacement": "Опишите шаги нумерованным списком."}}, "questions": []any{}, "outcome": "ready"})
+		if f.s.Validate("v4/ai/RevisionDraftRequest", d) != nil {
+			f.t.Error("invalid revision boundary")
+		}
+		if obj(d["report"])["hypothesis"] == nil || strings.Contains(string(encode(d)), internA) || strings.Contains(string(encode(d)), internB) {
+			f.t.Error("revision request must carry the report hypothesis and no intern identity", d)
+		}
+		if stream == "revision_questions" || stream == "revision_no_change" {
+			outcome := "needs_input"
+			questions := []any{Object{"id": "q1", "text": "Уточните результат"}}
+			if stream == "revision_no_change" {
+				outcome = "no_change"
+				questions = []any{}
+			}
+			writeJSON(w, 200, Object{"outcome": outcome, "base_hash": d["base_hash"], "base_version": d["base_version"], "changes": []any{}, "questions": questions, "rationale": "Нужно решение автора", "evidence_refs": []any{}, "origin": Object{"mode": "mock", "answered_by": "offline", "reason_code": "config_mock"}})
+			return
+		}
+		replacement := "Опишите шаги нумерованным списком."
+		if stream == "revision_long" {
+			replacement = strings.Repeat("x", 2001)
+		}
+		writeJSON(w, 200, Object{"outcome": "ready", "base_hash": d["base_hash"], "base_version": d["base_version"], "changes": []any{Object{"id": "c1", "path": obj(list(d["fields"])[0])["path"], "label": "Уточнение", "old_hash": d["base_hash"], "replacement": replacement, "rationale": "Уточняет формат"}}, "questions": []any{}, "rationale": "Уточнение", "evidence_refs": []any{}, "origin": Object{"mode": "live", "answered_by": "primary"}})
 	case strings.HasSuffix(r.URL.Path, "/task-clarity-draft"):
 		var d Object
 		_ = json.NewDecoder(r.Body).Decode(&d)
@@ -407,9 +437,14 @@ func TestAccessJourneyFeedback(t *testing.T) {
 		a.call("POST", "/access-requests/"+id+"/decision", Object{"decision": "approved", "reason": "ok", "expected_version": ar["version"]}, 403)
 		approver.call("GET", "/access-requests", nil, 200)
 		approver.call("POST", "/access-requests/"+id+"/decision", Object{"decision": "approved", "reason": "ok", "expected_version": ar["version"]}, 200)
+		// После одобрения Go сам повторяет IAM-проверку: шаг засчитан по свежему ответу IAM.
 		g = a.call("GET", "/goals/"+str(g["id"]), nil, 200)
-		if stepOf(g, "check_access")["status"] == "verified" {
-			t.Fatal("approval counted as check")
+		if stepOf(g, "check_access")["status"] != "verified" || g["status"] == "waiting_external" {
+			t.Fatal("approval did not trigger IAM recheck", g)
+		}
+		var source string
+		if e := f.admin.QueryRow(context.Background(), "SELECT source FROM app.evidence WHERE goal_id=$1 AND step_id='check_access' AND invalidated_at IS NULL", g["id"]).Scan(&source); e != nil || source != "mock_iam_adapter" {
+			t.Fatal("verified without IAM evidence", source, e)
 		}
 		check := a.check(g, "check_access", "", 201)
 		a.call("GET", "/checks/"+str(check["id"]), nil, 200)

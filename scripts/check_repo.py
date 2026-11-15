@@ -2,6 +2,7 @@
 
 import json
 import re
+import subprocess
 from pathlib import Path
 from uuid import UUID
 
@@ -24,10 +25,35 @@ def validator(name: str) -> Draft202012Validator:
     )
 
 
+def published_files(root: Path) -> set[Path]:
+    """Use the index plus new public files; ignored local notes are not a deliverable."""
+    if not (root / ".git").exists():
+        return {path.resolve() for path in root.rglob("*") if path.is_file()}
+    try:
+        names = (
+            subprocess.check_output(
+                ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+                cwd=root,
+                stderr=subprocess.DEVNULL,
+            )
+            .decode()
+            .split("\0")
+        )
+        return {(root / name).resolve() for name in names if name and (root / name).is_file()}
+    except (OSError, subprocess.CalledProcessError):
+        # A source archive or a Docker image has no .git. Local-only files must
+        # already be absent from that artifact, so validate its actual contents.
+        return {path.resolve() for path in root.rglob("*") if path.is_file()}
+
+
 def check_links(root: Path = ROOT) -> list[str]:
     errors = []
-    files = [root / "README.md", root / "ARCHITECTURE.md", *root.glob("docs/**/*.md")]
-    for path in files:
+    public = published_files(root)
+    required = [root / "README.md", root / "ARCHITECTURE.md"]
+    files = set(required) | {
+        path for path in public if path.suffix == ".md" and path.is_relative_to(root / "docs")
+    }
+    for path in sorted(files):
         if not path.exists():
             errors.append(f"Missing document: {path.relative_to(root)}")
             continue
@@ -35,7 +61,11 @@ def check_links(root: Path = ROOT) -> list[str]:
             target = target.split("#", 1)[0]
             if not target or re.match(r"^[a-zA-Z]+:", target):
                 continue
-            if not (path.parent / target).exists():
+            destination = (path.parent / target).resolve()
+            available = destination in public or (
+                destination.is_dir() and any(p.is_relative_to(destination) for p in public)
+            )
+            if not available:
                 errors.append(f"Broken link {path.relative_to(root)}: {target}")
     return errors
 

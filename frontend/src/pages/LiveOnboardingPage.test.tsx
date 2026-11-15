@@ -106,10 +106,16 @@ describe('LiveOnboardingPage · карточки целей', () => {
 
   it('целей нет: выбор маршрута и создание цели', async () => {
     v3.listGoalSummaries.mockResolvedValueOnce({ items: [], next_cursor: null });
+    mocks.createGoal.mockResolvedValueOnce({ id: summary(1).id });
     render(<LiveOnboardingPage />);
     fireEvent.click(await screen.findByRole('button', { name: 'Начать' }));
     expect(mocks.createGoal).toHaveBeenCalledWith('db-access-team-a', 1);
     expect(await screen.findByText('Цель 1')).toBeInTheDocument();
+    // Только что начатая цель сразу раскрыта, соседняя — нет.
+    const card = screen.getByText('Цель 1').closest('section')!;
+    expect(within(card).getByRole('button', { name: /Свернуть подзадачи/ })).toBeInTheDocument();
+    const other = screen.getByText('Цель 2').closest('section')!;
+    expect(within(other).getByRole('button', { name: /Раскрыть подзадачи/ })).toBeInTheDocument();
   });
 
   it('ошибка создания: сообщение без слома экрана', async () => {

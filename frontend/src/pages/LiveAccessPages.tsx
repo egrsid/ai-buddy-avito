@@ -26,6 +26,11 @@ function RequestCard({ r }: { r: AccessRequest }) {
       </div>
       <p className="mt-2 text-sm text-text-secondary">Основание: {r.reason}</p>
       <SyncStatusNote sync={r.sync_status} />
+      {r.status === 'approved' && r.grant_state === 'present' && (
+        <p className="mt-2 rounded-xl bg-green-50 px-3 py-2 text-xs text-success">
+          Доступ выдан — IAM подтвердил, шаг «Проверить доступ» засчитан автоматически.
+        </p>
+      )}
       {r.status === 'approved' && r.grant_state !== 'present' && (
         <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">
           Заявка одобрена, но доступ ещё не подтверждён проверкой IAM.
@@ -33,6 +38,17 @@ function RequestCard({ r }: { r: AccessRequest }) {
       )}
     </Card>
   );
+}
+
+// Что произошло после решения: одобрение засчитывает шаг только вместе с подтверждением IAM.
+function DecisionNote({ r }: { r: AccessRequest }) {
+  if (r.status === 'approved' && r.grant_state === 'present') {
+    return <p className="text-sm text-success">Одобрено. Доступ выдан (IAM подтвердил), шаг стажёра засчитан.</p>;
+  }
+  if (r.status === 'approved') {
+    return <p className="text-sm text-amber-700">Одобрено, но IAM ещё не подтвердил доступ — шаг стажёра пока не засчитан.</p>;
+  }
+  return <p className="text-sm text-text-secondary">Отклонено. Стажёр увидит решение в «Мои заявки».</p>;
 }
 
 export function LiveRequestsPage() {
@@ -135,9 +151,7 @@ export function LiveApprovalsPage() {
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm text-text-secondary">
-                      Решение сохранено. Одобрение не выдаёт доступ автоматически — grant подтверждает IAM.
-                    </p>
+                    <DecisionNote r={r} />
                   )}
                 </Card>
               </li>

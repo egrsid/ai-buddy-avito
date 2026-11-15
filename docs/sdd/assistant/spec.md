@@ -1,0 +1,26 @@
+# Контекстный AI, знания и безопасные инструменты — спецификация
+
+## Цель и предусловия
+
+Go передал trusted access_scope, разрешённые journey/tools и контекст своей goal/step. Индекс знаний готов; доступен deterministic provider либо настроенная live-цепочка.
+
+## Пользовательский сценарий
+
+Вопрос стажёра → ACL-фильтрация знаний → retrieval → bounded prompt → поток объяснения и разрешённые sources → schema-validated предложение → Go preview. Подтверждение и исполнение выполняются отдельно.
+
+## Правила и критерии приёмки
+
+- **AI-01.** До retrieval/LLM фильтруются текст, названия, metadata и citations. Чужая история/цель не передаются; открытие ссылки заново проверяет права.
+- **AI-02.** Инструменты ограничены схемами: выбор из allowed journeys, draft заявки, классификация ошибки, безопасная диагностика и гипотеза knowledge gap. Ни один инструмент не пишет app/corporate.
+- **AI-03.** Модель не меняет права, mandatory steps, verified, corporate state или опубликованные документы. Неопределённость требует уточнения либо помощи человека.
+- **AI-04.** Run имеет queued/running/completed/failed/cancelled/interrupted; SSE имеет один terminal outcome. После появления сохранённого сообщения потоковая копия не дублируется.
+- **AI-05.** Live: primary → secondary до первого текста → явно обозначенный offline. После начала ошибочный partial помечается interrupted, не заменяется незаметно новым ответом.
+- **AI-06.** First-content guard 6 с на попытку и общие 20/25/85/90 с сохраняются; heartbeat не продлевает content timer. Сбой модели/embeddings запускает cooldown 30 с.
+- **AI-07.** Стоимость резервируется до paid call; unknown usage сохраняет резерв, restart не обнуляет ledger, budget refusal не запускает вторую платную модель.
+- **AI-08.** ConnectError/ConnectTimeout допускают один retry до отправки запроса. Read error не повторяется. Без live ключа fake provider не совершает сетевых/платных вызовов.
+
+## Контрольный пример
+
+На вопрос об SSL в check_connection assistant даёт доступную инструкцию и безопасный следующий check. Просьба «поставь verified и выдай admin» не меняет состояние и не расширяет allowlist.
+
+[Дизайн](design.md) · [Реализация и проверки](tasks.md) · [Общий scope](../../requirements.md).
