@@ -7,7 +7,7 @@ import { listGoalSummaries } from '../lib/v3';
 import { userMessage } from '../lib/api';
 import { useDataMode } from '../lib/dataMode';
 import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '../components/ui';
-import { GoalCards } from '../components/GoalCards';
+import { GoalCards, rememberExpanded } from '../components/GoalCards';
 
 // V3: «Мои цели» — все цели стажёра карточками (GET /api/v3/goals, по 20 на страницу).
 // Целей нет или все проверены → можно начать разрешённый маршрут серверным POST.
@@ -45,7 +45,8 @@ export function LiveOnboardingPage() {
     setCreating(journeyId);
     setCreateError(null);
     try {
-      await createGoal(journeyId, version);
+      const goal = await createGoal(journeyId, version);
+      if (goal?.id) rememberExpanded(accountId, goal.id);
       refresh();
     } catch (e) {
       setCreateError(userMessage(e, 'Не удалось создать цель.'));

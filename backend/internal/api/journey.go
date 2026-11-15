@@ -388,7 +388,7 @@ func (q *request) performCheck(g, t Object, sid string, options Object, allowInv
 	evidence := []any{}
 	if status != "unavailable" {
 		eid := uuid()
-		if e = q.exec("INSERT INTO app.evidence VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NULL,true)", eid, id, event, source, q.user["id"], g["resource_id"], g["id"], sid, g["journey_version"], result, observed); e != nil {
+		if e = q.exec("INSERT INTO app.evidence(id,check_id,event_id,source,subject_id,resource_id,goal_id,step_id,journey_version,result,observed_at,invalidated_at,synthetic) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NULL,true)", eid, id, event, source, q.user["id"], g["resource_id"], g["id"], sid, g["journey_version"], result, observed); e != nil {
 			return nil, e
 		}
 		evidence = append(evidence, eid)

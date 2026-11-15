@@ -7,7 +7,7 @@ import type { User } from '../fixtures/all-states';
 import { users as fixtureUsers } from '../fixtures/all-states';
 
 // RP-FE-02: источник данных приложения.
-// fixtures — офлайн-демо на FE fixtures (поведение RP-FE-01);
+// fixtures доступны только unit-тестам компонентов; сайт всегда вызывает Go API.
 // live — реальный Go API (cookie-сессия + CSRF через endpoints).
 // Смена аккаунта в live выполняет demo-login (только local/test окружение Go).
 
@@ -26,10 +26,10 @@ interface DataModeValue {
 
 const DataModeContext = createContext<DataModeValue | null>(null);
 
-// v3: по умолчанию — живой Go API (разделы ТЗ, отчётов и статистики есть только там).
-// VITE_DATA_MODE=live принудительно включает live (демо-стенд); fixtures — офлайн-демо,
-// его можно выбрать переключателем, выбор помнится до закрытия вкладки.
+// Развёрнутый сайт игнорирует прежний fixtures preset/sessionStorage.
+// Unit-тесты могут изолированно выбирать источник данных.
 export function defaultMode(): DataMode {
+  if (import.meta.env.MODE !== 'test') return 'live';
   const preset = import.meta.env.VITE_DATA_MODE;
   if (preset === 'live') return 'live';
   const stored = sessionStorage.getItem('buddy-data-mode');
@@ -91,6 +91,7 @@ export function DataModeProvider({ children }: { children: ReactNode }) {
 
   const changeMode = useCallback(
     (next: DataMode) => {
+      if (import.meta.env.MODE !== 'test' && next !== 'live') return;
       ++generation.current;
       sessionStorage.setItem('buddy-data-mode', next);
       setSessionError(null);

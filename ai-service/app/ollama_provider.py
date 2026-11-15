@@ -48,7 +48,8 @@ class OllamaProvider:
 
     async def stream(self, llm_input: LlmInput, scenario: str) -> AsyncIterator[str]:
         # scenario не нужен: X-Mock-Scenario разрешён только в mock-режиме.
-        body = self.chat_body(llm_input.messages, self.settings.llm_max_output_tokens)
+        limit = llm_input.output_limit(self.settings.llm_max_output_tokens)
+        body = self.chat_body(llm_input.messages, limit)
         async for text in self.chat(body):
             yield text
 

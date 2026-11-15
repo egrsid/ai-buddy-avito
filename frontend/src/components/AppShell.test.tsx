@@ -121,3 +121,11 @@ describe('DemoModeNote', () => {
     expect(screen.getByText(/Демо-режим/)).toBeInTheDocument();
   });
 });
+
+it('production exposes neither fixtures nor prototype controls', () => {
+  vi.stubEnv('MODE', 'production');
+  renderShell('intern-a');
+  expect(screen.queryByRole('button', { name: 'Fixtures' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: /прототип/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('group', { name: 'Демо-состояние данных' })).not.toBeInTheDocument();
+});
