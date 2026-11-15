@@ -9,7 +9,9 @@ ROOT = Path(__file__).resolve().parents[1] / "contracts/v2"
 
 def snapshot(root: Path) -> str:
     return "".join(
-        f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(root).as_posix()}\n"
+        # CRLF from a Windows checkout (core.autocrlf) must not change the lock.
+        f"{hashlib.sha256(path.read_bytes().replace(b'\r\n', b'\n')).hexdigest()}"
+        f"  {path.relative_to(root).as_posix()}\n"
         for path in sorted(root.rglob("*.json"))
     )
 

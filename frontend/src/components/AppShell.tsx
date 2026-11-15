@@ -28,6 +28,7 @@ interface NavItem {
 function navFor(user: User): NavItem[] {
   if (user.roles.includes('intern')) {
     return [
+      { to: '/workspaces', label: 'Задания и цели', icon: <Target size={20} /> },
       { to: '/onboarding', label: 'Мои цели', icon: <Target size={20} /> },
       { to: '/tasks', label: 'ТЗ от наставника', icon: <FileText size={20} /> },
       { to: '/requests', label: 'Мои заявки', icon: <ClipboardList size={20} /> },
@@ -36,6 +37,7 @@ function navFor(user: User): NavItem[] {
   }
   if (user.roles.includes('buddy')) {
     return [
+      { to: '/mentor/improvements', label: 'Улучшение заданий', icon: <FileText size={20} /> },
       { to: '/mentor/briefs', label: 'Мои задания', icon: <FileText size={20} /> },
       { to: '/mentor/reports', label: 'Понятность заданий', icon: <Lightbulb size={20} /> },
       { to: '/mentor/stats', label: 'Статистика', icon: <BarChart3 size={20} /> },
@@ -99,10 +101,19 @@ export function AppShell({
     { id: 'intern-c', label: 'Стажёр другой команды' },
     { id: 'buddy-b', label: 'Наставник другой команды' },
   ];
+  if (import.meta.env.VITE_V4_COHORT_DEMO === 'true') {
+    for (let number = 1; number <= 20; number++)
+      extra.push({ id: `cohort-${String(number).padStart(2, '0')}`, label: `Synthetic cohort ${number}` });
+  }
   const nav = navFor(user);
 
   const navBlock = (
     <>
+      {import.meta.env.VITE_V4_COHORT_DEMO === 'true' && (
+        <p className="mb-3 rounded-lg bg-primary-light p-2 text-xs text-text-primary">
+          Синтетическая история · тестовые часы
+        </p>
+      )}
       <div className="mb-6 flex items-center gap-2 px-2">
         <Bot size={26} className="text-primary" aria-hidden />
         <p className="text-lg font-bold">
@@ -121,7 +132,7 @@ export function AppShell({
           onChange={(e) => onUserChange(e.target.value)}
           className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-primary"
         >
-          {[...mainAccounts, ...extra.filter(u => extraAccounts || u.id === user.account_id)].map((u) => (
+          {[...mainAccounts, ...extra.filter((u) => extraAccounts || u.id === user.account_id)].map((u) => (
             <option key={u.id} value={u.id}>
               {u.label}
             </option>
@@ -129,7 +140,7 @@ export function AppShell({
         </select>
       </label>
       <label className="mb-4 flex items-center gap-2 px-2 text-xs text-text-secondary">
-        <input type="checkbox" checked={extraAccounts} onChange={e => setExtraAccounts(e.target.checked)} />
+        <input type="checkbox" checked={extraAccounts} onChange={(e) => setExtraAccounts(e.target.checked)} />
         Дополнительные участники
       </label>
 
@@ -163,44 +174,52 @@ export function AppShell({
         </p>
       </div>
 
-      <div className="mt-4 px-2">
-        <span className="mb-1 block text-xs text-text-secondary">Источник данных</span>
-        <div className="flex flex-wrap gap-1" role="group" aria-label="Источник данных">
-          {(['fixtures', 'live'] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => onModeChange?.(m)}
-              aria-pressed={mode === m}
-              className={`rounded-lg px-2 py-1 text-xs font-medium ${
-                mode === m ? 'bg-primary text-white' : 'bg-surface-muted text-text-secondary hover:bg-border'
-              }`}
-            >
-              {m === 'fixtures' ? 'Fixtures' : 'Live API'}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {mode === 'fixtures' && (
-        <div className="mt-4 px-2">
-          <span className="mb-1 block text-xs text-text-secondary">Состояние экрана (демо)</span>
-          <div className="flex flex-wrap gap-1" role="group" aria-label="Демо-состояние данных">
-            {(Object.keys(viewLabels) as ViewState[]).map((v) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => onViewChange(v)}
-                aria-pressed={view === v}
-                className={`rounded-lg px-2 py-1 text-xs font-medium ${
-                  view === v ? 'bg-primary text-white' : 'bg-surface-muted text-text-secondary hover:bg-border'
-                }`}
-              >
-                {viewLabels[v]}
-              </button>
-            ))}
+      {import.meta.env.MODE === 'test' && (
+        <>
+          <div className="mt-4 px-2">
+            <span className="mb-1 block text-xs text-text-secondary">Источник данных</span>
+            <div className="flex flex-wrap gap-1" role="group" aria-label="Источник данных">
+              {(['fixtures', 'live'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => onModeChange?.(m)}
+                  aria-pressed={mode === m}
+                  className={`rounded-lg px-2 py-1 text-xs font-medium ${
+                    mode === m
+                      ? 'bg-primary text-white'
+                      : 'bg-surface-muted text-text-secondary hover:bg-border'
+                  }`}
+                >
+                  {m === 'fixtures' ? 'Fixtures' : 'Live API'}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+
+          {mode === 'fixtures' && (
+            <div className="mt-4 px-2">
+              <span className="mb-1 block text-xs text-text-secondary">Состояние экрана (демо)</span>
+              <div className="flex flex-wrap gap-1" role="group" aria-label="Демо-состояние данных">
+                {(Object.keys(viewLabels) as ViewState[]).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => onViewChange(v)}
+                    aria-pressed={view === v}
+                    className={`rounded-lg px-2 py-1 text-xs font-medium ${
+                      view === v
+                        ? 'bg-primary text-white'
+                        : 'bg-surface-muted text-text-secondary hover:bg-border'
+                    }`}
+                  >
+                    {viewLabels[v]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </>
   );

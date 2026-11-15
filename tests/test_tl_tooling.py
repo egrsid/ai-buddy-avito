@@ -26,6 +26,18 @@ def test_contract_lock_detects_modified_and_added_files(tmp_path):
         verify(tmp_path)
 
 
+def test_contract_lock_ignores_windows_line_endings_only(tmp_path):
+    schema = tmp_path / "schema.json"
+    schema.write_bytes(b'{\n  "a": 1\n}\n')
+    manifest = tmp_path / "BASELINE.sha256"
+    manifest.write_text(snapshot(tmp_path), encoding="utf-8")
+    schema.write_bytes(b'{\r\n  "a": 1\r\n}\r\n')
+    verify(tmp_path)
+    schema.write_bytes(b'{\r\n  "a": 2\r\n}\r\n')
+    with pytest.raises(ValueError):
+        verify(tmp_path)
+
+
 def test_legacy_checkout_cannot_pass_mvp_preflight(tmp_path):
     issues = blockers(tmp_path, {})
     assert any("v2 migration" in item for item in issues)

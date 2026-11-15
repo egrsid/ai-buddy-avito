@@ -291,7 +291,7 @@ func (q *request) contactSummary(facts, question string) string {
 		input["question"] = string(runes)
 	}
 	previous := q.client
-	q.client = &http.Client{Transport: q.s.Client.Transport, CheckRedirect: q.s.Client.CheckRedirect, Timeout: 12 * time.Second}
+	q.client = q.s.slowClient(12 * time.Second)
 	defer func() { q.client = previous }()
 	draft, e := q.call(q.s.Config.AIURL, "POST", "/internal/v3/contact-summary", "v3/ai/ContactSummaryResponse", input, nil)
 	if e != nil {

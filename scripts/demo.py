@@ -39,6 +39,29 @@ def configuration(project: str, cached_overlay: str | None = None):
     return command, env
 
 
+# Dependency images that compose.offline.yaml builds from; they exist only after one online build.
+OFFLINE_IMAGES = (
+    "ai-buddy-tl-20261111-contract-image-tests:latest",
+    "ai-buddy-tl-20261111-frontend:latest",
+    "ai-buddy-demo-go-build:local",
+    "ai-buddy-be-v2-api:local",
+)
+
+
+def offline_images_present() -> bool:
+    """True when every cached dependency image for compose.offline.yaml is available."""
+    for image in OFFLINE_IMAGES:
+        found = subprocess.run(
+            ["docker", "image", "inspect", image],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if found.returncode != 0:
+            return False
+    return True
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -52,12 +75,7 @@ def main():
     args = parser.parse_args()
     command, env = configuration(args.project, args.cached_overlay)
     if args.offline:
-        for image in (
-            "ai-buddy-tl-20261111-contract-image-tests:latest",
-            "ai-buddy-tl-20261111-frontend:latest",
-            "ai-buddy-demo-go-build:local",
-            "ai-buddy-be-v2-api:local",
-        ):
+        for image in OFFLINE_IMAGES:
             subprocess.run(
                 ["docker", "image", "inspect", image], stdout=subprocess.DEVNULL, check=True
             )

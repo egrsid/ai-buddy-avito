@@ -280,6 +280,15 @@ func archiveBrief(q *request) (response, error) {
 	if e = q.touchBrief(b); e != nil {
 		return response{}, e
 	}
+	assignments, e := q.many("SELECT jsonb_build_object('id',id) FROM app.task_assignments WHERE brief_id=$1", b["id"])
+	if e != nil {
+		return response{}, e
+	}
+	for _, assignment := range assignments {
+		if e = q.closeExposure(str(obj(assignment)["id"]), "archived"); e != nil {
+			return response{}, e
+		}
+	}
 	if e = q.taskEvent("brief_archived", "go_task_workflow", "task_brief", str(b["id"]), Object{"brief_id": b["id"]}); e != nil {
 		return response{}, e
 	}
@@ -338,6 +347,9 @@ func createAssignment(q *request) (response, error) {
 	if e = q.taskEvent("task_assigned", "go_task_workflow", "task_assignment", id, Object{"brief_id": b["id"], "brief_version": q.body["brief_version"], "assignment_id": id}); e != nil {
 		return response{}, e
 	}
+	if e = q.openExposure(id, str(intern["id"]), str(b["id"]), num(q.body["brief_version"]), "assigned"); e != nil {
+		return response{}, e
+	}
 	a, e := q.assignment(id)
 	if e != nil {
 		return response{}, e
@@ -390,7 +402,7 @@ func (q *request) assignmentDTO(a Object) (Object, error) {
 	if a["archived"] == true {
 		state = "archived"
 	}
-	return Object{"id": a["id"], "brief_id": a["brief_id"], "brief_version": a["brief_version"], "brief_state": state, "latest_published_version": latest, "content": content, "intern": intern, "author": author, "reported_sections": reported, "verification": "not_verified", "revision": a["revision"], "created_at": a["created_at"], "updated_at": a["updated_at"]}, nil
+	return Object{"id": a["id"], "brief_id": a["brief_id"], "brief_version": a["brief_version"], "brief_state": state, "latest_published_version": latest, "content": content, "intern": intern, "author": author, "reported_sections": reported, "verification": "not_verified", "db_route_enabled": a["permitted_template_id"] != nil, "revision": a["revision"], "created_at": a["created_at"], "updated_at": a["updated_at"]}, nil
 }
 
 func listAssignments(q *request) (response, error) {
@@ -443,6 +455,12 @@ func adoptVersion(q *request) (response, error) {
 		return response{}, e
 	}
 	if e = q.taskEvent("task_assignment_adopted", "go_task_workflow", "task_assignment", str(a["id"]), Object{"assignment_id": a["id"], "brief_id": a["brief_id"], "brief_version": target}); e != nil {
+		return response{}, e
+	}
+	if e = q.closeExposure(str(a["id"]), "adopted"); e != nil {
+		return response{}, e
+	}
+	if e = q.openExposure(str(a["id"]), str(a["intern_id"]), str(a["brief_id"]), target, "adopted"); e != nil {
 		return response{}, e
 	}
 	a, e = q.assignment(str(a["id"]))

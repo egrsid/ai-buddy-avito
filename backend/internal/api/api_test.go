@@ -23,17 +23,19 @@ const internB = "10000000-0000-4000-8000-000000000004"
 const buddyA = "10000000-0000-4000-8000-000000000001"
 
 type fixture struct {
-	t       *testing.T
-	s       *Server
-	admin   *pgxpool.Pool
-	url     string
-	mu      sync.Mutex
-	grants  map[string]bool
-	records map[string]Object
-	mode    string
-	stream  string
-	mock    *httptest.Server
-	ai      *httptest.Server
+	revisionStarted chan struct{}
+	revisionRelease chan struct{}
+	t               *testing.T
+	s               *Server
+	admin           *pgxpool.Pool
+	url             string
+	mu              sync.Mutex
+	grants          map[string]bool
+	records         map[string]Object
+	mode            string
+	stream          string
+	mock            *httptest.Server
+	ai              *httptest.Server
 }
 type browser struct {
 	f      *fixture
@@ -55,7 +57,7 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal("test DB name required")
 	}
 	t.Cleanup(admin.Close)
-	_, e = admin.Exec(context.Background(), "TRUNCATE app.goals,app.conversations,app.sessions,app.idempotency_keys,app.friction_events,app.knowledge_gap_candidates,app.task_briefs,app.contact_previews CASCADE; UPDATE app.users SET policy_revision=1; UPDATE app.mentor_contacts SET revision=1; DELETE FROM app.business_events")
+	_, e = admin.Exec(context.Background(), "TRUNCATE app.goals,app.conversations,app.sessions,app.idempotency_keys,app.friction_events,app.knowledge_gap_candidates,app.task_briefs,app.contact_previews,app.workspace_links,app.workspace_link_previews,app.revision_proposals,app.version_exposure_episodes,app.impact_configs CASCADE; UPDATE app.users SET policy_revision=1; UPDATE app.mentor_contacts SET revision=1; DELETE FROM app.business_events")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -198,6 +200,42 @@ func (f *fixture) intelligence(w http.ResponseWriter, r *http.Request) {
 			f.t.Error("unsafe contact summary input")
 		}
 		writeJSON(w, 200, Object{"summary": "Кратко: стажёр застрял на шаге и спрашивает про доступ."})
+	case strings.HasSuffix(r.URL.Path, "/revision-draft"):
+		if stream == "revision_hold" {
+			close(f.revisionStarted)
+			select {
+			case <-f.revisionRelease:
+			case <-r.Context().Done():
+				return
+			}
+		}
+		var d Object
+		_ = json.NewDecoder(r.Body).Decode(&d)
+		if stream == "bad_revision" {
+			writeJSON(w, 200, Object{"changes": []any{Object{"id": "c1", "field": "sections.report-format.text", "old_hash": strings.Repeat("a", 64), "replacement": "<script>alert(1)</script>"}}, "questions": []any{}, "outcome": "ready"})
+			return
+		}
+		if f.s.Validate("v4/ai/RevisionDraftRequest", d) != nil {
+			f.t.Error("invalid revision boundary")
+		}
+		if obj(d["report"])["hypothesis"] == nil || strings.Contains(string(encode(d)), internA) || strings.Contains(string(encode(d)), internB) {
+			f.t.Error("revision request must carry the report hypothesis and no intern identity", d)
+		}
+		if stream == "revision_questions" || stream == "revision_no_change" {
+			outcome := "needs_input"
+			questions := []any{Object{"id": "q1", "text": "Уточните результат"}}
+			if stream == "revision_no_change" {
+				outcome = "no_change"
+				questions = []any{}
+			}
+			writeJSON(w, 200, Object{"outcome": outcome, "base_hash": d["base_hash"], "base_version": d["base_version"], "changes": []any{}, "questions": questions, "rationale": "Нужно решение автора", "evidence_refs": []any{}, "origin": Object{"mode": "mock", "answered_by": "offline", "reason_code": "config_mock"}})
+			return
+		}
+		replacement := "Опишите шаги нумерованным списком."
+		if stream == "revision_long" {
+			replacement = strings.Repeat("x", 2001)
+		}
+		writeJSON(w, 200, Object{"outcome": "ready", "base_hash": d["base_hash"], "base_version": d["base_version"], "changes": []any{Object{"id": "c1", "path": obj(list(d["fields"])[0])["path"], "label": "Уточнение", "old_hash": d["base_hash"], "replacement": replacement, "rationale": "Уточняет формат"}}, "questions": []any{}, "rationale": "Уточнение", "evidence_refs": []any{}, "origin": Object{"mode": "live", "answered_by": "primary"}})
 	case strings.HasSuffix(r.URL.Path, "/task-clarity-draft"):
 		var d Object
 		_ = json.NewDecoder(r.Body).Decode(&d)
