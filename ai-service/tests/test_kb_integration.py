@@ -23,6 +23,7 @@ from ai_test_support import (
 from app import ingest
 from app.kb_store import DbKnowledge, IndexNotReady
 from app.knowledge import CORPUS_DIR, chunk_document, load_corpus
+from app.vectors import EmbeddingError
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("KB_INTEGRATION") != "1", reason="нужна kb: KB_INTEGRATION=1 и PG*"
@@ -97,10 +98,22 @@ def test_live_ingest_stores_1024_vectors_and_hybrid_search_uses_them():
     source.close()
 
 
-def test_live_service_refuses_mock_index():
-    assert ingest_with(MOCK_ENV) == ingest.EXIT_OK
+def test_live_ingest_without_embeddings_leaves_a_lexical_index_live_service_accepts():
+    # Бюджет исчерпан или провайдер молчит: стенд должен стартовать с поиском по словам.
+    failing = FakeEmbedder(error=EmbeddingError("Платный вызов запрещён"))
+    assert ingest.run(LIVE_ENV, CORPUS_DIR, psycopg.connect, lambda s: failing) == ingest.EXIT_OK
+    assert count("SELECT COUNT(*) FROM kb.chunks WHERE embedding IS NOT NULL") == 0
+    assert count("SELECT COUNT(*) FROM kb.index_metadata WHERE mode = 'mock'") == 1
+    source = DbKnowledge(make_settings(**LIVE))
+    asyncio.run(source.start())
+    knowledge = asyncio.run(source.current())
+    assert knowledge.vectors == {}
+    assert knowledge.search(intern_a_scope(), "заявка db_reader")
+    source.close()
+    # Вектор другого профиля по-прежнему не смешиваем: такой индекс не принимается.
+    assert ingest_with(LIVE_ENV) == ingest.EXIT_OK
     with pytest.raises(IndexNotReady):
-        asyncio.run(DbKnowledge(make_settings(**LIVE)).start())
+        asyncio.run(DbKnowledge(make_settings(**{**LIVE, "embedding_model": "other"})).start())
 
 
 def test_database_rejects_vectors_of_wrong_dimension():
