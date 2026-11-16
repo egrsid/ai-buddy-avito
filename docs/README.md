@@ -1,5 +1,6 @@
 # Документация AI-buddy
 
+- [Презентация (PDF)](presentation/AI-buddy.pdf), [HTML-версия](presentation/ai-buddy.html) и [видео](https://disk.yandex.ru/i/YbFCthsHgdbnIQ)
 - [Требования кейса и границы прототипа](requirements.md)
 - [Архитектура и интеграции](../ARCHITECTURE.md)
 - [SDD: спецификации поведения, дизайн и проверки](sdd/README.md)
