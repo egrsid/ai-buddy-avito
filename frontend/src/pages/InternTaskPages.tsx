@@ -1,3 +1,4 @@
+import { SubmissionPanel } from '../components/SubmissionPanel';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, HelpCircle, RefreshCw } from 'lucide-react';
 import { userMessage } from '../lib/api';
@@ -136,6 +137,8 @@ export function InternTaskDetailPage({ id }: { id: string }) {
             onAsk={() => { setContactSection(section.id); setAskTick(v => v + 1); }}
           />
         ))}
+        {t.db_route_enabled && <SubmissionPanel key={`${t.id}:${t.brief_version}`} assignmentId={t.id}
+          version={t.brief_version} archived={t.brief_state === 'archived'} />}
         <div ref={contactRef} tabIndex={-1} className="rounded-2xl focus:outline-2 focus:outline-primary" aria-label="Связь с наставником"><MentorContactCard
           initiallyOpen={askTick > 0}
           key={`${contactSection ?? 'task'}:${askTick}`}

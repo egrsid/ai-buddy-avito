@@ -1,8 +1,8 @@
 {
   "backend": {
-    "covered": 2975,
-    "total": 3594,
-    "percent": 82.7769
+    "covered": 3048,
+    "total": 3671,
+    "percent": 83.0291
   },
   "ai": {
     "covered": 3343,
@@ -15,8 +15,8 @@
     "percent": 98.0488
   },
   "frontend": {
-    "covered": 1802,
-    "total": 1880,
-    "percent": 95.85
+    "covered": 1829,
+    "total": 1912,
+    "percent": 95.659
   }
 }

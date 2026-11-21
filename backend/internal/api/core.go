@@ -460,7 +460,7 @@ func normalizeTimes(v any) {
 	case map[string]any:
 		for k, value := range x {
 			switch k {
-			case "created_at", "updated_at", "observed_at", "received_at", "invalidated_at", "expires_at", "resolved_at", "published_at", "last_seen", "last_seen_at", "first_seen", "started_at", "ended_at", "as_of", "unlinked_at", "from_a", "to_a", "from_b", "to_b":
+			case "created_at", "updated_at", "submitted_at", "reviewed_at", "observed_at", "received_at", "invalidated_at", "expires_at", "resolved_at", "published_at", "last_seen", "last_seen_at", "first_seen", "started_at", "ended_at", "as_of", "unlinked_at", "from_a", "to_a", "from_b", "to_b":
 				if parsed, e := time.Parse(time.RFC3339Nano, str(value)); e == nil {
 					x[k] = stamp(parsed)
 				}

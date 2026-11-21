@@ -23,7 +23,7 @@ describe('LiveRequestsPage', () => {
     render(<LiveRequestsPage />);
     expect((await screen.findAllByText('db-team-a-test')).length).toBeGreaterThan(0);
     expect(screen.getByText('Отправлена')).toBeInTheDocument();
-    expect(screen.getAllByText(/одобрена, но доступ ещё не подтверждён/).length).toBeGreaterThan(0);
+    for (const link of screen.getAllByRole('link', {name: 'Проверить доступ в IAM'})) expect(link).toHaveAttribute('href', `#/onboarding/${approved.goal_id}/steps/${approved.step_id}`);
   });
 
   it('empty: заявок нет', async () => {
@@ -109,7 +109,7 @@ describe('LiveApprovalsPage', () => {
   it('стажёр видит, что доступ выдан и шаг засчитан', async () => {
     mocks.listAccessRequests.mockResolvedValue([{ ...approved, grant_state: 'present' }]);
     render(<LiveRequestsPage />);
-    expect(await screen.findByText(/шаг «Проверить доступ» засчитан автоматически/)).toBeInTheDocument();
+    expect(await screen.findByRole('link', {name: 'Проверить подключение к БД'})).toHaveAttribute('href', `#/onboarding/${approved.goal_id}/steps/check_connection`);
   });
 
   it('empty: нет заявок', async () => {

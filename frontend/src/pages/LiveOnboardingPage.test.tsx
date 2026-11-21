@@ -129,7 +129,7 @@ describe('LiveOnboardingPage · карточки целей', () => {
   it('все цели проверены — можно начать новую', async () => {
     v3.listGoalSummaries.mockResolvedValue({ items: [summary(2, { status: 'verified', progress: { verified: 3, total: 3, percent: 100 } })], next_cursor: null });
     render(<LiveOnboardingPage />);
-    expect(await screen.findByText('Все текущие задачи выполнены. Поздравляем!')).toBeInTheDocument();
+    expect(await screen.findByText('Все технические цели проверены')).toBeInTheDocument();
     expect(screen.queryByRole('button', {name: 'Начать'})).not.toBeInTheDocument();
   });
 

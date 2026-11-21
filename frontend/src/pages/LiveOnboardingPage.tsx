@@ -97,7 +97,7 @@ export function LiveOnboardingPage() {
           )}
           {moreError && <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-error" role="alert">{moreError}</p>}
           {allVerified && (
-            <Card className="mt-6"><h2 className="font-semibold text-success">Все текущие задачи выполнены. Поздравляем!</h2><p className="mt-2 text-sm text-text-secondary">Новые цели появятся, когда будут назначены. Выполненные цели остаются доступны для просмотра.</p></Card>
+            <Card className="mt-6"><h2 className="font-semibold text-success">Все технические цели проверены</h2><p className="mt-2 text-sm text-text-secondary"><a className="text-primary underline" href="#/tasks">Открыть задания от наставника</a></p></Card>
           )}
         </>
       )}

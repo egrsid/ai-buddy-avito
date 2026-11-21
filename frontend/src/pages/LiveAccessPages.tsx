@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { AccessRequest } from '../fixtures/all-states';
 import { decideAccessRequest, listAccessRequests } from '../lib/endpoints';
+import { href } from '../lib/router';
 import { userMessage } from '../lib/api';
 import { useLiveData } from '../lib/live';
 import { Button, Card, EmptyState, ErrorState, LoadingState, PageHeader } from '../components/ui';
@@ -35,6 +36,12 @@ function RequestCard({ r }: { r: AccessRequest }) {
         <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">
           Заявка одобрена, но доступ ещё не подтверждён проверкой IAM.
         </p>
+      )}
+      {r.status === 'approved' && (
+        <a className="mt-3 inline-block text-sm font-medium text-primary underline"
+          href={href(`/onboarding/${r.goal_id}/steps/${r.grant_state === 'present' ? 'check_connection' : r.step_id}`)}>
+          {r.grant_state === 'present' ? 'Проверить подключение к БД' : 'Проверить доступ в IAM'}
+        </a>
       )}
     </Card>
   );

@@ -13,6 +13,9 @@ func out4(def string, v any) response     { return response{200, v, "v4/public/"
 func created4(def string, v any) response { return response{201, v, "v4/public/" + def} }
 
 func (s *Server) v4Routes(m *http.ServeMux) {
+	s.route(m, "GET /api/v4/assignments/{id}/submission", "", "", false, getSubmission)
+	s.route(m, "POST /api/v4/assignments/{id}/submission", "v4/public/SubmitWorkRequest", "intern", true, submitWork)
+	s.route(m, "POST /api/v4/assignments/{id}/submission/review", "v4/public/ReviewSubmissionRequest", "buddy", true, reviewSubmission)
 	s.route(m, "GET /api/v4/workspaces", "", "intern", false, listWorkspaces)
 	s.route(m, "GET /api/v4/workspaces/{id}", "", "intern", false, getWorkspace)
 	s.route(m, "POST /api/v4/assignments/{id}/permitted-template", "v4/public/PermittedTemplateRequest", "buddy", false, setPermittedTemplate)

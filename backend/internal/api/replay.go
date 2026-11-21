@@ -4,6 +4,9 @@ package api
 func (q *request) authorizeReplay(pattern string, value any) error {
 	v := obj(value)
 	switch pattern {
+	case "POST /api/v4/assignments/{id}/submission", "POST /api/v4/assignments/{id}/submission/review":
+		_, err := q.assignment(q.r.PathValue("id"))
+		return err
 	case "POST /api/v4/workspaces/{id}/link-confirm":
 		if _, _, _, e := q.workspaceView(q.r.PathValue("id")); e != nil {
 			return e

@@ -19,3 +19,24 @@ export const RevisionDiscardRequest = z.object({"expected_revision":z.number().i
 export const ImpactConfigRequest = z.object({"before_version":z.number().int().min(1),"after_version":z.number().int().min(2),"section_id":z.string().min(1).max(64).regex(new RegExp("^[a-z][a-z0-9_-]{0,63}$")),"reason":z.union([z.literal("requirement_unclear"),z.literal("outcome_unclear"),z.literal("acceptance_unclear")]),"comparable":z.boolean(),"from_a":z.string().min(20).max(40),"to_a":z.string().min(20).max(40),"from_b":z.string().min(20).max(40),"to_b":z.string().min(20).max(40),"expected_revision":z.number().int().min(0)}).strict();
 export const ImpactSide = z.object({"version":z.number().int().min(1),"state":z.union([z.literal("ready"),z.literal("insufficient_data"),z.literal("suppressed"),z.literal("no_exposure")]),"eligible":z.number().int().min(0).optional(),"affected":z.number().int().min(0).optional(),"rate":z.number().optional()}).strict();
 export const ImpactComparison = z.object({"brief_id":z.string().regex(new RegExp("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")),"section_id":z.string().min(1).max(64),"reason":z.string().min(1).max(64),"as_of":z.string().min(20).max(40),"policy_revision":z.number().int().min(1),"comparable":z.boolean(),"synthetic":z.literal(true),"label":z.string().min(1).max(300),"state":z.union([z.literal("ready"),z.literal("not_comparable"),z.literal("insufficient_data")]).optional(),"before":z.object({"version":z.number().int().min(1),"state":z.union([z.literal("ready"),z.literal("insufficient_data"),z.literal("suppressed"),z.literal("no_exposure")]),"eligible":z.number().int().min(0).optional(),"affected":z.number().int().min(0).optional(),"rate":z.number().optional()}).strict(),"after":z.object({"version":z.number().int().min(1),"state":z.union([z.literal("ready"),z.literal("insufficient_data"),z.literal("suppressed"),z.literal("no_exposure")]),"eligible":z.number().int().min(0).optional(),"affected":z.number().int().min(0).optional(),"rate":z.number().optional()}).strict(),"delta_pp":z.number().optional(),"config_revision":z.number().int().min(1).optional(),"clock_source":z.union([z.literal("server_wall_clock"),z.literal("synthetic_test_clock")]).optional()}).strict();
+
+const submissionProof = z.object({
+  id: z.uuid(),
+  observed_at: z.iso.datetime(),
+}).strict();
+
+export const SubmissionView = z.object({
+  brief_version: z.number().int().positive(),
+  proof: submissionProof.nullable(),
+  latest: z.object({
+    id: z.uuid(),
+    attempt: z.number().int().positive(),
+    status: z.enum(['submitted', 'returned', 'accepted']),
+    conclusion: z.string().min(1).max(1500),
+    comment: z.string().max(1500).optional(),
+    evidence_id: z.uuid(),
+    observed_at: z.iso.datetime(),
+    submitted_at: z.iso.datetime(),
+    reviewed_at: z.iso.datetime().optional(),
+  }).strict().nullable(),
+}).strict();

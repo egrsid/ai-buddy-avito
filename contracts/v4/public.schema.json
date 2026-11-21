@@ -861,6 +861,173 @@
           ]
         }
       }
+    },
+    "SubmissionReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"
+        }
+      }
+    },
+    "SubmissionProof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "observed_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"
+        },
+        "observed_at": {
+          "$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"
+        }
+      }
+    },
+    "WorkSubmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "attempt",
+        "status",
+        "conclusion",
+        "evidence_id",
+        "observed_at",
+        "submitted_at"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "enum": [
+            "submitted",
+            "accepted",
+            "returned"
+          ]
+        },
+        "conclusion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1500
+        },
+        "comment": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1500
+        },
+        "evidence_id": {
+          "$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"
+        },
+        "observed_at": {
+          "$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"
+        },
+        "submitted_at": {
+          "$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"
+        },
+        "reviewed_at": {
+          "$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Timestamp"
+        }
+      }
+    },
+    "SubmissionView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "brief_version",
+        "latest",
+        "proof"
+      ],
+      "properties": {
+        "brief_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "latest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorkSubmission"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "proof": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SubmissionProof"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "SubmitWorkRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "brief_version",
+        "attempt",
+        "evidence_id",
+        "conclusion"
+      ],
+      "properties": {
+        "brief_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "evidence_id": {
+          "$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"
+        },
+        "conclusion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1500
+        }
+      }
+    },
+    "ReviewSubmissionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submission_id",
+        "decision",
+        "comment"
+      ],
+      "properties": {
+        "submission_id": {
+          "$ref": "https://ai-buddy.invalid/contracts/v2/common.schema.json#/$defs/Uuid"
+        },
+        "decision": {
+          "enum": [
+            "accepted",
+            "returned"
+          ]
+        },
+        "comment": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 1500
+        }
+      }
     }
   }
 }

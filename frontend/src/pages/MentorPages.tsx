@@ -1,3 +1,4 @@
+import { SubmissionPanel } from '../components/SubmissionPanel';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Archive, FilePlus2, Send, Sparkles } from 'lucide-react';
 import { userMessage } from '../lib/api';
@@ -295,6 +296,8 @@ function BriefAssignments({ briefId, tick }: { briefId: string; tick: number }) 
             <span className="text-text-secondary">
               версия {a.brief_version}{a.latest_published_version > a.brief_version ? ` (доступна ${a.latest_published_version})` : ''}
             </span>
+            {a.db_route_enabled && <SubmissionPanel key={a.brief_version} assignmentId={a.id} version={a.brief_version}
+              reviewer archived={a.brief_state === 'archived'} />}
           </li>
         ))}
       </ul>

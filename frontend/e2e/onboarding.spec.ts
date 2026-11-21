@@ -1,15 +1,16 @@
-import {expect, request, test, type APIRequestContext} from '@playwright/test';
+import {expect, request, test} from '@playwright/test';
+import {AuthSession, Goal, JourneyList} from '../src/contracts/public';
 
 const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:5173';
 const origin = process.env.APP_ORIGIN ?? new URL(baseURL).origin;
 
-async function login(accountId: string): Promise<{api: APIRequestContext; csrf: string}> {
+async function login(accountId: string) {
   const api = await request.newContext({baseURL, extraHTTPHeaders: {Origin: origin}});
   const response = await api.post('/api/v2/auth/demo-login', {data: {account_id: accountId}});
   expect(response.status(), `demo-login for ${accountId}`).toBe(200);
-  const body = await response.json();
+  const body = AuthSession.parse(await response.json());
   expect(body.user.account_id).toBe(accountId);
-  return {api, csrf: body.csrf_token};
+  return {api, csrf: body.csrf_token, team: body.user.team_id};
 }
 
 test('v2 goal ownership: create and reread own goal; deny other interns and buddy', async () => {
@@ -19,9 +20,12 @@ test('v2 goal ownership: create and reread own goal; deny other interns and budd
   const buddy = await login('buddy-a');
 
   try {
+    expect(internB.team).toBe(internA.team);
+    expect(internC.team).not.toBe(internA.team);
+
     const journeysResponse = await internA.api.get('/api/v2/journeys');
     expect(journeysResponse.status()).toBe(200);
-    const journeys = (await journeysResponse.json()).items;
+    const journeys = JourneyList.parse(await journeysResponse.json()).items;
     expect(journeys.length).toBeGreaterThan(0);
     const journey = journeys[0];
 
@@ -30,22 +34,28 @@ test('v2 goal ownership: create and reread own goal; deny other interns and budd
       headers: {'X-CSRF-Token': internA.csrf, 'Idempotency-Key': crypto.randomUUID()},
     });
     expect([200, 201]).toContain(createResponse.status());
-    const goal = await createResponse.json();
+    const goal = Goal.parse(await createResponse.json());
     expect(goal.journey_id).toBe(journey.journey_id);
-    expect(goal.steps.length).toBeGreaterThan(0);
+    expect(goal.journey_version).toBe(journey.version);
+    expect(goal.resource_id).toBe(journey.resource_id);
+    const verified = goal.steps.filter(step => step.status === 'verified').length;
     expect(goal.progress).toMatchObject({
-      verified: expect.any(Number),
+      verified,
       total: goal.steps.length,
-      percent: expect.any(Number),
+      percent: Math.floor(100 * verified / goal.steps.length),
     });
 
     const rereadResponse = await internA.api.get(`/api/v2/goals/${goal.id}`);
     expect(rereadResponse.status()).toBe(200);
-    expect(await rereadResponse.json()).toMatchObject({id: goal.id, progress: goal.progress});
+    expect(Goal.parse(await rereadResponse.json())).toMatchObject({
+      id: goal.id, journey_version: goal.journey_version, steps: goal.steps, progress: goal.progress,
+    });
 
     const internAList = await internA.api.get('/api/v2/goals');
+    expect(internAList.status()).toBe(200);
     expect((await internAList.json()).items.map((item: {id: string}) => item.id)).toContain(goal.id);
     const internBList = await internB.api.get('/api/v2/goals');
+    expect(internBList.status()).toBe(200);
     expect((await internBList.json()).items.map((item: {id: string}) => item.id)).not.toContain(goal.id);
     const internBDetail = await internB.api.get(`/api/v2/goals/${goal.id}`);
     expect(internBDetail.status()).toBe(404);
@@ -71,7 +81,7 @@ test('v2 session and CSRF: anonymous reads and unprotected goal creation are rej
 
     const journeysResponse = await intern.api.get('/api/v2/journeys');
     expect(journeysResponse.status()).toBe(200);
-    const journey = (await journeysResponse.json()).items[0];
+    const journey = JourneyList.parse(await journeysResponse.json()).items[0];
     expect(journey).toBeDefined();
 
     const beforeResponse = await intern.api.get('/api/v2/goals');
@@ -86,6 +96,7 @@ test('v2 session and CSRF: anonymous reads and unprotected goal creation are rej
     expect((await createResponse.json()).error.code).toBe('CSRF_INVALID');
 
     const afterResponse = await intern.api.get('/api/v2/goals');
+    expect(afterResponse.status()).toBe(200);
     expect((await afterResponse.json()).items).toEqual(before);
   } finally {
     await anonymous.dispose();
